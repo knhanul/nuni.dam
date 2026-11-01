@@ -1,0 +1,3 @@
+<resources><style name="NuniTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+<item name="android:fontFamily">sans</item><item name="android:colorPrimary">#365B46</item><item name="android:colorAccent">#365B46</item><item name="android:colorControlActivated">#365B46</item><item name="android:colorControlNormal">#626D65</item><item name="android:textColorPrimary">#24332B</item><item name="android:windowLightStatusBar">true</item><item name="android:statusBarColor">#F4F2EC</item><item name="android:navigationBarColor">#F4F2EC</item><item name="android:windowBackground">#F4F2EC</item>
+</style></resources>

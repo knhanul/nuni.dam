@@ -1,0 +1,22 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+ <uses-permission android:name="android.permission.INTERNET"/>
+ <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+ <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+ <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+ <uses-permission android:name="android.permission.CAMERA"/>
+ <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
+ <uses-feature android:name="android.hardware.camera" android:required="false"/>
+ <uses-feature android:name="android.hardware.camera.front" android:required="false"/>
+ <application android:name=".NuniApp" android:label="누니담" android:icon="@drawable/ic_nuni" android:theme="@style/NuniTheme" android:allowBackup="false" android:fullBackupContent="false" android:dataExtractionRules="@xml/data_extraction_rules" android:supportsRtl="true" android:usesCleartextTraffic="true">
+  <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
+  <activity android:name=".SettingsActivity" android:exported="true"/>
+  <activity android:name=".LibraryActivity" android:exported="false"/>
+  <activity android:name=".QuotesActivity" android:exported="false"/>
+  <activity android:name=".FrameActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden"/>
+  <activity android:name=".TransferActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden"/>
+  <activity-alias android:name=".HomeEntry" android:targetActivity=".MainActivity" android:enabled="false" android:exported="true" android:label="누니담 액자 홈"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.HOME"/><category android:name="android.intent.category.DEFAULT"/></intent-filter></activity-alias>
+  <service android:name=".NuniDream" android:exported="true" android:permission="android.permission.BIND_DREAM_SERVICE" android:label="누니담"><intent-filter><action android:name="android.service.dreams.DreamService"/></intent-filter><meta-data android:name="android.service.dream" android:resource="@xml/dream"/></service>
+  <receiver android:name=".BootReceiver" android:exported="false"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/></intent-filter></receiver>
+ </application>
+</manifest>
+

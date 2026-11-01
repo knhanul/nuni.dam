@@ -1,0 +1,68 @@
+app/src/main/java/co/kr/nuni/dam/NuniApp.java:32: Warning: Consider using apply() instead; commit writes its data to persistent storage immediately, whereas apply will handle it in the background [ApplySharedPref]
+            prefs.raw.edit().putLong("lastCrash", System.currentTimeMillis()).commit();
+                                                                              ~~~~~~~~
+
+   Explanation for issues of type "ApplySharedPref":
+   Consider using apply() instead of commit on shared preferences. Whereas
+   commit blocks and writes its data to persistent storage immediately, apply
+   will handle it in the background.
+
+app/src/main/java/co/kr/nuni/dam/LibraryActivity.java:159: Warning: Use SwitchCompat from AppCompat or SwitchMaterial from Material library [UseSwitchCompatOrMaterialCode from androidx.appcompat]
+    Switch fav = new Switch(this);
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+app/src/main/java/co/kr/nuni/dam/SettingsActivity.java:77: Warning: Use SwitchCompat from AppCompat or SwitchMaterial from Material library [UseSwitchCompatOrMaterialCode from androidx.appcompat]
+    Switch mirror = new Switch(this);
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+app/src/main/java/co/kr/nuni/dam/SettingsActivity.java:232: Warning: Use SwitchCompat from AppCompat or SwitchMaterial from Material library [UseSwitchCompatOrMaterialCode from androidx.appcompat]
+    Switch v = new Switch(this);
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "UseSwitchCompatOrMaterialCode":
+   Use SwitchCompat from AppCompat or SwitchMaterial from Material library
+
+   Vendor: Android Open Source Project
+   Identifier: androidx.appcompat
+   Feedback: https://issuetracker.google.com/issues/new?component=460343
+
+app/build.gradle:26: Warning: A newer version of com.google.zxing:core than 3.5.3 is available: 3.5.4 [NewerVersionAvailable]
+ implementation 'com.google.zxing:core:3.5.3'
+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "NewerVersionAvailable":
+   This detector checks with a central repository to see if there are newer
+   versions available for the dependencies used by this project. This is
+   similar to the GradleDependency check, which checks for newer versions
+   available in the Android SDK tools and libraries, but this works with any
+   MavenCentral dependency, and connects to the library every time, which
+   makes it more flexible but also much slower.
+
+app/src/main/java/co/kr/nuni/dam/LibraryActivity.java:105: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+                title.setText((trash ? "휴지통" : "사진 보관함") + " · " + rows.size());
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+app/src/main/java/co/kr/nuni/dam/LibraryActivity.java:288: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+          (p.favourite ? "★  " : "")
+          ^
+app/src/main/java/co/kr/nuni/dam/MainActivity.java:78: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+                    n + "장의 순간 · " + String.format(Locale.KOREA, "%.1f MB", bytes / 1048576d));
+                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+app/src/main/java/co/kr/nuni/dam/MainActivity.java:80: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+                    a.prefs.raw.getString("syncStatus", "")
+                    ^
+app/src/main/java/co/kr/nuni/dam/MainActivity.java:138: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+                    if (Ui.alive(this)) progress.setText(done + " / " + list.size() + "장 처리 중");
+                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "SetTextI18n":
+   When calling TextView#setText
+   * Never call Number#toString() to format numbers; it will not handle
+   fraction separators and locale-specific digits properly. Consider using
+   String#format with proper format specifications (%d or %f) instead.
+   * Do not pass a string literal (e.g. "Hello") to display text. Hardcoded
+   text can not be properly translated to other languages. Consider using
+   Android resource strings instead.
+   * Do not build messages by concatenating text chunks. Such messages can not
+   be properly translated.
+
+   https://developer.android.com/guide/topics/resources/localization.html
+
+0 errors, 10 warnings

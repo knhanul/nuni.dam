@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="co.kr.nuni.dam.CoreTest" tests="21" skipped="0" failures="0" errors="0" timestamp="2026-10-31T22:22:37.626Z" hostname="e176a4cac0d3" time="0.038">
+  <properties/>
+  <testcase name="failedPartialEmptyScansCannotDelete" classname="co.kr.nuni.dam.CoreTest" time="0.001"/>
+  <testcase name="exactUploadPreservesNextRequest" classname="co.kr.nuni.dam.CoreTest" time="0.002"/>
+  <testcase name="tokenExpiry" classname="co.kr.nuni.dam.CoreTest" time="0.004"/>
+  <testcase name="sampleBeforeDecode" classname="co.kr.nuni.dam.CoreTest" time="0.0"/>
+  <testcase name="malformedFaceFallsBack" classname="co.kr.nuni.dam.CoreTest" time="0.001"/>
+  <testcase name="threeThousandFaceZoomScenarios" classname="co.kr.nuni.dam.CoreTest" time="0.015"/>
+  <testcase name="retainedPhotosProtected" classname="co.kr.nuni.dam.CoreTest" time="0.0"/>
+  <testcase name="tokenRotation" classname="co.kr.nuni.dam.CoreTest" time="0.002"/>
+  <testcase name="daytimeBoundaries" classname="co.kr.nuni.dam.CoreTest" time="0.0"/>
+  <testcase name="sameTimesDisableNight" classname="co.kr.nuni.dam.CoreTest" time="0.0"/>
+  <testcase name="quotaCannotOverflow" classname="co.kr.nuni.dam.CoreTest" time="0.0"/>
+  <testcase name="partialUploadRejected" classname="co.kr.nuni.dam.CoreTest" time="0.0"/>
+  <testcase name="distantFacesMeanContain" classname="co.kr.nuni.dam.CoreTest" time="0.0"/>
+  <testcase name="manualFocusBounds" classname="co.kr.nuni.dam.CoreTest" time="0.001"/>
+  <testcase name="streamSizeLimit" classname="co.kr.nuni.dam.CoreTest" time="0.001"/>
+  <testcase name="missingFacesMeanContain" classname="co.kr.nuni.dam.CoreTest" time="0.002"/>
+  <testcase name="quotaAndSpace" classname="co.kr.nuni.dam.CoreTest" time="0.0"/>
+  <testcase name="invalidTimes" classname="co.kr.nuni.dam.CoreTest" time="0.001"/>
+  <testcase name="tokenIsExact" classname="co.kr.nuni.dam.CoreTest" time="0.002"/>
+  <testcase name="invalidImageBounds" classname="co.kr.nuni.dam.CoreTest" time="0.001"/>
+  <testcase name="nightAcrossMidnight" classname="co.kr.nuni.dam.CoreTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
