@@ -7,6 +7,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.json.*;
 
 public final class TransferServer extends NanoHTTPD {
@@ -14,19 +15,26 @@ public final class TransferServer extends NanoHTTPD {
     void request(String address);
   }
 
+  public interface Progress {
+    void onUploaded(String name, int sessionCount);
+  }
+
   private final NuniApp a;
   private final Core.Token token;
   private final String host, html;
   private final Approval approval;
+  private final Progress progress;
   private final AtomicBoolean requested = new AtomicBoolean();
-  private final Semaphore jobs = new Semaphore(4); // lower concurrency for stability on weak devices
+  private final AtomicInteger sessionUploads = new AtomicInteger();
+  private final Semaphore jobs = new Semaphore(4);
   private volatile boolean approved, denied;
 
-  public TransferServer(Context c, String ip, Approval callback) throws IOException {
+  public TransferServer(Context c, String ip, Approval callback, Progress progressCb) throws IOException {
     super("0.0.0.0", 0);
     a = NuniApp.of(c);
     host = ip;
     approval = callback;
+    progress = progressCb;
     token = new Core.Token(SystemClock.elapsedRealtime(), 1800000); // 30 minutes
     try (InputStream in = c.getAssets().open("transfer.html")) {
       html = new String(Core.read(in, 256 * 1024), StandardCharsets.UTF_8);
@@ -45,15 +53,18 @@ public final class TransferServer extends NanoHTTPD {
     return Math.max(0, (token.expires - SystemClock.elapsedRealtime()) / 1000);
   }
 
+  public int sessionUploads() {
+    return sessionUploads.get();
+  }
+
   public void approve(boolean allow) {
     approved = allow;
     denied = !allow;
-    if (!allow) requested.set(false); // allow re-request after reject/cancel
+    if (!allow) requested.set(false);
   }
 
   private static boolean lan(String ip) {
     if (ip == null) return false;
-    // IPv4 private + loopback. IPv6 link-local / unique-local are less reliable here.
     return ip.startsWith("10.")
         || ip.startsWith("192.168.")
         || ip.equals("127.0.0.1")
@@ -66,7 +77,6 @@ public final class TransferServer extends NanoHTTPD {
   public Response serve(IHTTPSession s) {
     if (!lan(s.getRemoteIpAddress()))
       return error(Response.Status.FORBIDDEN, "같은 로컬 네트워크에서 연결해 주세요.");
-    // Relaxed Origin check: only reject if present and clearly different host
     String origin = s.getHeaders().get("origin");
     if (origin != null && !origin.isEmpty() && !origin.contains(host))
       return error(Response.Status.FORBIDDEN, "허용되지 않은 요청 출처입니다.");
@@ -124,16 +134,20 @@ public final class TransferServer extends NanoHTTPD {
       if (path.equals("/api/upload") && s.getMethod() == Method.POST) {
         long len = length(s, Core.MAX_INPUT);
         String type = s.getHeaders().get("content-type");
-        // More lenient: accept image/*, octet-stream, or missing/empty
         if (type != null
             && !type.isEmpty()
             && !type.startsWith("image/")
             && !type.equals("application/octet-stream")
             && !type.equals("application/x-www-form-urlencoded"))
           return error(Response.Status.UNSUPPORTED_MEDIA_TYPE, "이미지 파일만 전송할 수 있습니다.");
+        String name = s.getParms().get("name");
         Photo p =
             a.store.importStream(
-                new Core.ExactStream(s.getInputStream(), len), s.getParms().get("name"), true);
+                new Core.ExactStream(s.getInputStream(), len), name, true);
+        int count = sessionUploads.incrementAndGet();
+        if (progress != null) {
+          a.main.post(() -> progress.onUploaded(name == null ? "사진" : name, count));
+        }
         return json(new JSONObject().put("id", p.id));
       }
       if (path.equals("/api/photo") && s.getMethod() == Method.POST) {

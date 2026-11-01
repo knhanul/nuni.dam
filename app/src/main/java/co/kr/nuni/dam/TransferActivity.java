@@ -4,6 +4,7 @@ import android.app.*;
 import android.graphics.Bitmap;
 import android.net.*;
 import android.os.*;
+import android.view.Gravity;
 import android.view.WindowManager;
 import android.widget.*;
 import com.google.zxing.*;
@@ -14,8 +15,10 @@ import java.util.*;
 
 public final class TransferActivity extends Activity {
   private TransferServer server;
-  private TextView status, stateBadge;
+  private TextView status, stateBadge, uploadStatus, lastUpload;
+  private LinearLayout uploadCard;
   private AlertDialog approval;
+  private int sessionCount;
   private final Handler h = new Handler(Looper.getMainLooper());
   private final Runnable clock =
       new Runnable() {
@@ -28,7 +31,7 @@ public final class TransferActivity extends Activity {
                       + t / 60
                       + "분 "
                       + t % 60
-                      + "초\n전송이 끝날 때까지 이 화면을 열어두세요. 화면이 잠시 꺼져도 서버는 유지됩니다."
+                      + "초\n화면이 잠시 꺼져도 서버는 유지됩니다."
                   : "연결 시간이 만료되었습니다. ‘새 QR 코드 만들기’를 눌러 다시 연결해 주세요.");
           if (t == 0) {
             stateBadge.setText("만료됨 · 새 QR 생성 필요");
@@ -52,7 +55,6 @@ public final class TransferActivity extends Activity {
   }
 
   protected void onPause() {
-    // Do NOT stop the server here. Screen off / brief background should not kill active transfers.
     super.onPause();
   }
 
@@ -75,6 +77,7 @@ public final class TransferActivity extends Activity {
 
   private void start() {
     stop();
+    sessionCount = 0;
     LinearLayout root =
         Ui.page(
             this,
@@ -94,6 +97,17 @@ public final class TransferActivity extends Activity {
     card.addView(address);
     status = Ui.text(this, "연결 준비 중", 14, Ui.MUTED);
     card.addView(status);
+
+    // New upload status card
+    uploadCard = Ui.card(root);
+    Ui.section(uploadCard, R.drawable.ic_download, "이번 세션 수신 현황");
+    uploadStatus = Ui.text(this, "아직 받은 사진이 없습니다.", 16, Ui.INK);
+    uploadStatus.setTypeface(null, android.graphics.Typeface.BOLD);
+    uploadCard.addView(uploadStatus);
+    Ui.gap(uploadCard, 6);
+    lastUpload = Ui.text(this, "사진을 보내면 여기에 표시됩니다.", 14, Ui.MUTED);
+    uploadCard.addView(lastUpload);
+
     Ui.gap(card, 8);
     Ui.add(
         card,
@@ -120,9 +134,10 @@ public final class TransferActivity extends Activity {
             this,
             "1. 스마트폰 카메라로 위 QR 코드를 스캔합니다.\n"
                 + "2. 태블릿에 뜨는 승인 창에서 연결을 허용합니다.\n"
-                + "3. 스마트폰에서 사진을 보내거나 문구·분위기를 바꾼 뒤 ‘전송 완료 후 액자 시작’을 누르세요.\n\n"
-                + "개인 Wi-Fi에서만 사용하세요. 게스트 Wi-Fi의 기기 간 차단, VPN, IPv6 전용망에서는 연결되지 않을 수 있습니다.\n"
-                + "이 화면을 닫거나 ‘연결 종료하고 닫기’를 누르면 서버가 종료됩니다. 화면이 잠시 꺼져도 전송은 계속됩니다.",
+                + "3. 스마트폰에서 사진을 보내면 아래 ‘수신 현황’에 실시간으로 표시됩니다.\n"
+                + "4. 전송이 끝나면 ‘전송 완료 후 액자 시작’을 누르세요.\n\n"
+                + "개인 Wi-Fi에서만 사용하세요. 게스트 Wi-Fi의 기기 간 차단, VPN에서는 연결되지 않을 수 있습니다.\n"
+                + "이 화면을 닫거나 ‘연결 종료하고 닫기’를 눌르면 서버가 종료됩니다. 화면이 잠시 꺼져도 전송은 계속됩니다.",
             14,
             Ui.MUTED));
     try {
@@ -131,8 +146,8 @@ public final class TransferActivity extends Activity {
         throw new IllegalStateException(
             "Wi-Fi 또는 유선 네트워크에 연결한 뒤 다시 시도해 주세요.\n"
                 + "(게스트 네트워크의 기기 간 통신 차단이나 IPv6 전용 환경일 수 있습니다.)");
-      server = new TransferServer(this, ip, this::approve);
-      server.start(30000, true); // longer accept timeout
+      server = new TransferServer(this, ip, this::approve, this::onUploaded);
+      server.start(30000, true);
       Map<EncodeHintType, Object> hints = new HashMap<>();
       hints.put(EncodeHintType.MARGIN, 2);
       BitMatrix matrix =
@@ -144,6 +159,7 @@ public final class TransferActivity extends Activity {
       qr.setImageBitmap(Bitmap.createBitmap(pixels, 600, 600, Bitmap.Config.ARGB_8888));
       address.setText("접속 주소: " + server.address());
       h.post(clock);
+      updateUploadUi(0, null);
     } catch (Exception e) {
       stateBadge.setText("네트워크 확인 필요");
       stateBadge.setTextColor(Ui.DANGER);
@@ -155,9 +171,28 @@ public final class TransferActivity extends Activity {
     }
   }
 
+  private void onUploaded(String name, int count) {
+    if (!Ui.alive(this)) return;
+    sessionCount = count;
+    updateUploadUi(count, name);
+    stateBadge.setText("사진 수신 중 · " + count + "장 완료");
+    stateBadge.setTextColor(Ui.PRIMARY);
+  }
+
+  private void updateUploadUi(int count, String lastName) {
+    if (uploadStatus == null) return;
+    if (count == 0) {
+      uploadStatus.setText("아직 받은 사진이 없습니다.");
+      lastUpload.setText("사진을 보내면 여기에 표시됩니다.");
+    } else {
+      uploadStatus.setText("이번 세션에서 " + count + "장 수신했습니다.");
+      lastUpload.setText(lastName == null ? "" : "최근: " + lastName);
+    }
+  }
+
   private void approve(String ip) {
     if (!Ui.alive(this) || server == null) return;
-    if (approval != null && approval.isShowing()) return; // avoid stacking
+    if (approval != null && approval.isShowing()) return;
     TransferServer current = server;
     stateBadge.setText("연결 승인 요청 도착 (" + ip + ")");
     approval =
@@ -211,7 +246,7 @@ public final class TransferActivity extends Activity {
         InetAddress addr = l.getAddress();
         if (!(addr instanceof Inet4Address) || addr.isLoopbackAddress()) continue;
         String host = addr.getHostAddress();
-        if (addr.isSiteLocalAddress()) return host; // prefer private LAN
+        if (addr.isSiteLocalAddress()) return host;
         if (fallback == null) fallback = host;
       }
     }
