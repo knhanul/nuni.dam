@@ -1,6 +1,7 @@
 package co.kr.nuni.dam;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.os.*;
 import android.view.*;
 import android.view.accessibility.AccessibilityManager;
@@ -93,7 +94,8 @@ public final class FrameActivity extends Activity {
     add(two, "사진 관리", R.drawable.ic_gallery, Ui.INK, true, () -> openManage("PHOTOS"));
     add(two, "꾸미기", R.drawable.ic_sun, Ui.INK, true, () -> openManage("CUSTOMIZE"));
     add(two, "설정", R.drawable.ic_tune, Ui.INK, true, () -> openManage("SETTINGS"));
-    add(two, "관리 홈", R.drawable.ic_exit, Ui.MUTED, true, this::finish);
+    add(two, "관리 홈", R.drawable.ic_home, Ui.MUTED, true, this::finish);
+    add(two, "앱 종료", R.drawable.ic_exit, Ui.DANGER, true, this::exitApp);
     FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
     int margin = Ui.dp(this, 16);
     p.setMargins(margin, 0, margin, margin);
@@ -131,6 +133,27 @@ public final class FrameActivity extends Activity {
     i.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP | android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
     startActivity(i);
     finish();
+  }
+
+  private void exitApp() {
+    new AlertDialog.Builder(this)
+        .setTitle("앱을 종료할까요?")
+        .setMessage("누니담 액자를 완전히 종료합니다.\n화면이 홈으로 돌아갑니다.")
+        .setPositiveButton(
+            "종료",
+            (d, w) -> {
+              finishAffinity();
+              android.content.Intent home =
+                  new android.content.Intent(android.content.Intent.ACTION_MAIN);
+              home.addCategory(android.content.Intent.CATEGORY_HOME);
+              home.setFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+              try {
+                startActivity(home);
+              } catch (Exception ignored) {
+              }
+            })
+        .setNegativeButton("취소", null)
+        .show();
   }
 
   private void pauseState() {
