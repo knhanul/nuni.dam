@@ -28,12 +28,12 @@ public final class TransferActivity extends Activity {
                       + t / 60
                       + "분 "
                       + t % 60
-                      + "초\n전송이 끝날 때까지 이 화면을 열어두세요. (전송 중에는 절전으로 화면이 꺼지지 않게 보호됩니다.)"
+                      + "초\n전송이 끝날 때까지 이 화면을 열어두세요. 화면이 잠시 꺼져도 서버는 유지됩니다."
                   : "연결 시간이 만료되었습니다. ‘새 QR 코드 만들기’를 눌러 다시 연결해 주세요.");
           if (t == 0) {
             stateBadge.setText("만료됨 · 새 QR 생성 필요");
             stateBadge.setTextColor(Ui.DANGER);
-            server.stop();
+            if (server != null) server.stop();
             return;
           }
           h.postDelayed(this, 1000);
@@ -48,12 +48,17 @@ public final class TransferActivity extends Activity {
   protected void onResume() {
     super.onResume();
     getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-    start();
+    if (server == null) start();
   }
 
   protected void onPause() {
-    stop();
+    // Do NOT stop the server here. Screen off / brief background should not kill active transfers.
     super.onPause();
+  }
+
+  protected void onDestroy() {
+    stop();
+    super.onDestroy();
   }
 
   private void stop() {
@@ -116,14 +121,18 @@ public final class TransferActivity extends Activity {
             "1. 스마트폰 카메라로 위 QR 코드를 스캔합니다.\n"
                 + "2. 태블릿에 뜨는 승인 창에서 연결을 허용합니다.\n"
                 + "3. 스마트폰에서 사진을 보내거나 문구·분위기를 바꾼 뒤 ‘전송 완료 후 액자 시작’을 누르세요.\n\n"
-                + "개인 Wi-Fi에서만 사용하세요. 외부 인터넷 원격 연결은 지원하지 않으며 화면을 닫으면 서버가 즉시 종료됩니다.",
+                + "개인 Wi-Fi에서만 사용하세요. 게스트 Wi-Fi의 기기 간 차단, VPN, IPv6 전용망에서는 연결되지 않을 수 있습니다.\n"
+                + "이 화면을 닫거나 ‘연결 종료하고 닫기’를 누르면 서버가 종료됩니다. 화면이 잠시 꺼져도 전송은 계속됩니다.",
             14,
             Ui.MUTED));
     try {
       String ip = ip();
-      if (ip == null) throw new IllegalStateException("Wi-Fi 또는 유선 네트워크에 연결한 뒤 다시 시도해 주세요.");
+      if (ip == null)
+        throw new IllegalStateException(
+            "Wi-Fi 또는 유선 네트워크에 연결한 뒤 다시 시도해 주세요.\n"
+                + "(게스트 네트워크의 기기 간 통신 차단이나 IPv6 전용 환경일 수 있습니다.)");
       server = new TransferServer(this, ip, this::approve);
-      server.start(10000, true);
+      server.start(30000, true); // longer accept timeout
       Map<EncodeHintType, Object> hints = new HashMap<>();
       hints.put(EncodeHintType.MARGIN, 2);
       BitMatrix matrix =
@@ -148,6 +157,7 @@ public final class TransferActivity extends Activity {
 
   private void approve(String ip) {
     if (!Ui.alive(this) || server == null) return;
+    if (approval != null && approval.isShowing()) return; // avoid stacking
     TransferServer current = server;
     stateBadge.setText("연결 승인 요청 도착 (" + ip + ")");
     approval =
@@ -182,12 +192,14 @@ public final class TransferActivity extends Activity {
                     stateBadge.setText("연결 취소됨");
                   }
                 })
+            .setCancelable(true)
             .show();
   }
 
   private String ip() {
     ConnectivityManager m = getSystemService(ConnectivityManager.class);
     if (m == null) return null;
+    String fallback = null;
     for (Network n : m.getAllNetworks()) {
       NetworkCapabilities caps = m.getNetworkCapabilities(n);
       if (caps == null
@@ -196,11 +208,13 @@ public final class TransferActivity extends Activity {
       LinkProperties p = m.getLinkProperties(n);
       if (p == null) continue;
       for (LinkAddress l : p.getLinkAddresses()) {
-        InetAddress ip = l.getAddress();
-        if (ip instanceof Inet4Address && ip.isSiteLocalAddress() && !ip.isLoopbackAddress())
-          return ip.getHostAddress();
+        InetAddress addr = l.getAddress();
+        if (!(addr instanceof Inet4Address) || addr.isLoopbackAddress()) continue;
+        String host = addr.getHostAddress();
+        if (addr.isSiteLocalAddress()) return host; // prefer private LAN
+        if (fallback == null) fallback = host;
       }
     }
-    return null;
+    return fallback;
   }
 }

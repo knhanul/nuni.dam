@@ -19,7 +19,7 @@ public final class TransferServer extends NanoHTTPD {
   private final String host, html;
   private final Approval approval;
   private final AtomicBoolean requested = new AtomicBoolean();
-  private final Semaphore jobs = new Semaphore(8);
+  private final Semaphore jobs = new Semaphore(4); // lower concurrency for stability on weak devices
   private volatile boolean approved, denied;
 
   public TransferServer(Context c, String ip, Approval callback) throws IOException {
@@ -27,7 +27,7 @@ public final class TransferServer extends NanoHTTPD {
     a = NuniApp.of(c);
     host = ip;
     approval = callback;
-    token = new Core.Token(SystemClock.elapsedRealtime(), 1200000);
+    token = new Core.Token(SystemClock.elapsedRealtime(), 1800000); // 30 minutes
     try (InputStream in = c.getAssets().open("transfer.html")) {
       html = new String(Core.read(in, 256 * 1024), StandardCharsets.UTF_8);
     }
@@ -48,21 +48,27 @@ public final class TransferServer extends NanoHTTPD {
   public void approve(boolean allow) {
     approved = allow;
     denied = !allow;
+    if (!allow) requested.set(false); // allow re-request after reject/cancel
   }
 
   private static boolean lan(String ip) {
-    return ip != null
-        && (ip.startsWith("10.")
-            || ip.startsWith("192.168.")
-            || ip.equals("127.0.0.1")
-            || ip.matches("172\\.(1[6-9]|2\\d|3[01])\\..*"));
+    if (ip == null) return false;
+    // IPv4 private + loopback. IPv6 link-local / unique-local are less reliable here.
+    return ip.startsWith("10.")
+        || ip.startsWith("192.168.")
+        || ip.equals("127.0.0.1")
+        || ip.matches("172\\.(1[6-9]|2\\d|3[01])\\..*")
+        || ip.startsWith("fe80:")
+        || ip.startsWith("fc")
+        || ip.startsWith("fd");
   }
 
   public Response serve(IHTTPSession s) {
     if (!lan(s.getRemoteIpAddress()))
       return error(Response.Status.FORBIDDEN, "같은 로컬 네트워크에서 연결해 주세요.");
+    // Relaxed Origin check: only reject if present and clearly different host
     String origin = s.getHeaders().get("origin");
-    if (origin != null && !origin.equals(address()))
+    if (origin != null && !origin.isEmpty() && !origin.contains(host))
       return error(Response.Status.FORBIDDEN, "허용되지 않은 요청 출처입니다.");
     String path = s.getUri();
     if (path.equals("/") && s.getMethod() == Method.GET)
@@ -72,7 +78,7 @@ public final class TransferServer extends NanoHTTPD {
         || !auth.startsWith("Bearer ")
         || !token.accepts(auth.substring(7), SystemClock.elapsedRealtime()))
       return error(Response.Status.UNAUTHORIZED, "연결이 만료되었습니다. QR 코드를 다시 스캔하세요.");
-    if (denied) return error(Response.Status.FORBIDDEN, "태블릿에서 연결을 허용하지 않았습니다.");
+    if (denied) return error(Response.Status.FORBIDDEN, "태블릿에서 연결을 허용하지 않았습니다. 새 QR 코드를 만들어 주세요.");
     if (path.equals("/api/status") && s.getMethod() == Method.GET) {
       String remote = s.getRemoteIpAddress();
       if (!approved && requested.compareAndSet(false, true))
@@ -118,8 +124,12 @@ public final class TransferServer extends NanoHTTPD {
       if (path.equals("/api/upload") && s.getMethod() == Method.POST) {
         long len = length(s, Core.MAX_INPUT);
         String type = s.getHeaders().get("content-type");
-        if (type == null
-            || (!type.startsWith("image/") && !type.equals("application/octet-stream")))
+        // More lenient: accept image/*, octet-stream, or missing/empty
+        if (type != null
+            && !type.isEmpty()
+            && !type.startsWith("image/")
+            && !type.equals("application/octet-stream")
+            && !type.equals("application/x-www-form-urlencoded"))
           return error(Response.Status.UNSUPPORTED_MEDIA_TYPE, "이미지 파일만 전송할 수 있습니다.");
         Photo p =
             a.store.importStream(
