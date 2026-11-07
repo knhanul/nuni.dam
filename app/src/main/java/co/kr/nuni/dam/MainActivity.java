@@ -721,7 +721,7 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
 
   protected void onActivityResult(int request, int result, Intent data) {
     super.onActivityResult(request, result, data);
-    if (request == 10 || request == 11) {
+    if (request == 10 || request == 11 || request == 12 || request == 13) {
       if (settingsController != null) settingsController.onActivityResult(request, result, data);
       return;
     }

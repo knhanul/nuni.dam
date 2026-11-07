@@ -53,6 +53,44 @@ public final class PhotoStore {
     return new File(dir, id + ".jpg");
   }
 
+  public File thumbFile(String id) {
+    if (id == null || !id.matches("[a-f0-9]{64}")) throw new IllegalArgumentException("잘못된 사진 식별자");
+    File tdir = new File(c.getFilesDir(), "thumbs");
+    if (!tdir.exists()) tdir.mkdirs();
+    return new File(tdir, id + "_thumb.jpg");
+  }
+
+  public File originalFile(String id) {
+    if (id == null || !id.matches("[a-f0-9]{64}")) throw new IllegalArgumentException("잘못된 사진 식별자");
+    File odir = new File(c.getFilesDir(), "originals");
+    if (!odir.exists()) odir.mkdirs();
+    return new File(odir, id + "_orig.jpg");
+  }
+
+  public byte[] loadThumbBytes(Photo p) {
+    try {
+      File tf = thumbFile(p.id);
+      if (tf.isFile() && tf.length() > 0) {
+        try (InputStream in = new FileInputStream(tf)) {
+          return Core.read(in, 2 * 1024 * 1024);
+        }
+      }
+      Bitmap b = load(p, 320);
+      if (b == null) return null;
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      b.compress(Bitmap.CompressFormat.JPEG, 78, out);
+      b.recycle();
+      byte[] data = out.toByteArray();
+      try (FileOutputStream fos = new FileOutputStream(tf)) {
+        fos.write(data);
+      } catch (Exception ignored) {
+      }
+      return data;
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
   public Photo fromUri(Uri uri, String name, boolean owned) throws Exception {
     try (InputStream in = c.getContentResolver().openInputStream(uri)) {
       if (in == null) throw new IOException("사진을 열 수 없습니다.");
@@ -181,6 +219,28 @@ public final class PhotoStore {
               .getMutedColor(0xff526951);
       p.faces = prefs.ai() ? FaceAnalyzer.analyze(rotated) : "[]";
       if (!part.renameTo(file(id))) throw new IOException("사진 저장을 확정하지 못했습니다.");
+      try {
+        // Generate cached 320px thumbnail automatically
+        int tw = rotated.getWidth(), th = rotated.getHeight();
+        float scale = Math.min(1f, 320f / Math.max(1, Math.max(tw, th)));
+        Bitmap thumb =
+            scale < 1f
+                ? Bitmap.createScaledBitmap(
+                    rotated, Math.max(1, Math.round(tw * scale)), Math.max(1, Math.round(th * scale)), true)
+                : rotated;
+        try (FileOutputStream tout = new FileOutputStream(thumbFile(id))) {
+          thumb.compress(Bitmap.CompressFormat.JPEG, 78, tout);
+        }
+        if (thumb != rotated) thumb.recycle();
+        if (prefs.keepOriginals()) {
+          try (InputStream oin = new FileInputStream(input);
+              FileOutputStream oout = new FileOutputStream(originalFile(id))) {
+            Core.copy(oin, oout, Core.MAX_INPUT);
+          } catch (Exception ignored) {
+          }
+        }
+      } catch (Exception ignored) {
+      }
       if (old == null) dao().insert(p);
       else dao().update(p);
       changed();
@@ -221,6 +281,11 @@ public final class PhotoStore {
       if (p != null && p.trashedAt > 0) {
         if (file(id).exists() && !file(id).delete())
           throw new IllegalStateException("파일을 지우지 못했습니다.");
+        try {
+          thumbFile(id).delete();
+          originalFile(id).delete();
+        } catch (Exception ignored) {
+        }
         dao().purge(id);
         changed();
       }

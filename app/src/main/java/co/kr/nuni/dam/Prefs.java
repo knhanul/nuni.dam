@@ -83,6 +83,68 @@ public final class Prefs {
     return raw.getInt("fontScale", 100);
   }
 
+  // --- Remote Management & Image Storage Settings (Sections 3 & 4.2) ---
+
+  public boolean remoteEnabled() {
+    return raw.getBoolean("remoteEnabled", false);
+  }
+
+  public int remotePort() {
+    return raw.getInt("remotePort", 8787);
+  }
+
+  public String adminPinHash() {
+    return raw.getString("adminPinHash", "");
+  }
+
+  public String adminPinSalt() {
+    String s = raw.getString("adminPinSalt", "");
+    if (s.isEmpty()) {
+      s = new Core.Token(0, 1000).value.substring(0, 16);
+      raw.edit().putString("adminPinSalt", s).apply();
+    }
+    return s;
+  }
+
+  public void setAdminPin(String plainPin) {
+    if (plainPin == null || plainPin.trim().isEmpty()) {
+      raw.edit().putString("adminPinHash", "").apply();
+    } else {
+      String salt = adminPinSalt();
+      raw.edit().putString("adminPinHash", Core.hashSecret(plainPin.trim(), salt)).apply();
+    }
+  }
+
+  public boolean verifyAdminPin(String plainPin) {
+    String hash = adminPinHash();
+    if (hash.isEmpty()) return true;
+    if (plainPin == null) return false;
+    String candidate = Core.hashSecret(plainPin.trim(), adminPinSalt());
+    return java.security.MessageDigest.isEqual(
+        hash.getBytes(java.nio.charset.StandardCharsets.US_ASCII),
+        candidate.getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+  }
+
+  public boolean keepOriginals() {
+    return raw.getBoolean("keepOriginals", false);
+  }
+
+  public boolean useOptimizedImages() {
+    return raw.getBoolean("useOptimizedImages", true);
+  }
+
+  public long lastRemoteAccessAt() {
+    return raw.getLong("lastRemoteAccessAt", 0L);
+  }
+
+  public void recordRemoteAccess(long ts) {
+    raw.edit().putLong("lastRemoteAccessAt", ts).apply();
+  }
+
+  public boolean studioScheduleEnabled() {
+    return raw.getBoolean("studioScheduleEnabled", true);
+  }
+
   // Power saving / motion settings (default OFF on new install per Section 7.3)
   public boolean motionEnabled() {
     return raw.getBoolean("motionEnabled", false);

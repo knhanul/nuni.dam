@@ -1,0 +1,2011 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>누니담 스튜디오 · NuniDam Studio</title>
+<style>
+:root {
+  --bg: #f4f2ec;
+  --surface: #ffffff;
+  --subtle: #e8ede5;
+  --ink: #24332b;
+  --muted: #626d65;
+  --primary: #365b46;
+  --on-primary: #ffffff;
+  --outline: #cdd4c9;
+  --danger: #a64932;
+  --danger-bg: #f7e6e0;
+  --warn-bg: #fdf3dc;
+  --warn-ink: #7a5211;
+}
+[data-theme="dark"] {
+  --bg: #18221d;
+  --surface: #212e27;
+  --subtle: #2b3b32;
+  --ink: #edefe8;
+  --muted: #b5bfb4;
+  --primary: #578b6d;
+  --on-primary: #ffffff;
+  --outline: #384a40;
+  --danger: #d86c51;
+  --danger-bg: #3d241e;
+  --warn-bg: #3b311a;
+  --warn-ink: #f0cf85;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+  line-height: 1.55;
+}
+.hidden { display: none !important; }
+button, .btn {
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 16px;
+  min-height: 44px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: opacity .15s, background .15s;
+}
+button.secondary, .btn.secondary {
+  background: var(--subtle);
+  color: var(--ink);
+  border-color: var(--outline);
+  font-weight: 500;
+}
+button.danger, .btn.danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+button:disabled { opacity: .45; cursor: not-allowed; }
+input, select, textarea {
+  width: 100%;
+  border: 1px solid var(--outline);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surface);
+  padding: 10px 12px;
+  margin-top: 4px;
+}
+textarea { min-height: 84px; resize: vertical; }
+label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-top: 12px; }
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 14px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.checkbox-row input[type=checkbox] { width: 18px; height: 18px; margin: 0; accent-color: var(--primary); }
+
+/* Layout Shell */
+.app-shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--outline);
+  padding: 22px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+.brand-box { padding: 4px 10px 16px; border-bottom: 1px solid var(--outline); margin-bottom: 8px; }
+.brand-logo { font-family: Georgia, serif; font-size: 21px; font-weight: 700; letter-spacing: .1em; color: var(--primary); }
+.brand-sub { font-size: 11px; color: var(--muted); letter-spacing: .08em; }
+.nav-btn {
+  width: 100%;
+  justify-content: flex-start;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 500;
+  padding: 11px 14px;
+  border-radius: 12px;
+}
+.nav-btn.active {
+  background: var(--subtle);
+  color: var(--primary);
+  font-weight: 700;
+}
+.sidebar-footer { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--outline); display: flex; flex-direction: column; gap: 8px; }
+
+.main-area { display: flex; flex-direction: column; min-width: 0; }
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--outline);
+  padding: 12px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.draft-badge {
+  font-size: 12.5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: var(--subtle);
+  color: var(--primary);
+  font-weight: 600;
+}
+.draft-badge.dirty {
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+}
+.content-wrap {
+  max-width: 1260px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 26px 28px 80px;
+}
+.page-header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
+.page-header h1 { margin: 0; font-size: 26px; letter-spacing: -.02em; }
+.page-header p { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
+
+/* Cards & Grids */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.card h2 { margin: 0 0 12px; font-size: 18px; }
+.card h3 { margin: 0 0 8px; font-size: 15.5px; }
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: 16px;
+  padding: 18px;
+}
+.stat-label { font-size: 12.5px; color: var(--muted); }
+.stat-val { font-size: 22px; font-weight: 700; margin-top: 4px; color: var(--ink); }
+.stat-sub { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+
+.two-col {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
+  gap: 10px;
+}
+.photo-tile {
+  border: 2px solid var(--outline);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--subtle);
+  position: relative;
+  cursor: pointer;
+}
+.photo-tile.selected { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary); }
+.photo-tile img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+.photo-tile .meta { padding: 6px 8px; font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--surface); }
+.photo-tile .badge {
+  position: absolute; top: 6px; left: 6px;
+  background: rgba(24,34,29,.78); color: #fff;
+  font-size: 11px; padding: 2px 7px; border-radius: 8px;
+}
+.dropzone {
+  border: 2px dashed var(--outline);
+  border-radius: 16px;
+  padding: 22px;
+  text-align: center;
+  background: var(--bg);
+  margin-bottom: 14px;
+}
+.dropzone.dragover { border-color: var(--primary); background: var(--subtle); }
+
+/* Live Frame Preview Mockup */
+.preview-stage-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.preview-frame {
+  border: 6px solid #2b332e;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  background: #f4f2ec;
+  color: #24332b;
+  transition: width .2s, height .2s;
+  display: flex;
+}
+.preview-frame.landscape { width: 100%; max-width: 480px; aspect-ratio: 16 / 10; }
+.preview-frame.portrait { width: 260px; aspect-ratio: 10 / 16; }
+
+/* Weekly Timetable Grid */
+.week-grid {
+  display: grid;
+  grid-template-columns: 64px repeat(7, 1fr);
+  border: 1px solid var(--outline);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.week-cell {
+  border-right: 1px solid var(--outline);
+  border-bottom: 1px solid var(--outline);
+  padding: 6px;
+  font-size: 12px;
+  min-height: 40px;
+}
+.week-head {
+  background: var(--subtle);
+  font-weight: 700;
+  text-align: center;
+  padding: 8px 4px;
+}
+.rule-pill {
+  background: var(--subtle);
+  border-left: 4px solid var(--primary);
+  border-radius: 6px;
+  padding: 5px 7px;
+  margin-bottom: 4px;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.rule-pill.conflict {
+  background: var(--danger-bg);
+  border-left-color: var(--danger);
+}
+
+/* Auth Modal */
+.auth-overlay {
+  position: fixed; inset: 0;
+  background: rgba(24,34,29,.82);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px; z-index: 100;
+}
+.auth-card {
+  background: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: 22px;
+  max-width: 420px; width: 100%;
+  padding: 28px;
+}
+.toast-bar {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--ink); color: var(--bg);
+  padding: 12px 18px; border-radius: 12px;
+  font-size: 14px; font-weight: 500;
+  z-index: 90;
+}
+
+@media (max-width: 860px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .sidebar {
+    position: fixed; bottom: 0; top: auto; left: 0; right: 0;
+    height: auto; flex-direction: row; overflow-x: auto;
+    padding: 6px 8px; border-right: 0; border-top: 1px solid var(--outline);
+    z-index: 40;
+  }
+  .brand-box, .sidebar-footer { display: none; }
+  .nav-btn { flex-direction: column; font-size: 11.5px; padding: 6px 8px; gap: 2px; justify-content: center; min-width: 60px; }
+  .two-col { grid-template-columns: 1fr; }
+  .content-wrap { padding: 18px 14px 96px; }
+  .topbar { padding: 10px 14px; }
+  .week-grid { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- Authentication Overlay -->
+<div id="authOverlay" class="auth-overlay hidden">
+  <div class="auth-card">
+    <div class="brand-logo">nuni dam</div>
+    <h2 style="margin:8px 0 6px">누니담 스튜디오 연결</h2>
+    <p style="font-size:13.5px;color:var(--muted);margin:0 0 16px">태블릿의 <b>설정 → 원격 관리</b> 화면에 표시된 6자리 일회용 페어링 코드를 입력하세요.</p>
+    <form id="authForm">
+      <label for="pairCodeInput">일회용 페어링 코드 (6자리)</label>
+      <input id="pairCodeInput" type="text" inputmode="numeric" maxlength="12" placeholder="예: 123456" required>
+      <div id="pinWrap" class="hidden">
+        <label for="pinInput">관리자 비밀번호 (PIN)</label>
+        <input id="pinInput" type="password" placeholder="설정한 비밀번호 입력">
+      </div>
+      <label for="deviceLabelInput">접속 기기 이름</label>
+      <input id="deviceLabelInput" type="text" value="내 PC · 스마트폰 브라우저" maxlength="50">
+      <div id="authError" style="color:var(--danger);font-size:13px;margin-top:10px" class="hidden"></div>
+      <button type="submit" style="width:100%;margin-top:18px">연결하기</button>
+    </form>
+  </div>
+</div>
+
+<div class="app-shell">
+  <aside class="sidebar" aria-label="스튜디오 메인 메뉴">
+    <div class="brand-box">
+      <div class="brand-logo">nuni dam</div>
+      <div class="brand-sub">OFFLINE SMART FRAME STUDIO</div>
+    </div>
+    <button class="nav-btn active" data-tab="dashboard">1. 대시보드</button>
+    <button class="nav-btn" data-tab="albums">2. 앨범 · 사진</button>
+    <button class="nav-btn" data-tab="texts">3. 명언 · 시 · 글귀</button>
+    <button class="nav-btn" data-tab="scenes">4. 재생 장면(Scene)</button>
+    <button class="nav-btn" data-tab="schedules">5. 주간 편성표</button>
+    <button class="nav-btn" data-tab="device">6. 기기 · 백업</button>
+    <div class="sidebar-footer">
+      <button id="themeToggleBtn" class="secondary" type="button">다크 / 라이트 전환</button>
+    </div>
+  </aside>
+
+  <div class="main-area">
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span id="draftStatusBadge" class="draft-badge">태블릿과 동기화됨</span>
+        <span id="topActiveScene" style="font-size:13px;color:var(--muted)">재생 상태 확인 중…</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="refreshAllBtn" class="secondary" type="button">새로고침</button>
+        <button id="publishBtn" type="button">태블릿에 적용</button>
+      </div>
+    </header>
+
+    <main class="content-wrap">
+      <!-- 1. DASHBOARD -->
+      <section id="tab-dashboard" class="tab-pane">
+        <div class="page-header">
+          <div>
+            <h1>대시보드</h1>
+            <p>현재 태블릿에서 재생 중인 장면과 보관 현황을 한눈에 확인합니다.</p>
+          </div>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-label">현재 재생 중인 장면</div>
+            <div id="dashActiveScene" class="stat-val">-</div>
+            <div id="dashActiveRule" class="stat-sub">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">다음 예약 장면</div>
+            <div id="dashNextScene" class="stat-val">-</div>
+            <div id="dashNextTime" class="stat-sub">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">보관 콘텐츠</div>
+            <div id="dashCounts" class="stat-val">-</div>
+            <div id="dashTextCounts" class="stat-sub">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">저장공간 사용량</div>
+            <div id="dashStorage" class="stat-val">-</div>
+            <div id="dashFreeSpace" class="stat-sub">-</div>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="card">
+            <h2>임시 즉시 재생 (우선순위 1순위)</h2>
+            <p style="font-size:13.5px;color:var(--muted)">주간 시간표를 바꾸지 않고 지금 바로 특정 장면을 지정 시간 동안 재생합니다.</p>
+            <label for="tempSceneSelect">즉시 재생할 장면</label>
+            <select id="tempSceneSelect"></select>
+            <label for="tempDurationSelect">유지 시간</label>
+            <select id="tempDurationSelect">
+              <option value="30">30분 동안</option>
+              <option value="60" selected>1시간 동안</option>
+              <option value="180">3시간 동안</option>
+              <option value="0">임시 재생 해제 (원래 시간표로 복귀)</option>
+            </select>
+            <button id="applyTempSceneBtn" type="button" style="width:100%;margin-top:14px">임시 재생 적용</button>
+          </div>
+
+          <div class="card">
+            <h2>빠른 시작 안내</h2>
+            <p style="font-size:14px;color:var(--muted);margin-bottom:12px">
+              1. <b>앨범 · 사진</b>에서 앨범을 만들고 PC·스마트폰 사진을 드래그하여 업로드합니다.<br>
+              2. <b>명언 · 시 · 글귀</b>에서 사진과 함께 띄울 문장과 글귀 모음을 구성합니다.<br>
+              3. <b>재생 장면(Scene)</b>에서 앨범 + 글귀 모음 + 화면 레이아웃을 조합하고 가로·세로 미리보기를 확인합니다.<br>
+              4. <b>주간 편성표</b>에서 요일별·시간대별 재생 장면을 지정한 뒤 우측 상단 <b>‘태블릿에 적용’</b>을 누르면 즉시 반영됩니다.
+            </p>
+            <div id="dashPublishInfo" style="font-size:13px;color:var(--primary);font-weight:600"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. ALBUMS -->
+      <section id="tab-albums" class="tab-pane hidden">
+        <div class="page-header">
+          <div>
+            <h1>앨범 및 사진 관리</h1>
+            <p>한 장의 사진을 중복 저장 없이 여러 앨범에 담고 순서를 정리합니다.</p>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button id="newAlbumBtn" type="button">+ 새 앨범 만들기</button>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="card">
+            <h2>앨범 목록</h2>
+            <div id="albumListBox" style="display:flex;flex-direction:column;gap:8px"></div>
+          </div>
+
+          <div>
+            <div class="card">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                <h2 id="currentAlbumTitle" style="margin:0">앨범 설정</h2>
+                <div style="display:flex;gap:6px">
+                  <button id="cloneAlbumBtn" class="secondary" type="button">앨범 복제</button>
+                  <button id="deleteAlbumBtn" class="danger" type="button">앨범 삭제</button>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:8px">
+                <div>
+                  <label for="albumNameIn">앨범 이름</label>
+                  <input id="albumNameIn" type="text">
+                </div>
+                <div>
+                  <label for="albumDescIn">앨범 설명</label>
+                  <input id="albumDescIn" type="text">
+                </div>
+                <div>
+                  <label for="albumSortIn">재생 정렬 기준</label>
+                  <select id="albumSortIn">
+                    <option value="CUSTOM">지정한 순서대로</option>
+                    <option value="CAPTURED_DESC">최근 촬영일 순</option>
+                    <option value="CAPTURED_ASC">오래된 촬영일 순</option>
+                    <option value="NAME_ASC">이름 순</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="albumSecIn">기본 전환 간격(초)</label>
+                  <input id="albumSecIn" type="number" min="5" max="3600" value="30">
+                </div>
+              </div>
+              <label class="checkbox-row">
+                <input id="albumShuffleIn" type="checkbox" checked> 앨범 내 사진 무작위(셔플) 재생
+              </label>
+              <div style="margin-top:12px;display:flex;gap:8px">
+                <button id="saveAlbumMetaBtn" type="button">앨범 정보 초안 저장</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <h2>사진 업로드 (드래그 앤 드롭 · 다중 선택)</h2>
+              <div id="dropzone" class="dropzone">
+                <div style="font-size:15px;font-weight:600">여기로 사진을 끌어다 놓거나 파일을 선택하세요</div>
+                <p style="font-size:12.5px;color:var(--muted);margin:6px 0 12px">자동 EXIF 회전 보정 · SHA-256 중복 방지 · 썸네일 자동 생성 · 최대 40MB/장</p>
+                <label class="btn" for="uploadInput" style="margin:0;display:inline-flex">사진 파일 선택</label>
+                <input id="uploadInput" type="file" accept="image/*" multiple class="hidden">
+              </div>
+              <div id="uploadStatusWrap" class="hidden" style="margin-bottom:14px;padding:12px;background:var(--subtle);border-radius:12px">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <strong id="uploadHeaderText" style="font-size:13.5px">업로드 중…</strong>
+                  <div style="display:flex;gap:6px">
+                    <button id="cancelUploadBtn" class="secondary" type="button" style="min-height:32px;padding:4px 10px;font-size:12px">업로드 취소</button>
+                    <button id="retryUploadBtn" class="secondary hidden" type="button" style="min-height:32px;padding:4px 10px;font-size:12px">실패 항목 재시도</button>
+                  </div>
+                </div>
+                <progress id="uploadProgressBar" max="100" value="0" style="width:100%;height:10px;margin-top:8px"></progress>
+                <div id="uploadDetailLog" style="font-size:12px;max-height:110px;overflow:auto;margin-top:6px"></div>
+              </div>
+
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <button id="selectAllPhotosBtn" class="secondary" type="button">전체 선택/해제</button>
+                  <button id="setCoverPhotoBtn" class="secondary" type="button">대표 사진 지정</button>
+                  <select id="targetAlbumSelect" style="width:auto;margin:0;min-height:44px"></select>
+                  <button id="copyPhotosToAlbumBtn" class="secondary" type="button">선택 사진 다른 앨범에 추가</button>
+                  <button id="movePhotosToAlbumBtn" class="secondary" type="button">선택 사진 이동</button>
+                  <button id="removeFromAlbumBtn" class="secondary" type="button">현재 앨범에서 제외</button>
+                  <button id="trashPhotosBtn" class="danger" type="button">휴지통으로</button>
+                </div>
+              </div>
+              <div id="albumPhotosGrid" class="photo-grid"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. TEXTS & POEMS -->
+      <section id="tab-texts" class="tab-pane hidden">
+        <div class="page-header">
+          <div>
+            <h1>명언 · 시 · 글귀 라이브러리</h1>
+            <p>사진과 함께 표시할 명언, 시, 직접 작성한 글과 글귀 모음을 관리합니다.</p>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button id="newTextBtn" type="button">+ 새 글귀 등록</button>
+            <button id="newCollectionBtn" class="secondary" type="button">+ 글귀 모음 만들기</button>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="card">
+            <h2>글귀 모음 (Collections)</h2>
+            <p style="font-size:12.5px;color:var(--muted)">장면(Scene)에서 연결할 글귀 묶음입니다.</p>
+            <div id="collectionListBox" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px"></div>
+            <hr style="border:0;border-top:1px solid var(--outline);margin:14px 0">
+            <h3 id="colEditorTitle">글귀 모음 편집</h3>
+            <input id="colIdIn" type="hidden">
+            <label for="colNameIn">모음 이름</label>
+            <input id="colNameIn" type="text" placeholder="예: 긍정적인 아침 명언">
+            <label for="colCatsIn">포함할 카테고리 (쉼표 구분, 비워두면 전체)</label>
+            <input id="colCatsIn" type="text" placeholder="아침의 명언,행복,인생">
+            <label for="colKindIn">콘텐츠 종류 필터</label>
+            <select id="colKindIn">
+              <option value="ALL">모든 종류</option>
+              <option value="QUOTE">명언</option>
+              <option value="POEM">시(詩)</option>
+              <option value="CUSTOM">직접 작성한 글</option>
+              <option value="SHORT">짧은 문장</option>
+              <option value="ANNIVERSARY">기념일 메시지</option>
+            </select>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button id="saveColBtn" type="button" style="flex:1">모음 저장</button>
+              <button id="deleteColBtn" class="danger" type="button">삭제</button>
+            </div>
+          </div>
+
+          <div>
+            <div class="card">
+              <div style="display:grid;grid-template-columns:1fr 160px 160px;gap:10px;margin-bottom:14px">
+                <input id="textSearchIn" type="search" placeholder="제목, 본문, 작가, 태그 검색…" style="margin:0">
+                <select id="textCatFilter" style="margin:0">
+                  <option value="">모든 카테고리</option>
+                  <option value="아침의 명언">아침의 명언</option>
+                  <option value="행복">행복</option>
+                  <option value="사랑">사랑</option>
+                  <option value="위로">위로</option>
+                  <option value="인생">인생</option>
+                  <option value="계절의 시">계절의 시</option>
+                  <option value="가족">가족</option>
+                  <option value="직접 작성한 글">직접 작성한 글</option>
+                </select>
+                <select id="textKindFilter" style="margin:0">
+                  <option value="">모든 유형</option>
+                  <option value="QUOTE">명언</option>
+                  <option value="POEM">시(詩)</option>
+                  <option value="CUSTOM">직접 작성한 글</option>
+                  <option value="SHORT">짧은 문장</option>
+                  <option value="ANNIVERSARY">기념일 메시지</option>
+                </select>
+              </div>
+              <div id="textItemsList" style="display:flex;flex-direction:column;gap:10px"></div>
+            </div>
+
+            <div class="card" id="textEditorCard">
+              <h2 id="textEditorHeading">글귀 등록 · 편집</h2>
+              <input id="textIdIn" type="hidden">
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
+                <div>
+                  <label for="textTitleIn">제목</label>
+                  <input id="textTitleIn" type="text" placeholder="예: 사계절의 창">
+                </div>
+                <div>
+                  <label for="textKindIn">콘텐츠 종류</label>
+                  <select id="textKindIn">
+                    <option value="QUOTE">명언</option>
+                    <option value="POEM">시(詩) · 줄바꿈 및 자동 페이지 분할</option>
+                    <option value="CUSTOM">직접 작성한 글</option>
+                    <option value="SHORT">짧은 문장</option>
+                    <option value="ANNIVERSARY">기념일 메시지</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="textCategoryIn">카테고리</label>
+                  <input id="textCategoryIn" type="text" list="categoryPresets" value="아침의 명언">
+                  <datalist id="categoryPresets">
+                    <option value="아침의 명언"><option value="행복"><option value="사랑"><option value="위로">
+                    <option value="인생"><option value="계절의 시"><option value="가족"><option value="직접 작성한 글">
+                  </datalist>
+                </div>
+                <div>
+                  <label for="textAuthorIn">작가</label>
+                  <input id="textAuthorIn" type="text" placeholder="예: 누니담">
+                </div>
+                <div>
+                  <label for="textSourceIn">출처</label>
+                  <input id="textSourceIn" type="text" placeholder="예: 직접 작성">
+                </div>
+                <div>
+                  <label for="textTagsIn">태그 (쉼표 구분)</label>
+                  <input id="textTagsIn" type="text" placeholder="아침,응원,가족">
+                </div>
+              </div>
+              <label for="textBodyIn">본문 (긴 시는 줄바꿈과 연을 유지하며 자동으로 페이지가 나뉩니다)</label>
+              <textarea id="textBodyIn" rows="5" placeholder="여기에 명언이나 시 본문을 입력하세요."></textarea>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div>
+                  <label for="textSecIn">권장 표시 시간(초)</label>
+                  <input id="textSecIn" type="number" min="5" max="600" value="15">
+                </div>
+                <div>
+                  <label for="textLicenseIn">저작권 및 이용 허락 메모</label>
+                  <input id="textLicenseIn" type="text" placeholder="직접 작성 / 만료 저작물 등">
+                </div>
+              </div>
+              <label class="checkbox-row">
+                <input id="textEnabledIn" type="checkbox" checked> 액자 재생에 이 글귀 사용
+              </label>
+              <div style="display:flex;gap:8px;margin-top:14px">
+                <button id="saveTextBtn" type="button">글귀 초안 저장</button>
+                <button id="cloneTextBtn" class="secondary" type="button">복제</button>
+                <button id="deleteTextBtn" class="danger" type="button">삭제</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. SCENES -->
+      <section id="tab-scenes" class="tab-pane hidden">
+        <div class="page-header">
+          <div>
+            <h1>재생 장면(Scene) 관리</h1>
+            <p>사진 앨범, 글귀 모음, 화면 레이아웃, 밝기를 조합하여 재생 장면을 만듭니다.</p>
+          </div>
+          <button id="newSceneBtn" type="button">+ 새 장면 만들기</button>
+        </div>
+
+        <div class="two-col">
+          <div>
+            <div class="card">
+              <h2>장면 목록</h2>
+              <div id="sceneListBox" style="display:flex;flex-direction:column;gap:8px"></div>
+            </div>
+
+            <div class="card">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <h2 style="margin:0">실시간 화면 미리보기</h2>
+                <div style="display:flex;gap:6px">
+                  <button id="prevOrientLand" class="secondary" type="button" style="min-height:34px;padding:4px 10px;font-size:12px">가로형</button>
+                  <button id="prevOrientPort" class="secondary" type="button" style="min-height:34px;padding:4px 10px;font-size:12px">세로형</button>
+                </div>
+              </div>
+              <div class="preview-stage-wrap">
+                <div id="scenePreviewFrame" class="preview-frame landscape"></div>
+                <small style="color:var(--muted)">태블릿과 동일한 레이아웃·색감 규칙으로 미리 표시됩니다.</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+              <h2 id="sceneEditorHeading" style="margin:0">장면 편집</h2>
+              <div style="display:flex;gap:6px">
+                <button id="cloneSceneBtn" class="secondary" type="button">장면 복제</button>
+                <button id="deleteSceneBtn" class="danger" type="button">장면 삭제</button>
+              </div>
+            </div>
+            <input id="sceneIdIn" type="hidden">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">
+              <div>
+                <label for="sceneNameIn">장면 이름</label>
+                <input id="sceneNameIn" type="text" placeholder="예: 좋은 아침">
+              </div>
+              <div>
+                <label for="sceneDescIn">설명</label>
+                <input id="sceneDescIn" type="text" placeholder="장면 설명">
+              </div>
+              <div>
+                <label for="sceneLayoutIn">레이아웃 템플릿</label>
+                <select id="sceneLayoutIn">
+                  <option value="PHOTO">전체 화면 사진 (사진 중심)</option>
+                  <option value="MAGAZINE">감성형 스마트 매거진 (사진+글귀)</option>
+                  <option value="BOARD">생활 보드 (시계·이번 달 달력·글귀)</option>
+                  <option value="TEXT_ONLY">글귀 전용 화면 (단색·질감 배경)</option>
+                </select>
+              </div>
+              <div>
+                <label for="sceneTextModeIn">글귀 표시 방식</label>
+                <select id="sceneTextModeIn">
+                  <option value="OVERLAY">사진 위 글귀 표시</option>
+                  <option value="SPLIT">사진·글귀 분할 화면 배치</option>
+                  <option value="DEDICATED">글귀 전용 중심 화면</option>
+                  <option value="NONE">글귀 표시하지 않음</option>
+                </select>
+              </div>
+              <div>
+                <label for="sceneThemeIn">배경 색감 테마</label>
+                <select id="sceneThemeIn">
+                  <option value="MILK">밀크 (따뜻한 아이보리)</option>
+                  <option value="SAGE">세이지 (차분한 그린)</option>
+                  <option value="INK">잉크 (야간·다크 갤러리)</option>
+                </select>
+              </div>
+              <div>
+                <label for="sceneEffectIn">사진 전환 효과</label>
+                <select id="sceneEffectIn">
+                  <option value="ZOOM">부드러운 확대 (Ken Burns)</option>
+                  <option value="FADE">차분한 전환</option>
+                  <option value="NONE">효과 없음 (저전력)</option>
+                </select>
+              </div>
+              <div>
+                <label for="sceneSecIn">사진 표시 시간(초)</label>
+                <input id="sceneSecIn" type="number" min="5" max="3600" value="20">
+              </div>
+              <div>
+                <label for="sceneEveryNIn">글귀 표시 빈도 (사진 N장마다)</label>
+                <input id="sceneEveryNIn" type="number" min="1" max="50" value="1">
+              </div>
+              <div>
+                <label for="sceneBrightIn">화면 밝기 (%)</label>
+                <input id="sceneBrightIn" type="number" min="5" max="100" value="75">
+              </div>
+              <div>
+                <label for="sceneFontScaleIn">글자 크기 배율 (%)</label>
+                <select id="sceneFontScaleIn">
+                  <option value="100">기본 (100%)</option>
+                  <option value="120">크게 (120%)</option>
+                  <option value="140">아주 크게 (140%)</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+              <div>
+                <label>연결할 사진 앨범 (복수 선택 혼합 재생 가능)</label>
+                <div id="sceneAlbumsCheckList" style="border:1px solid var(--outline);border-radius:10px;padding:10px;max-height:150px;overflow:auto;margin-top:4px"></div>
+              </div>
+              <div>
+                <label>연결할 글귀 모음 (복수 선택 가능)</label>
+                <div id="sceneColsCheckList" style="border:1px solid var(--outline);border-radius:10px;padding:10px;max-height:150px;overflow:auto;margin-top:4px"></div>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:12px">
+              <label class="checkbox-row"><input id="sceneClockIn" type="checkbox" checked> 시계 표시</label>
+              <label class="checkbox-row"><input id="sceneDateIn" type="checkbox" checked> 촬영일 표시</label>
+              <label class="checkbox-row"><input id="sceneShuffleIn" type="checkbox" checked> 사진 무작위 순서</label>
+              <label class="checkbox-row"><input id="sceneNightDimIn" type="checkbox"> 야간 절전 감광 장면으로 사용</label>
+              <label class="checkbox-row"><input id="sceneDefaultIn" type="checkbox"> 기본 장면(예약 없을 때 재생)으로 지정</label>
+            </div>
+
+            <div style="margin-top:18px">
+              <button id="saveSceneBtn" type="button" style="width:100%">장면 초안 저장</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. SCHEDULES -->
+      <section id="tab-schedules" class="tab-pane hidden">
+        <div class="page-header">
+          <div>
+            <h1>요일별 · 시간대별 재생 편성표</h1>
+            <p>태블릿이 네트워크 연결 없이도 요일과 시간에 맞춰 자동으로 장면을 전환합니다.</p>
+          </div>
+          <button id="newScheduleBtn" type="button">+ 새 편성 규칙 추가</button>
+        </div>
+
+        <div id="scheduleConflictAlert" class="card hidden" style="background:var(--danger-bg);border-color:var(--danger);color:var(--danger)"></div>
+
+        <div class="card">
+          <h2>주간 시간표 한눈에 보기 (자정 통과 일정 포함)</h2>
+          <div id="weeklyCalendarGrid" class="week-grid"></div>
+          <div id="mobileScheduleCards" style="display:flex;flex-direction:column;gap:8px;margin-top:12px"></div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h2 id="schedEditorHeading" style="margin:0">편성 규칙 편집</h2>
+            <button id="deleteSchedBtn" class="danger" type="button">규칙 삭제</button>
+          </div>
+          <input id="schedIdIn" type="hidden">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:8px">
+            <div>
+              <label for="schedNameIn">일정 이름</label>
+              <input id="schedNameIn" type="text" placeholder="예: 평일 좋은 아침">
+            </div>
+            <div>
+              <label for="schedTypeIn">편성 종류 (우선순위 자동 부여)</label>
+              <select id="schedTypeIn">
+                <option value="WEEKLY">요일별 반복 편성 (우선순위 3)</option>
+                <option value="DATE">특정 날짜 지정 편성 (우선순위 2)</option>
+                <option value="ANNIVERSARY">매년 생일·기념일 편성 (우선순위 2)</option>
+              </select>
+            </div>
+            <div>
+              <label for="schedSceneIn">재생할 장면(Scene)</label>
+              <select id="schedSceneIn"></select>
+            </div>
+            <div id="schedDateWrap" class="hidden">
+              <label for="schedDateIn">날짜 (YYYY-MM-DD 또는 MM-DD)</label>
+              <input id="schedDateIn" type="text" placeholder="예: 2026-12-25 또는 05-08">
+            </div>
+            <div>
+              <label for="schedStartIn">시작 시간 (HH:MM)</label>
+              <input id="schedStartIn" type="time" value="06:00">
+            </div>
+            <div>
+              <label for="schedEndIn">종료 시간 (자정 넘김 가능)</label>
+              <input id="schedEndIn" type="time" value="09:00">
+            </div>
+          </div>
+
+          <div id="schedDaysWrap" style="margin-top:12px">
+            <label>적용 요일 선택</label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
+              <button type="button" class="secondary day-preset" data-mask="127">매일</button>
+              <button type="button" class="secondary day-preset" data-mask="62">평일(월~금)</button>
+              <button type="button" class="secondary day-preset" data-mask="65">주말(토·일)</button>
+              <label class="checkbox-row"><input type="checkbox" class="day-chk" value="1"> 일</label>
+              <label class="checkbox-row"><input type="checkbox" class="day-chk" value="2" checked> 월</label>
+              <label class="checkbox-row"><input type="checkbox" class="day-chk" value="4" checked> 화</label>
+              <label class="checkbox-row"><input type="checkbox" class="day-chk" value="8" checked> 수</label>
+              <label class="checkbox-row"><input type="checkbox" class="day-chk" value="16" checked> 목</label>
+              <label class="checkbox-row"><input type="checkbox" class="day-chk" value="32" checked> 금</label>
+              <label class="checkbox-row"><input type="checkbox" class="day-chk" value="64"> 토</label>
+            </div>
+          </div>
+
+          <label class="checkbox-row">
+            <input id="schedEnabledIn" type="checkbox" checked> 이 편성 규칙 활성화
+          </label>
+          <div style="display:flex;gap:8px;margin-top:14px">
+            <button id="saveSchedBtn" type="button" style="flex:1">편성 규칙 초안 저장</button>
+            <button id="copySchedBtn" class="secondary" type="button">이 시간표 복제</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6. DEVICE & BACKUP -->
+      <section id="tab-device" class="tab-pane hidden">
+        <div class="page-header">
+          <div>
+            <h1>기기 설정 및 백업 · 복원</h1>
+            <p>저장공간 정책, 관리자 세션, 오프라인 .nunidam 패키지 백업 및 복원을 관리합니다.</p>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="card">
+            <h2>누니담 패키지 (.nunidam) 백업 · 복원</h2>
+            <p style="font-size:13.5px;color:var(--muted)">
+              앨범, 사진 파일, 명언·시, 재생 장면, 주간 시간표와 SHA-256 무결성 체크섬을 하나의 <code>.nunidam</code> 파일로 묶어 내보내거나 가져옵니다.
+            </p>
+            <label for="exportAlbumSelect">내보낼 범위 선택</label>
+            <select id="exportAlbumSelect">
+              <option value="">전체 백업 (모든 사진·앨범·글귀·장면·시간표)</option>
+            </select>
+            <button id="downloadBackupBtn" type="button" style="width:100%;margin-top:12px">.nunidam 패키지 다운로드</button>
+
+            <hr style="border:0;border-top:1px solid var(--outline);margin:18px 0">
+            <h3>패키지 가져오기 (복원)</h3>
+            <label for="importPkgFile">.nunidam 파일 선택</label>
+            <input id="importPkgFile" type="file" accept=".nunidam,.zip,application/octet-stream">
+            <label class="checkbox-row">
+              <input id="importKeepExisting" type="checkbox" checked> 기존 태블릿 데이터를 유지하며 병합 (해제 시 패키지 데이터로 전체 교체)
+            </label>
+            <button id="uploadRestoreBtn" class="secondary" type="button" style="width:100%;margin-top:12px">검증 후 패키지 복원 실행</button>
+          </div>
+
+          <div>
+            <div class="card">
+              <h2>태블릿 저장소 및 성능 설정</h2>
+              <label for="devQuotaIn">사진 보관 용량 상한 (MB)</label>
+              <input id="devQuotaIn" type="number" min="128" max="16384" value="1024">
+              <label class="checkbox-row">
+                <input id="devOptimizedIn" type="checkbox" checked> 태블릿 화면에 맞게 고해상도 이미지 최적화 사용 (메모리 보호 권장)
+              </label>
+              <label class="checkbox-row">
+                <input id="devKeepOrigIn" type="checkbox"> 업로드 시 원본 파일도 별도 보관
+              </label>
+              <label class="checkbox-row">
+                <input id="devLowModeIn" type="checkbox"> 구형 태블릿 저사양 모드 (1280px 디코딩 및 애니메이션 절제)
+              </label>
+              <label for="devNewPinIn">관리자 인증 비밀번호(PIN) 변경 (비워두면 변경 안 함)</label>
+              <input id="devNewPinIn" type="password" placeholder="새 비밀번호 입력">
+              <button id="saveDeviceSettingsBtn" type="button" style="margin-top:14px">기기 설정 저장</button>
+            </div>
+
+            <div class="card">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <h2 style="margin:0">연결된 관리자 세션</h2>
+                <button id="revokeAllSessionsBtn" class="danger" type="button" style="min-height:36px;padding:6px 12px;font-size:12.5px">모두 연결 해제</button>
+              </div>
+              <div id="sessionsListBox" style="margin-top:12px;display:flex;flex-direction:column;gap:8px"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div id="toastBar" class="toast-bar hidden" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+let token = sessionStorage.getItem('nunidam_token') || '';
+let csrfToken = sessionStorage.getItem('nunidam_csrf') || '';
+let state = { albums: [], texts: [], textCollections: [], scenes: [], schedules: [], photos: [], trash: [], settings: {} };
+let currentAlbumId = 'album_default';
+let selectedPhotoIds = new Set();
+let currentTextId = '';
+let currentColId = '';
+let currentSceneId = '';
+let currentSchedId = '';
+let previewOrientation = 'landscape';
+let draftDirty = false;
+let activeXhr = null;
+let failedUploads = [];
+
+// Parse #pair=CODE from QR URL if present
+if (location.hash.includes('pair=')) {
+  const m = location.hash.match(/pair=([0-9]+)/);
+  if (m) $('pairCodeInput').value = m[1];
+  history.replaceState(null, '', location.pathname);
+}
+
+function toast(msg) {
+  const el = $('toastBar');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.add('hidden'), 3500);
+}
+
+function markDirty(dirty = true) {
+  draftDirty = dirty;
+  const b = $('draftStatusBadge');
+  if (dirty) {
+    b.textContent = '초안 수정됨 · 태블릿에 적용 필요';
+    b.classList.add('dirty');
+  } else {
+    b.textContent = '태블릿에 적용 완료';
+    b.classList.remove('dirty');
+  }
+}
+
+function fmtBytes(n) {
+  if (!n || n <= 0) return '0 MB';
+  return (n / 1048576).toFixed(1) + ' MB';
+}
+function minToTime(m) {
+  const h = Math.floor((m || 0) / 60) % 24;
+  const mm = (m || 0) % 60;
+  return String(h).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+}
+function timeToMin(str) {
+  if (!str || !str.includes(':')) return 0;
+  const [h, m] = str.split(':').map(Number);
+  return (h * 60) + m;
+}
+
+async function api(path, options = {}) {
+  const headers = { ...(options.headers || {}) };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  if (csrfToken && (options.method === 'POST' || options.method === 'PUT' || options.method === 'DELETE')) {
+    headers['X-CSRF-Token'] = csrfToken;
+  }
+  const r = await fetch(path, { ...options, headers, cache: 'no-store' });
+  const data = await r.json().catch(() => ({}));
+  if (r.status === 401) {
+    showAuthModal();
+    throw new Error(data.error || '관리자 인증이 필요합니다.');
+  }
+  if (!r.ok) throw new Error(data.error || '요청을 처리하지 못했습니다.');
+  return data;
+}
+const post = (path, body) => api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+async function showAuthModal() {
+  try {
+    const info = await fetch('/api/auth/info').then(r => r.json());
+    $('pinWrap').classList.toggle('hidden', !info.requiresPin);
+  } catch {}
+  $('authOverlay').classList.remove('hidden');
+}
+
+$('authForm').onsubmit = async e => {
+  e.preventDefault();
+  $('authError').classList.add('hidden');
+  try {
+    const res = await fetch('/api/auth/pair', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pairingCode: $('pairCodeInput').value.trim(),
+        pin: $('pinInput').value,
+        deviceLabel: $('deviceLabelInput').value.trim()
+      })
+    }).then(async r => ({ ok: r.ok, data: await r.json() }));
+    if (!res.ok) throw new Error(res.data.error || '인증 실패');
+    token = res.data.token;
+    csrfToken = res.data.csrfToken;
+    sessionStorage.setItem('nunidam_token', token);
+    sessionStorage.setItem('nunidam_csrf', csrfToken);
+    $('authOverlay').classList.add('hidden');
+    toast('누니담 스튜디오에 연결되었습니다.');
+    await loadAll();
+  } catch (err) {
+    $('authError').textContent = err.message;
+    $('authError').classList.remove('hidden');
+  }
+};
+
+// Navigation & Theme
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
+    $('tab-' + tab).classList.remove('hidden');
+  };
+});
+
+$('themeToggleBtn').onclick = () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  document.documentElement.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+};
+
+$('refreshAllBtn').onclick = () => loadAll().then(() => toast('최신 상태를 불러왔습니다.')).catch(e => toast(e.message));
+
+$('publishBtn').onclick = async () => {
+  try {
+    const res = await post('/api/publish', { note: '웹 스튜디오에서 적용' });
+    markDirty(false);
+    await loadAll();
+    if (res.warnings && res.warnings.length > 0) {
+      alert('태블릿에 적용되었으나 다음 시간표 겹침 경고가 있습니다:\n\n' + res.warnings.join('\n'));
+    } else {
+      toast('태블릿에 모든 변경사항을 적용했습니다 (버전 v' + res.version + ').');
+    }
+  } catch (e) {
+    toast(e.message);
+  }
+};
+
+async function loadAll() {
+  if (!token) {
+    await showAuthModal();
+    return;
+  }
+  const [dash, full, sess] = await Promise.all([
+    api('/api/dashboard'),
+    api('/api/state'),
+    api('/api/sessions')
+  ]);
+  state = full;
+  renderDashboard(dash);
+  renderAlbumsTab();
+  renderTextsTab();
+  renderScenesTab();
+  renderSchedulesTab();
+  renderDeviceTab(sess.sessions || []);
+}
+
+function renderDashboard(d) {
+  $('topActiveScene').textContent = `현재 재생: ${d.activeSceneName} (${d.activeRuleName})`;
+  $('dashActiveScene').textContent = d.activeSceneName;
+  $('dashActiveRule').textContent = `적용 규칙: ${d.activeRuleName}`;
+  $('dashNextScene').textContent = d.nextSceneName;
+  $('dashNextTime').textContent = d.minutesUntilNext > 0
+    ? `${Math.floor(d.minutesUntilNext / 60)}시간 ${d.minutesUntilNext % 60}분 후 (${d.nextRuleName})`
+    : '동일 장면 계속 유지';
+  $('dashCounts').textContent = `앨범 ${d.albumCount}개 · 사진 ${d.photoCount}장`;
+  $('dashTextCounts').textContent = `글귀 ${d.textCount}편 · 장면 ${d.sceneCount}개 · 편성 ${d.scheduleCount}건`;
+  $('dashStorage').textContent = `${fmtBytes(d.usedBytes)} / ${fmtBytes(d.quotaBytes)}`;
+  $('dashFreeSpace').textContent = `기기 여유 공간: ${fmtBytes(d.freeBytes)} (휴지통 ${d.trashCount}장)`;
+  $('dashPublishInfo').textContent = d.publishedAt > 0
+    ? `최근 게시 버전: v${d.publishedVersion} (${new Date(d.publishedAt).toLocaleString('ko-KR')})`
+    : '';
+
+  const sel = $('tempSceneSelect');
+  sel.innerHTML = '';
+  state.scenes.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name;
+    sel.appendChild(opt);
+  });
+}
+
+$('applyTempSceneBtn').onclick = async () => {
+  try {
+    const dur = Number($('tempDurationSelect').value);
+    await post('/api/schedules/temp', {
+      sceneId: dur > 0 ? $('tempSceneSelect').value : '',
+      durationMinutes: dur
+    });
+    await loadAll();
+    toast(dur > 0 ? '임시 즉시 재생을 시작했습니다.' : '임시 재생을 해제하고 시간표로 복귀했습니다.');
+  } catch (e) { toast(e.message); }
+};
+
+// --- 2. ALBUMS ---
+function renderAlbumsTab() {
+  const list = $('albumListBox');
+  list.innerHTML = '';
+  if (!state.albums.find(a => a.id === currentAlbumId) && state.albums.length > 0) {
+    currentAlbumId = state.albums[0].id;
+  }
+  const targetSel = $('targetAlbumSelect');
+  targetSel.innerHTML = '';
+  const expSel = $('exportAlbumSelect');
+  expSel.innerHTML = '<option value="">전체 백업 (모든 사진·앨범·글귀·장면·시간표)</option>';
+
+  state.albums.forEach(al => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'secondary';
+    btn.style.justifyContent = 'space-between';
+    if (al.id === currentAlbumId) {
+      btn.style.borderColor = 'var(--primary)';
+      btn.style.fontWeight = '700';
+    }
+    btn.innerHTML = `<span>${al.name}</span><small>${al.photoCount || (al.items ? al.items.length : 0)}장</small>`;
+    btn.onclick = () => {
+      currentAlbumId = al.id;
+      selectedPhotoIds.clear();
+      renderAlbumsTab();
+    };
+    list.appendChild(btn);
+
+    const opt = document.createElement('option');
+    opt.value = al.id;
+    opt.textContent = al.name;
+    targetSel.appendChild(opt);
+
+    const eopt = document.createElement('option');
+    eopt.value = al.id;
+    eopt.textContent = `선택 앨범만 내보내기: ${al.name}`;
+    expSel.appendChild(eopt);
+  });
+
+  const cur = state.albums.find(a => a.id === currentAlbumId);
+  if (!cur) return;
+  $('currentAlbumTitle').textContent = `${cur.name} (${(cur.items || []).length}장)`;
+  $('albumNameIn').value = cur.name;
+  $('albumDescIn').value = cur.description || '';
+  $('albumSortIn').value = cur.sortOrder || 'CUSTOM';
+  $('albumSecIn').value = cur.seconds || 30;
+  $('albumShuffleIn').checked = cur.shuffle !== false;
+  $('deleteAlbumBtn').disabled = !!cur.isDefault || cur.id === 'album_default';
+
+  const grid = $('albumPhotosGrid');
+  grid.innerHTML = '';
+  const photoMap = new Map(state.photos.map(p => [p.id, p]));
+  const items = cur.items || [];
+  items.forEach((it, idx) => {
+    const p = photoMap.get(it.photoId);
+    if (!p) return;
+    const tile = document.createElement('div');
+    tile.className = 'photo-tile' + (selectedPhotoIds.has(p.id) ? ' selected' : '');
+    const isCover = cur.coverPhotoId === p.id;
+    tile.innerHTML = `
+      <img src="/api/image?id=${encodeURIComponent(p.id)}&token=${encodeURIComponent(token)}" alt="${p.name}" loading="lazy">
+      ${isCover ? '<span class="badge">대표</span>' : `<span class="badge">#${idx + 1}</span>`}
+      <div class="meta">${p.favourite ? '★ ' : ''}${p.note || p.name}</div>
+    `;
+    tile.onclick = () => {
+      if (selectedPhotoIds.has(p.id)) selectedPhotoIds.delete(p.id);
+      else selectedPhotoIds.add(p.id);
+      renderAlbumsTab();
+    };
+    grid.appendChild(tile);
+  });
+}
+
+$('newAlbumBtn').onclick = async () => {
+  const name = prompt('새 앨범 이름을 입력하세요:', '새 추억 앨범');
+  if (!name) return;
+  const res = await post('/api/albums/save', { name, description: '', seconds: 30, shuffle: true });
+  currentAlbumId = res.id;
+  markDirty(true);
+  await loadAll();
+  toast('새 앨범을 생성했습니다.');
+};
+
+$('saveAlbumMetaBtn').onclick = async () => {
+  const cur = state.albums.find(a => a.id === currentAlbumId);
+  if (!cur) return;
+  await post('/api/albums/save', {
+    id: cur.id,
+    name: $('albumNameIn').value,
+    description: $('albumDescIn').value,
+    coverPhotoId: cur.coverPhotoId,
+    sortOrder: $('albumSortIn').value,
+    seconds: Number($('albumSecIn').value),
+    shuffle: $('albumShuffleIn').checked
+  });
+  markDirty(true);
+  await loadAll();
+  toast('앨범 설정을 초안에 저장했습니다.');
+};
+
+$('cloneAlbumBtn').onclick = async () => {
+  const res = await post('/api/albums/clone', { id: currentAlbumId });
+  currentAlbumId = res.id;
+  markDirty(true);
+  await loadAll();
+  toast('앨범을 복제했습니다.');
+};
+
+$('deleteAlbumBtn').onclick = async () => {
+  if (!confirm('이 앨범을 삭제할까요? (원본 사진 파일은 기본 보관함에 안전하게 유지됩니다)')) return;
+  await post('/api/albums/delete', { id: currentAlbumId });
+  currentAlbumId = 'album_default';
+  markDirty(true);
+  await loadAll();
+  toast('앨범을 삭제했습니다.');
+};
+
+$('selectAllPhotosBtn').onclick = () => {
+  const cur = state.albums.find(a => a.id === currentAlbumId);
+  if (!cur || !cur.items) return;
+  if (selectedPhotoIds.size === cur.items.length) selectedPhotoIds.clear();
+  else cur.items.forEach(i => selectedPhotoIds.add(i.photoId));
+  renderAlbumsTab();
+};
+
+$('setCoverPhotoBtn').onclick = async () => {
+  const first = Array.from(selectedPhotoIds)[0];
+  if (!first) { toast('대표 사진으로 지정할 사진 1장을 선택하세요.'); return; }
+  const cur = state.albums.find(a => a.id === currentAlbumId);
+  await post('/api/albums/save', { ...cur, coverPhotoId: first });
+  markDirty(true);
+  await loadAll();
+  toast('앨범 대표 사진을 지정했습니다.');
+};
+
+$('copyPhotosToAlbumBtn').onclick = async () => {
+  if (!selectedPhotoIds.size) { toast('사진을 먼저 선택하세요.'); return; }
+  await post('/api/albums/items', {
+    action: 'copy',
+    albumId: $('targetAlbumSelect').value,
+    photoIds: Array.from(selectedPhotoIds)
+  });
+  markDirty(true);
+  await loadAll();
+  toast('선택한 사진을 대상 앨범에 추가했습니다 (중복 저장 없음).');
+};
+
+$('movePhotosToAlbumBtn').onclick = async () => {
+  if (!selectedPhotoIds.size) { toast('사진을 먼저 선택하세요.'); return; }
+  await post('/api/albums/items', {
+    action: 'move',
+    albumId: currentAlbumId,
+    targetAlbumId: $('targetAlbumSelect').value,
+    photoIds: Array.from(selectedPhotoIds)
+  });
+  selectedPhotoIds.clear();
+  markDirty(true);
+  await loadAll();
+  toast('선택한 사진을 이동했습니다.');
+};
+
+$('removeFromAlbumBtn').onclick = async () => {
+  if (!selectedPhotoIds.size) return;
+  await post('/api/albums/items', {
+    action: 'remove',
+    albumId: currentAlbumId,
+    photoIds: Array.from(selectedPhotoIds)
+  });
+  selectedPhotoIds.clear();
+  markDirty(true);
+  await loadAll();
+  toast('현재 앨범에서 제외했습니다.');
+};
+
+$('trashPhotosBtn').onclick = async () => {
+  if (!selectedPhotoIds.size) return;
+  if (!confirm(`선택한 ${selectedPhotoIds.size}장을 휴지통으로 옮길까요?`)) return;
+  await post('/api/photo/action', { action: 'trash', ids: Array.from(selectedPhotoIds) });
+  selectedPhotoIds.clear();
+  await loadAll();
+  toast('휴지통으로 이동했습니다.');
+};
+
+// Drag & Drop + Multi Upload with Progress, Cancel & Retry
+const dz = $('dropzone');
+dz.ondragover = e => { e.preventDefault(); dz.classList.add('dragover'); };
+dz.ondragleave = () => dz.classList.remove('dragover');
+dz.ondrop = e => {
+  e.preventDefault();
+  dz.classList.remove('dragover');
+  if (e.dataTransfer.files && e.dataTransfer.files.length) {
+    runUploadBatch(Array.from(e.dataTransfer.files));
+  }
+};
+$('uploadInput').onchange = e => {
+  if (e.target.files.length) runUploadBatch(Array.from(e.target.files));
+};
+$('cancelUploadBtn').onclick = () => {
+  if (activeXhr) activeXhr.abort();
+};
+$('retryUploadBtn').onclick = () => {
+  if (failedUploads.length) runUploadBatch([...failedUploads]);
+};
+
+async function runUploadBatch(files) {
+  $('uploadStatusWrap').classList.remove('hidden');
+  $('retryUploadBtn').classList.add('hidden');
+  const log = $('uploadDetailLog');
+  log.innerHTML = '';
+  failedUploads = [];
+  let ok = 0, dup = 0, cancelled = false;
+
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    $('uploadHeaderText').textContent = `${i + 1} / ${files.length} 업로드 중: ${f.name}`;
+    try {
+      const res = await uploadSingleFile(f, pct => {
+        const totalPct = Math.round(((i + pct / 100) / files.length) * 100);
+        $('uploadProgressBar').value = totalPct;
+      });
+      ok++;
+      if (res.duplicate) dup++;
+      const line = document.createElement('div');
+      line.textContent = `✓ ${f.name} (${res.duplicate ? '중복 사진 재참조' : '저장 완료'})`;
+      log.appendChild(line);
+    } catch (err) {
+      if (err.message === 'ABORTED') {
+        cancelled = true;
+        break;
+      }
+      failedUploads.push(f);
+      const line = document.createElement('div');
+      line.style.color = 'var(--danger)';
+      line.textContent = `✗ ${f.name}: ${err.message}`;
+      log.appendChild(line);
+    }
+  }
+  activeXhr = null;
+  $('uploadInput').value = '';
+  $('uploadProgressBar').value = 100;
+  $('uploadHeaderText').textContent = cancelled
+    ? `업로드 취소됨 (${ok}장 완료)`
+    : `업로드 완료: 성공 ${ok}장 (중복 방지 ${dup}장) · 실패 ${failedUploads.length}장`;
+  $('retryUploadBtn').classList.toggle('hidden', failedUploads.length === 0);
+  await loadAll();
+}
+
+function uploadSingleFile(file, onPct) {
+  return new Promise((resolve, reject) => {
+    if (file.size > 40 * 1024 * 1024) {
+      reject(new Error('40MB 초과 파일'));
+      return;
+    }
+    const xhr = new XMLHttpRequest();
+    activeXhr = xhr;
+    xhr.open('POST', `/api/upload?name=${encodeURIComponent(file.name)}&albumId=${encodeURIComponent(currentAlbumId)}`);
+    xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+    xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable) onPct(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      try {
+        const d = JSON.parse(xhr.responseText);
+        if (xhr.status >= 200 && xhr.status < 300) resolve(d);
+        else reject(new Error(d.error || '업로드 실패'));
+      } catch {
+        reject(new Error('응답 오류'));
+      }
+    };
+    xhr.onerror = () => reject(new Error('네트워크 오류'));
+    xhr.onabort = () => reject(new Error('ABORTED'));
+    xhr.send(file);
+  });
+}
+
+// --- 3. TEXTS & COLLECTIONS ---
+function renderTextsTab() {
+  const colBox = $('collectionListBox');
+  colBox.innerHTML = '';
+  state.textCollections.forEach(c => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'secondary';
+    b.style.justifyContent = 'space-between';
+    if (c.id === currentColId) b.style.borderColor = 'var(--primary)';
+    b.innerHTML = `<span>${c.name}</span><small>${c.categoryFilter || '전체'}</small>`;
+    b.onclick = () => {
+      currentColId = c.id;
+      $('colIdIn').value = c.id;
+      $('colNameIn').value = c.name;
+      $('colCatsIn').value = c.categoryFilter || '';
+      $('colKindIn').value = c.kindFilter || 'ALL';
+      renderTextsTab();
+    };
+    colBox.appendChild(b);
+  });
+
+  const q = ($('textSearchIn').value || '').toLowerCase();
+  const catF = $('textCatFilter').value;
+  const kindF = $('textKindFilter').value;
+  const list = $('textItemsList');
+  list.innerHTML = '';
+
+  state.texts.filter(t => {
+    if (catF && t.category !== catF) return false;
+    if (kindF && t.kind !== kindF) return false;
+    if (q && !(t.title.toLowerCase().includes(q) || t.body.toLowerCase().includes(q) || t.author.toLowerCase().includes(q) || t.tags.toLowerCase().includes(q))) return false;
+    return true;
+  }).forEach(t => {
+    const item = document.createElement('div');
+    item.style.border = '1px solid var(--outline)';
+    item.style.borderRadius = '12px';
+    item.style.padding = '12px';
+    item.style.cursor = 'pointer';
+    if (t.id === currentTextId) item.style.borderColor = 'var(--primary)';
+    item.innerHTML = `
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--primary);font-weight:600">
+        <span>[${t.kind}] ${t.category} · ${t.title || '무제'}</span>
+        <span>${t.enabled ? '사용 중' : '숨김'} · ${t.displaySeconds}초</span>
+      </div>
+      <div style="margin-top:6px;white-space:pre-line;font-family:Georgia,serif;font-size:14.5px">${t.body}</div>
+      ${t.author ? `<div style="margin-top:4px;font-size:12.5px;color:var(--muted)">— ${t.author} ${t.source ? `(${t.source})` : ''}</div>` : ''}
+    `;
+    item.onclick = () => populateTextEditor(t);
+    list.appendChild(item);
+  });
+}
+
+function populateTextEditor(t) {
+  currentTextId = t ? t.id : '';
+  $('textIdIn').value = t ? t.id : '';
+  $('textTitleIn').value = t ? t.title : '';
+  $('textKindIn').value = t ? t.kind : 'QUOTE';
+  $('textCategoryIn').value = t ? t.category : '아침의 명언';
+  $('textAuthorIn').value = t ? t.author : '';
+  $('textSourceIn').value = t ? t.source : '';
+  $('textTagsIn').value = t ? t.tags : '';
+  $('textBodyIn').value = t ? t.body : '';
+  $('textSecIn').value = t ? t.displaySeconds : 15;
+  $('textLicenseIn').value = t ? t.licenseNote : '';
+  $('textEnabledIn').checked = t ? t.enabled !== false : true;
+  renderTextsTab();
+}
+
+$('textSearchIn').oninput = renderTextsTab;
+$('textCatFilter').onchange = renderTextsTab;
+$('textKindFilter').onchange = renderTextsTab;
+$('newTextBtn').onclick = () => populateTextEditor(null);
+$('newCollectionBtn').onclick = () => {
+  currentColId = '';
+  $('colIdIn').value = '';
+  $('colNameIn').value = '';
+  $('colCatsIn').value = '';
+  $('colKindIn').value = 'ALL';
+};
+
+$('saveColBtn').onclick = async () => {
+  await post('/api/text-collections/save', {
+    id: $('colIdIn').value,
+    name: $('colNameIn').value || '새 글귀 모음',
+    categoryFilter: $('colCatsIn').value,
+    kindFilter: $('colKindIn').value
+  });
+  markDirty(true);
+  await loadAll();
+  toast('글귀 모음을 저장했습니다.');
+};
+
+$('deleteColBtn').onclick = async () => {
+  const id = $('colIdIn').value;
+  if (!id) return;
+  await post('/api/text-collections/delete', { id });
+  currentColId = '';
+  markDirty(true);
+  await loadAll();
+  toast('글귀 모음을 삭제했습니다.');
+};
+
+$('saveTextBtn').onclick = async () => {
+  try {
+    const res = await post('/api/texts/save', {
+      id: $('textIdIn').value,
+      title: $('textTitleIn').value,
+      kind: $('textKindIn').value,
+      category: $('textCategoryIn').value,
+      author: $('textAuthorIn').value,
+      source: $('textSourceIn').value,
+      tags: $('textTagsIn').value,
+      body: $('textBodyIn').value,
+      displaySeconds: Number($('textSecIn').value),
+      licenseNote: $('textLicenseIn').value,
+      enabled: $('textEnabledIn').checked
+    });
+    currentTextId = res.id;
+    markDirty(true);
+    await loadAll();
+    toast('글귀를 저장했습니다.');
+  } catch (e) { toast(e.message); }
+};
+
+$('cloneTextBtn').onclick = async () => {
+  $('textIdIn').value = '';
+  $('textTitleIn').value = ($('textTitleIn').value || '글귀') + ' (복사본)';
+  await $('saveTextBtn').onclick();
+};
+
+$('deleteTextBtn').onclick = async () => {
+  const id = $('textIdIn').value;
+  if (!id) return;
+  await post('/api/texts/delete', { id });
+  populateTextEditor(null);
+  markDirty(true);
+  await loadAll();
+  toast('글귀를 삭제했습니다.');
+};
+
+// --- 4. SCENES ---
+function renderScenesTab() {
+  const box = $('sceneListBox');
+  box.innerHTML = '';
+  if (!state.scenes.find(s => s.id === currentSceneId) && state.scenes.length > 0) {
+    currentSceneId = state.scenes[0].id;
+  }
+  state.scenes.forEach(s => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'secondary';
+    b.style.justifyContent = 'space-between';
+    if (s.id === currentSceneId) {
+      b.style.borderColor = 'var(--primary)';
+      b.style.fontWeight = '700';
+    }
+    b.innerHTML = `<span>${s.name} ${s.isDefault ? '★' : ''}</span><small>${s.layout} · ${s.seconds}초</small>`;
+    b.onclick = () => {
+      currentSceneId = s.id;
+      populateSceneEditor(s);
+    };
+    box.appendChild(b);
+  });
+
+  const cur = state.scenes.find(s => s.id === currentSceneId);
+  if (cur && $('sceneIdIn').value !== cur.id) {
+    populateSceneEditor(cur);
+  } else {
+    updateLiveScenePreview();
+  }
+}
+
+function populateSceneEditor(s) {
+  if (!s) return;
+  currentSceneId = s.id;
+  $('sceneIdIn').value = s.id;
+  $('sceneNameIn').value = s.name;
+  $('sceneDescIn').value = s.description || '';
+  $('sceneLayoutIn').value = s.layout || 'MAGAZINE';
+  $('sceneTextModeIn').value = s.textDisplayMode || 'OVERLAY';
+  $('sceneThemeIn').value = s.theme || 'MILK';
+  $('sceneEffectIn').value = s.transitionEffect || 'ZOOM';
+  $('sceneSecIn').value = s.seconds || 20;
+  $('sceneEveryNIn').value = s.textEveryN || 1;
+  $('sceneBrightIn').value = s.brightness || 75;
+  $('sceneFontScaleIn').value = String(s.fontScale || 100);
+  $('sceneClockIn').checked = s.showClock !== false;
+  $('sceneDateIn').checked = s.showCaptureDate !== false;
+  $('sceneShuffleIn').checked = s.shufflePhotos !== false;
+  $('sceneNightDimIn').checked = !!s.nightDim;
+  $('sceneDefaultIn').checked = !!s.isDefault;
+
+  const alBox = $('sceneAlbumsCheckList');
+  alBox.innerHTML = '';
+  const linkedAlbums = new Set(s.albumIds || []);
+  state.albums.forEach(al => {
+    const lbl = document.createElement('label');
+    lbl.className = 'checkbox-row';
+    lbl.innerHTML = `<input type="checkbox" class="sc-album-chk" value="${al.id}" ${linkedAlbums.has(al.id) ? 'checked' : ''}> ${al.name}`;
+    alBox.appendChild(lbl);
+  });
+
+  const colBox = $('sceneColsCheckList');
+  colBox.innerHTML = '';
+  const linkedCols = new Set(s.textCollectionIds || []);
+  state.textCollections.forEach(c => {
+    const lbl = document.createElement('label');
+    lbl.className = 'checkbox-row';
+    lbl.innerHTML = `<input type="checkbox" class="sc-col-chk" value="${c.id}" ${linkedCols.has(c.id) ? 'checked' : ''}> ${c.name}`;
+    colBox.appendChild(lbl);
+  });
+
+  updateLiveScenePreview();
+}
+
+function updateLiveScenePreview() {
+  const frame = $('scenePreviewFrame');
+  frame.className = 'preview-frame ' + previewOrientation;
+  const theme = $('sceneThemeIn').value;
+  const layout = $('sceneLayoutIn').value;
+  const textMode = $('sceneTextModeIn').value;
+  const showClock = $('sceneClockIn').checked;
+  const bg = theme === 'INK' ? '#18221d' : theme === 'SAGE' ? '#dce4d5' : '#f4f2ec';
+  const ink = theme === 'INK' ? '#edefe8' : '#24332b';
+  frame.style.background = bg;
+  frame.style.color = ink;
+
+  const sampleText = state.texts[0] ? state.texts[0].body : '눈이 머무는 곳에 마음도 잠시 쉬어갑니다.';
+  const sampleAuthor = state.texts[0] ? state.texts[0].author : '누니담';
+  const heroPhoto = state.photos[0];
+  const imgUrl = heroPhoto ? `/api/image?id=${encodeURIComponent(heroPhoto.id)}&token=${encodeURIComponent(token)}` : '';
+
+  if (layout === 'TEXT_ONLY' || textMode === 'DEDICATED') {
+    frame.innerHTML = `
+      <div style="padding:20px;display:flex;flex-direction:column;justify-content:center;width:100%;border:1px solid rgba(100,110,100,.25);margin:10px;border-radius:10px">
+        ${showClock ? `<div style="font-size:11px;opacity:.7;margin-bottom:8px">07:30 · 좋은 아침</div>` : ''}
+        <div style="font-family:Georgia,serif;font-size:15px;white-space:pre-line">${sampleText}</div>
+        <div style="font-size:11.5px;opacity:.75;margin-top:8px">— ${sampleAuthor}</div>
+      </div>
+    `;
+  } else if (layout === 'PHOTO' && textMode !== 'SPLIT') {
+    frame.innerHTML = `
+      <div style="position:relative;width:100%;height:100%;background:#365b46;display:flex;align-items:flex-end;padding:16px;color:#fff;${imgUrl ? `background-image:url('${imgUrl}');background-size:cover;background-position:center;` : ''}">
+        <div style="position:absolute;inset:40% 0 0 0;background:linear-gradient(transparent,rgba(0,0,0,.78))"></div>
+        <div style="position:relative;z-index:2;width:100%">
+          ${showClock ? `<div style="font-size:22px;font-weight:300">07:30</div>` : ''}
+          ${textMode !== 'NONE' ? `<div style="font-family:Georgia,serif;font-size:12.5px;margin-top:4px;white-space:pre-line">${sampleText}</div>` : ''}
+        </div>
+      </div>
+    `;
+  } else {
+    const isLand = previewOrientation === 'landscape';
+    frame.innerHTML = `
+      <div style="display:flex;flex-direction:${isLand ? 'row' : 'column'};width:100%;height:100%;padding:10px;gap:12px">
+        <div style="flex:6;border-radius:8px;background:#365b46;${imgUrl ? `background-image:url('${imgUrl}');background-size:cover;background-position:center;` : ''}"></div>
+        <div style="flex:4;display:flex;flex-direction:column;justify-content:center;padding:6px">
+          ${showClock ? `<div style="font-size:22px;font-weight:300;margin-bottom:6px">07:30</div>` : ''}
+          ${textMode !== 'NONE' ? `<div style="font-family:Georgia,serif;font-size:12px;white-space:pre-line">${sampleText}</div><div style="font-size:10.5px;opacity:.7;margin-top:4px">— ${sampleAuthor}</div>` : ''}
+        </div>
+      </div>
+    `;
+  }
+}
+
+['sceneLayoutIn', 'sceneTextModeIn', 'sceneThemeIn', 'sceneClockIn'].forEach(id => {
+  $(id).onchange = updateLiveScenePreview;
+});
+$('prevOrientLand').onclick = () => { previewOrientation = 'landscape'; updateLiveScenePreview(); };
+$('prevOrientPort').onclick = () => { previewOrientation = 'portrait'; updateLiveScenePreview(); };
+
+$('newSceneBtn').onclick = () => {
+  $('sceneIdIn').value = '';
+  $('sceneNameIn').value = '새 장면';
+  $('sceneDescIn').value = '';
+  updateLiveScenePreview();
+};
+
+$('saveSceneBtn').onclick = async () => {
+  const albumIds = Array.from(document.querySelectorAll('.sc-album-chk:checked')).map(el => el.value);
+  const textCollectionIds = Array.from(document.querySelectorAll('.sc-col-chk:checked')).map(el => el.value);
+  const res = await post('/api/scenes/save', {
+    id: $('sceneIdIn').value,
+    name: $('sceneNameIn').value,
+    description: $('sceneDescIn').value,
+    layout: $('sceneLayoutIn').value,
+    textDisplayMode: $('sceneTextModeIn').value,
+    theme: $('sceneThemeIn').value,
+    transitionEffect: $('sceneEffectIn').value,
+    seconds: Number($('sceneSecIn').value),
+    textEveryN: Number($('sceneEveryNIn').value),
+    brightness: Number($('sceneBrightIn').value),
+    fontScale: Number($('sceneFontScaleIn').value),
+    showClock: $('sceneClockIn').checked,
+    showCaptureDate: $('sceneDateIn').checked,
+    shufflePhotos: $('sceneShuffleIn').checked,
+    nightDim: $('sceneNightDimIn').checked,
+    isDefault: $('sceneDefaultIn').checked,
+    albumIds,
+    textCollectionIds
+  });
+  currentSceneId = res.id;
+  markDirty(true);
+  await loadAll();
+  toast('장면을 초안에 저장했습니다.');
+};
+
+$('cloneSceneBtn').onclick = async () => {
+  $('sceneIdIn').value = '';
+  $('sceneNameIn').value = ($('sceneNameIn').value || '장면') + ' (복사본)';
+  await $('saveSceneBtn').onclick();
+};
+
+$('deleteSceneBtn').onclick = async () => {
+  const id = $('sceneIdIn').value;
+  if (!id) return;
+  try {
+    await post('/api/scenes/delete', { id });
+    currentSceneId = '';
+    markDirty(true);
+    await loadAll();
+    toast('장면을 삭제했습니다.');
+  } catch (e) { toast(e.message); }
+};
+
+// --- 5. SCHEDULES ---
+const DAYS_KOR = ['일', '월', '화', '수', '목', '금', '토'];
+function renderSchedulesTab() {
+  const scSel = $('schedSceneIn');
+  scSel.innerHTML = '';
+  const sceneMap = new Map();
+  state.scenes.forEach(s => {
+    sceneMap.set(s.id, s.name);
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name;
+    scSel.appendChild(opt);
+  });
+
+  // Render PC Weekly Grid (4 time bands: 00-06, 06-12, 12-18, 18-24)
+  const wgrid = $('weeklyCalendarGrid');
+  wgrid.innerHTML = '<div class="week-cell week-head">시간</div>' + DAYS_KOR.map(d => `<div class="week-cell week-head">${d}요일</div>`).join('');
+  const bands = [
+    { label: '00~06시', start: 0, end: 360 },
+    { label: '06~12시', start: 360, end: 720 },
+    { label: '12~18시', start: 720, end: 1080 },
+    { label: '18~24시', start: 1080, end: 1440 }
+  ];
+  bands.forEach(band => {
+    const tc = document.createElement('div');
+    tc.className = 'week-cell week-head';
+    tc.textContent = band.label;
+    wgrid.appendChild(tc);
+    for (let d = 0; d < 7; d++) {
+      const cell = document.createElement('div');
+      cell.className = 'week-cell';
+      const bit = 1 << d;
+      const prevBit = 1 << ((d + 6) % 7);
+      state.schedules.filter(r => r.enabled && r.ruleType === 'WEEKLY').forEach(r => {
+        const overnight = r.startMin > r.endMin;
+        let hit = false;
+        if (!overnight) {
+          hit = (r.daysMask & bit) !== 0 && r.startMin < band.end && r.endMin > band.start;
+        } else {
+          const hitToday = (r.daysMask & bit) !== 0 && r.startMin < band.end && 1440 > band.start;
+          const hitPrev = (r.daysMask & prevBit) !== 0 && 0 < band.end && r.endMin > band.start;
+          hit = hitToday || hitPrev;
+        }
+        if (hit) {
+          const pill = document.createElement('div');
+          pill.className = 'rule-pill';
+          pill.innerHTML = `<strong>${sceneMap.get(r.sceneId) || '장면'}</strong><br>${minToTime(r.startMin)}~${minToTime(r.endMin)}`;
+          pill.onclick = () => populateSchedEditor(r);
+          cell.appendChild(pill);
+        }
+      });
+      wgrid.appendChild(cell);
+    }
+  });
+
+  // Render list / mobile cards
+  const mcards = $('mobileScheduleCards');
+  mcards.innerHTML = '';
+  state.schedules.forEach(r => {
+    const row = document.createElement('div');
+    row.style.border = '1px solid var(--outline)';
+    row.style.borderRadius = '12px';
+    row.style.padding = '10px 14px';
+    row.style.display = 'flex';
+    row.style.justifyContent = 'space-between';
+    row.style.alignItems = 'center';
+    row.style.cursor = 'pointer';
+    const dayDesc = r.ruleType === 'WEEKLY'
+      ? DAYS_KOR.filter((_, i) => (r.daysMask & (1 << i)) !== 0).join('·')
+      : r.specificDate || r.ruleType;
+    row.innerHTML = `
+      <div>
+        <strong>${r.name}</strong> <span style="font-size:12px;color:var(--primary)">[${dayDesc} ${minToTime(r.startMin)}~${minToTime(r.endMin)}]</span>
+        <div style="font-size:12.5px;color:var(--muted)">재생 장면: ${sceneMap.get(r.sceneId) || '기본 장면'} · 우선순위 ${r.priority}</div>
+      </div>
+      <span style="font-size:12px">${r.enabled ? '켜짐' : '꺼짐'}</span>
+    `;
+    row.onclick = () => populateSchedEditor(r);
+    mcards.appendChild(row);
+  });
+
+  if (!currentSchedId && state.schedules.length > 0) {
+    populateSchedEditor(state.schedules[0]);
+  }
+}
+
+function populateSchedEditor(r) {
+  if (!r) return;
+  currentSchedId = r.id;
+  $('schedIdIn').value = r.id;
+  $('schedNameIn').value = r.name;
+  $('schedTypeIn').value = r.ruleType || 'WEEKLY';
+  $('schedSceneIn').value = r.sceneId;
+  $('schedDateIn').value = r.specificDate || '';
+  $('schedStartIn').value = minToTime(r.startMin);
+  $('schedEndIn').value = minToTime(r.endMin);
+  $('schedEnabledIn').checked = r.enabled !== false;
+  $('schedDateWrap').classList.toggle('hidden', r.ruleType === 'WEEKLY');
+  $('schedDaysWrap').classList.toggle('hidden', r.ruleType !== 'WEEKLY');
+  document.querySelectorAll('.day-chk').forEach(chk => {
+    chk.checked = (r.daysMask & Number(chk.value)) !== 0;
+  });
+}
+
+$('schedTypeIn').onchange = () => {
+  const v = $('schedTypeIn').value;
+  $('schedDateWrap').classList.toggle('hidden', v === 'WEEKLY');
+  $('schedDaysWrap').classList.toggle('hidden', v !== 'WEEKLY');
+};
+
+document.querySelectorAll('.day-preset').forEach(btn => {
+  btn.onclick = () => {
+    const mask = Number(btn.dataset.mask);
+    document.querySelectorAll('.day-chk').forEach(chk => {
+      chk.checked = (mask & Number(chk.value)) !== 0;
+    });
+  };
+});
+
+$('newScheduleBtn').onclick = () => {
+  currentSchedId = '';
+  $('schedIdIn').value = '';
+  $('schedNameIn').value = '새 시간표 규칙';
+  $('schedStartIn').value = '08:00';
+  $('schedEndIn').value = '12:00';
+};
+
+$('saveSchedBtn').onclick = async () => {
+  let mask = 0;
+  document.querySelectorAll('.day-chk:checked').forEach(c => { mask |= Number(c.value); });
+  const res = await post('/api/schedules/save', {
+    id: $('schedIdIn').value,
+    name: $('schedNameIn').value,
+    ruleType: $('schedTypeIn').value,
+    sceneId: $('schedSceneIn').value,
+    specificDate: $('schedDateIn').value,
+    daysMask: mask || 127,
+    startMin: timeToMin($('schedStartIn').value),
+    endMin: timeToMin($('schedEndIn').value),
+    enabled: $('schedEnabledIn').checked
+  });
+  currentSchedId = res.id;
+  markDirty(true);
+  const alertEl = $('scheduleConflictAlert');
+  if (res.conflicts && res.conflicts.length > 0) {
+    alertEl.textContent = '⚠ 시간표 겹침 알림: ' + res.conflicts.join(' / ');
+    alertEl.classList.remove('hidden');
+  } else {
+    alertEl.classList.add('hidden');
+  }
+  await loadAll();
+  toast('편성 규칙을 초안에 저장했습니다.');
+};
+
+$('copySchedBtn').onclick = async () => {
+  $('schedIdIn').value = '';
+  $('schedNameIn').value = ($('schedNameIn').value || '시간표') + ' (복사본)';
+  await $('saveSchedBtn').onclick();
+};
+
+$('deleteSchedBtn').onclick = async () => {
+  const id = $('schedIdIn').value;
+  if (!id) return;
+  await post('/api/schedules/delete', { id });
+  currentSchedId = '';
+  markDirty(true);
+  await loadAll();
+  toast('편성 규칙을 삭제했습니다.');
+};
+
+// --- 6. DEVICE & BACKUP ---
+function renderDeviceTab(sessions) {
+  if (state.settings) {
+    $('devQuotaIn').value = state.settings.quota || 1024;
+    $('devLowModeIn').checked = !!state.settings.low;
+  }
+  $('devKeepOrigIn').checked = !!state.keepOriginals;
+  $('devOptimizedIn').checked = state.useOptimizedImages !== false;
+
+  const sbox = $('sessionsListBox');
+  sbox.innerHTML = '';
+  sessions.forEach(s => {
+    const row = document.createElement('div');
+    row.style.border = '1px solid var(--outline)';
+    row.style.borderRadius = '10px';
+    row.style.padding = '10px 12px';
+    row.style.display = 'flex';
+    row.style.justifyContent = 'space-between';
+    row.style.alignItems = 'center';
+    row.innerHTML = `
+      <div>
+        <strong>${s.label}</strong> ${s.isCurrent ? '<span style="color:var(--primary);font-size:12px">(현재 브라우저)</span>' : ''}
+        <div style="font-size:12px;color:var(--muted)">IP: ${s.clientIp} · 최근 접근: ${new Date(s.lastAccessAt).toLocaleString('ko-KR')}</div>
+      </div>
+      <button type="button" class="secondary" style="min-height:34px;padding:4px 10px;font-size:12px">해제</button>
+    `;
+    row.querySelector('button').onclick = async () => {
+      await post('/api/sessions/revoke', { sessionId: s.sessionId });
+      await loadAll();
+    };
+    sbox.appendChild(row);
+  });
+}
+
+$('saveDeviceSettingsBtn').onclick = async () => {
+  const payload = {
+    quota: Number($('devQuotaIn').value),
+    keepOriginals: $('devKeepOrigIn').checked,
+    useOptimizedImages: $('devOptimizedIn').checked,
+    low: $('devLowModeIn').checked
+  };
+  if ($('devNewPinIn').value.trim()) {
+    payload.newPin = $('devNewPinIn').value.trim();
+  }
+  await post('/api/device/settings', payload);
+  $('devNewPinIn').value = '';
+  await loadAll();
+  toast('기기 설정을 저장했습니다.');
+};
+
+$('revokeAllSessionsBtn').onclick = async () => {
+  if (!confirm('현재 연결을 포함한 모든 관리자 세션을 해제할까요?')) return;
+  await post('/api/sessions/revoke', { sessionId: 'ALL' });
+  sessionStorage.removeItem('nunidam_token');
+  token = '';
+  await showAuthModal();
+};
+
+$('downloadBackupBtn').onclick = () => {
+  const albumId = $('exportAlbumSelect').value;
+  const url = `/api/backup/export?token=${encodeURIComponent(token)}` + (albumId ? `&albumId=${encodeURIComponent(albumId)}` : '');
+  window.location.href = url;
+};
+
+$('uploadRestoreBtn').onclick = async () => {
+  const f = $('importPkgFile').files[0];
+  if (!f) { toast('복원할 .nunidam 패키지 파일을 선택하세요.'); return; }
+  if (!confirm('패키지 무결성을 검증한 뒤 복원을 진행할까요?')) return;
+  try {
+    const keep = $('importKeepExisting').checked;
+    const r = await fetch(`/api/backup/import?keepExisting=${keep}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'X-CSRF-Token': csrfToken,
+        'Content-Type': 'application/octet-stream'
+      },
+      body: f
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || '복원 실패');
+    markDirty(false);
+    await loadAll();
+    toast(`패키지 복원 완료 (사진 ${d.importedPhotos}장 반영).`);
+  } catch (e) {
+    toast(e.message);
+  }
+};
+
+loadAll().catch(() => showAuthModal());
+</script>
+</body>
+</html>

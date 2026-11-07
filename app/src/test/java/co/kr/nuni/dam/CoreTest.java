@@ -325,4 +325,83 @@ public class CoreTest {
     float score = Core.lumaMotionScore(a, b, w, h, 0.25f, 0.25f, 0.9f, 0.9f, 18);
     assertTrue(score > 0.15f);
   }
+
+  @Test
+  public void schedulePriorityAndOvernightResolution() {
+    java.util.List<Core.ScheduleSlot> slots = new java.util.ArrayList<>();
+    // Weekly Mon-Fri (mask 62) 06:00(360) ~ 09:00(540) -> scene_morning
+    slots.add(
+        new Core.ScheduleSlot(
+            "r1", "평일 아침", "WEEKLY", "", "scene_morning", 62, 360, 540, 3, true, 0L));
+    // Weekly Mon(mask 2) overnight 22:00(1320) ~ Tue 06:00(360) -> scene_night
+    slots.add(
+        new Core.ScheduleSlot(
+            "r2", "월요 야간", "WEEKLY", "", "scene_night", 2, 1320, 360, 3, true, 0L));
+
+    // Monday (dow=1) at 07:00 (420) -> matches r1
+    Core.ScheduleSlot s1 =
+        Core.resolveActiveSlot(slots, 1000L, "2026-11-09", "2026-11-08", 1, 420);
+    assertNotNull(s1);
+    assertEquals("scene_morning", s1.sceneId);
+
+    // Tuesday (dow=2) at 02:00 (120) -> matches Monday overnight r2!
+    Core.ScheduleSlot s2 =
+        Core.resolveActiveSlot(slots, 1000L, "2026-11-10", "2026-11-09", 2, 120);
+    assertNotNull(s2);
+    assertEquals("scene_night", s2.sceneId);
+
+    // Specific DATE rule (priority 2) overrides WEEKLY rule (priority 3)
+    slots.add(
+        new Core.ScheduleSlot(
+            "r3", "기념일", "DATE", "2026-11-09", "scene_special", 127, 360, 600, 2, true, 0L));
+    Core.ScheduleSlot s3 =
+        Core.resolveActiveSlot(slots, 1000L, "2026-11-09", "2026-11-08", 1, 420);
+    assertEquals("scene_special", s3.sceneId);
+
+    // TEMP rule (priority 1) overrides DATE and WEEKLY rules while not expired
+    slots.add(
+        new Core.ScheduleSlot(
+            "r4", "임시 재생", "TEMP", "", "scene_temp", 127, 0, 1439, 1, true, 5000L));
+    Core.ScheduleSlot s4 =
+        Core.resolveActiveSlot(slots, 2000L, "2026-11-09", "2026-11-08", 1, 420);
+    assertEquals("scene_temp", s4.sceneId);
+    // After expiry (nowMs=6000L), falls back to DATE rule
+    Core.ScheduleSlot s5 =
+        Core.resolveActiveSlot(slots, 6000L, "2026-11-09", "2026-11-08", 1, 420);
+    assertEquals("scene_special", s5.sceneId);
+  }
+
+  @Test
+  public void scheduleConflictDetection() {
+    java.util.List<Core.ScheduleSlot> slots = new java.util.ArrayList<>();
+    slots.add(
+        new Core.ScheduleSlot(
+            "a", "아침 1", "WEEKLY", "", "s1", 62, 360, 540, 3, true, 0L));
+    slots.add(
+        new Core.ScheduleSlot(
+            "b", "아침 2", "WEEKLY", "", "s2", 2, 480, 600, 3, true, 0L));
+    java.util.List<String> conflicts = Core.detectScheduleConflicts(slots);
+    assertEquals(1, conflicts.size());
+  }
+
+  @Test
+  public void poemPaginationPreservesLinesWithoutShrinking() {
+    String poem = "1행\n2행\n3행\n4행\n5행\n6행\n7행";
+    java.util.List<String> pages = Core.paginatePoem(poem, 3);
+    assertEquals(3, pages.size());
+    assertEquals("1행\n2행\n3행", pages.get(0));
+    assertEquals("4행\n5행\n6행", pages.get(1));
+    assertEquals("7행", pages.get(2));
+  }
+
+  @Test
+  public void secretHashingIsDeterministicAndSalted() {
+    String h1 = Core.hashSecret("1234", "saltA");
+    String h2 = Core.hashSecret("1234", "saltA");
+    String h3 = Core.hashSecret("1234", "saltB");
+    assertEquals(64, h1.length());
+    assertEquals(h1, h2);
+    assertNotEquals(h1, h3);
+    assertNotEquals("1234", h1);
+  }
 }

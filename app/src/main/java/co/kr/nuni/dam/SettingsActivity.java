@@ -116,6 +116,21 @@ public final class SettingsActivity extends Activity {
       PowerSaving.DeviceCapabilities caps = PowerSaving.DeviceCapabilities.inspect(host);
       LinearLayout groupCard = Ui.card(col);
       Ui.section(groupCard, R.drawable.ic_tune, "설정 그룹");
+      String remoteIp = StudioServer.resolveLocalIp(host);
+      boolean srvAlive = a.isStudioServerRunning();
+      addGroupItem(
+          groupCard,
+          "REMOTE",
+          R.drawable.ic_phone,
+          "원격 관리 (누니담 스튜디오)",
+          srvAlive
+              ? ("활성화됨 · "
+                  + (remoteIp == null
+                      ? "Wi-Fi 확인 필요"
+                      : "http://" + remoteIp + ":" + a.studioServer().port()))
+              : "꺼짐 · PC/스마트폰 웹 브라우저에서 앨범·장면·편성표 관리",
+          twoPane);
+      groupCard.addView(Ui.divider(host), new LinearLayout.LayoutParams(-1, Ui.dp(host, 1)));
       addGroupItem(
           groupCard,
           "POWER",
@@ -232,6 +247,9 @@ public final class SettingsActivity extends Activity {
     private void renderGroupDetail(LinearLayout pane, String key) {
       pane.removeAllViews();
       switch (key) {
+        case "REMOTE":
+          buildRemoteSection(pane);
+          break;
         case "POWER":
           buildPowerSection(pane);
           break;
@@ -251,6 +269,213 @@ public final class SettingsActivity extends Activity {
           buildAboutSection(pane);
           break;
       }
+    }
+
+    // Section 3.1: 설정 → 원격 관리 (누니담 스튜디오 내장 웹서버 제어·QR·인증·세션 관리)
+    private void buildRemoteSection(LinearLayout pane) {
+      LinearLayout card = Ui.card(pane);
+      Ui.section(card, R.drawable.ic_phone, "원격 관리 (NuniDam Studio)");
+      card.addView(
+          Ui.text(
+              host,
+              "같은 내부 Wi-Fi에 연결된 PC 또는 스마트폰 웹브라우저에서 사진 앨범, 명언·시, 재생 장면, 요일별 시간표를 편집합니다. 원격 관리를 꺼도 액자 재생은 계속 유지됩니다.",
+              14,
+              Ui.MUTED));
+      Ui.gap(card, 10);
+
+      boolean running = a.isStudioServerRunning();
+      Switch remoteSw = new Switch(host);
+      remoteSw.setText("원격 관리 켜기 (내장 웹서버 활성화)");
+      remoteSw.setTextColor(Ui.INK);
+      remoteSw.setTextSize(15.5f);
+      remoteSw.setChecked(running);
+      remoteSw.setOnCheckedChangeListener(
+          (v, on) -> {
+            if (on) {
+              boolean ok = a.startStudioServer();
+              if (!ok) {
+                Ui.toast(host, "웹서버 시작 실패: " + a.lastServerError());
+              } else {
+                Ui.toast(host, "원격 관리 웹서버를 시작했습니다.");
+              }
+            } else {
+              a.prefs.flag("remoteEnabled", false);
+              a.stopStudioServer();
+              Ui.toast(host, "원격 관리 연결을 종료했습니다. 액자 재생은 유지됩니다.");
+            }
+            rebuild();
+          });
+      card.addView(remoteSw);
+      Ui.gap(card, 10);
+
+      String ip = StudioServer.resolveLocalIp(host);
+      StudioServer srv = a.studioServer();
+      String statusText =
+          running
+              ? (ip != null ? "연결 가능 (내장 웹서버 실행 중)" : "웹서버 실행 중 · Wi-Fi 네트워크 연결 필요")
+              : "비활성화됨 (초기 기본값)";
+      TextView badge = Ui.text(host, "현재 연결 상태: " + statusText, 14.5f, running && ip != null ? Ui.PRIMARY : Ui.MUTED);
+      badge.setTypeface(Typeface.DEFAULT_BOLD);
+      card.addView(badge);
+
+      int portVal = running && srv != null ? srv.port() : a.prefs.remotePort();
+      String addrStr =
+          ip == null
+              ? "Wi-Fi에 연결되어 있지 않습니다. 공유기 Wi-Fi 연결을 확인하세요."
+              : ("http://" + ip + ":" + portVal);
+      TextView addrView = Ui.text(host, "접속 주소: " + addrStr, 15f, Ui.INK);
+      addrView.setTextIsSelectable(true);
+      card.addView(addrView);
+      card.addView(Ui.text(host, "접속 포트: " + portVal + " (내부 로컬 네트워크 전용)", 13.5f, Ui.MUTED));
+
+      long lastAccess = a.prefs.lastRemoteAccessAt();
+      String lastAccessStr =
+          lastAccess <= 0
+              ? "없음"
+              : new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.KOREA)
+                  .format(new java.util.Date(lastAccess));
+      card.addView(Ui.text(host, "마지막 접근 시간: " + lastAccessStr, 13.5f, Ui.MUTED));
+
+      if (running && srv != null && ip != null) {
+        Ui.gap(card, 12);
+        String pairCode = srv.pairingCode();
+        TextView codeTv = Ui.text(host, "일회용 페어링 코드: " + pairCode, 18f, Ui.PRIMARY);
+        codeTv.setTypeface(Typeface.DEFAULT_BOLD);
+        codeTv.setTextIsSelectable(true);
+        card.addView(codeTv);
+        card.addView(
+            Ui.text(
+                host,
+                "PC 브라우저에서 위 접속 주소를 열고 일회용 페어링 코드를 입력하거나, 아래 QR 코드를 스캔하세요.",
+                13f,
+                Ui.MUTED));
+        Ui.gap(card, 8);
+        try {
+          java.util.Map<com.google.zxing.EncodeHintType, Object> hints = new java.util.HashMap<>();
+          hints.put(com.google.zxing.EncodeHintType.MARGIN, 2);
+          com.google.zxing.common.BitMatrix matrix =
+              new com.google.zxing.qrcode.QRCodeWriter()
+                  .encode(
+                      srv.qrUrl(), com.google.zxing.BarcodeFormat.QR_CODE, 480, 480, hints);
+          int[] pixels = new int[480 * 480];
+          for (int y = 0; y < 480; y++)
+            for (int x = 0; x < 480; x++)
+              pixels[y * 480 + x] = matrix.get(x, y) ? Ui.INK : 0xffffffff;
+          Bitmap qrBmp = Bitmap.createBitmap(pixels, 480, 480, Bitmap.Config.ARGB_8888);
+          ImageView qrIv = new ImageView(host);
+          qrIv.setImageBitmap(qrBmp);
+          qrIv.setContentDescription("누니담 스튜디오 접속 QR 코드");
+          card.addView(qrIv, new LinearLayout.LayoutParams(-1, Ui.dp(host, 210)));
+        } catch (Exception ignored) {
+        }
+        Ui.add(
+            card,
+            "새 일회용 페어링 코드 발급",
+            false,
+            R.drawable.ic_refresh,
+            () -> {
+              srv.rotatePairingCode();
+              rebuild();
+              Ui.toast(host, "새 페어링 코드를 발급했습니다.");
+            });
+      }
+
+      // Admin authentication & Port card
+      LinearLayout authCard = Ui.card(pane);
+      Ui.section(authCard, R.drawable.ic_tune, "관리자 인증 및 보안 설정");
+      boolean hasPin = !a.prefs.adminPinHash().isEmpty();
+      authCard.addView(
+          Ui.text(
+              host,
+              "관리자 비밀번호(PIN): " + (hasPin ? "설정됨 (암호화 해시 저장)" : "미설정 (일회용 페어링 코드만 사용)"),
+              14,
+              Ui.INK));
+      Ui.add(
+          authCard,
+          hasPin ? "관리자 비밀번호(PIN) 변경 / 해제" : "관리자 비밀번호(PIN) 설정",
+          false,
+          R.drawable.ic_tune,
+          () -> {
+            EditText pinIn = Ui.input(host, "새 관리자 비밀번호 (비워두면 해제)", "");
+            pinIn.setSingleLine();
+            LinearLayout box = Ui.column(host);
+            box.setPadding(Ui.dp(host, 22), Ui.dp(host, 12), Ui.dp(host, 22), 0);
+            box.addView(pinIn);
+            new AlertDialog.Builder(host)
+                .setTitle("관리자 인증 비밀번호 설정")
+                .setMessage("평문으로 저장되지 않고 안전한 해시로만 저장됩니다.")
+                .setView(box)
+                .setPositiveButton(
+                    "저장",
+                    (d, w) -> {
+                      a.prefs.setAdminPin(pinIn.getText().toString());
+                      Ui.toast(host, "관리자 인증 설정을 저장했습니다.");
+                      rebuild();
+                    })
+                .setNegativeButton("취소", null)
+                .show();
+          });
+      number(authCard, "웹서버 접속 포트", "remotePort", a.prefs.remotePort(), 1024, 65535, "번");
+
+      // Active sessions card
+      LinearLayout sessCard = Ui.card(pane);
+      Ui.section(sessCard, R.drawable.ic_check, "연결된 관리자 세션");
+      LinearLayout sessList = Ui.column(host);
+      sessCard.addView(sessList);
+      a.io.execute(
+          () -> {
+            java.util.List<AdminSession> sessions =
+                a.db.studio().activeSessions(System.currentTimeMillis());
+            a.main.post(
+                () -> {
+                  if (!Ui.alive(host)) return;
+                  sessList.removeAllViews();
+                  if (sessions.isEmpty()) {
+                    sessList.addView(Ui.text(host, "현재 승인된 관리자 세션이 없습니다.", 14, Ui.MUTED));
+                  } else {
+                    java.text.SimpleDateFormat df =
+                        new java.text.SimpleDateFormat("MM-dd HH:mm", Locale.KOREA);
+                    for (AdminSession as : sessions) {
+                      String rowLabel =
+                          as.label
+                              + " ("
+                              + as.clientIp
+                              + ") · 최근 접근 "
+                              + df.format(new java.util.Date(as.lastAccessAt));
+                      Ui.add(
+                          sessList,
+                          rowLabel + " — 연결 해제",
+                          false,
+                          R.drawable.ic_exit,
+                          () ->
+                              a.io.execute(
+                                  () -> {
+                                    a.db.studio().revokeSession(as.sessionId);
+                                    a.main.post(
+                                        () -> {
+                                          Ui.toast(host, "해당 세션 연결을 해제했습니다.");
+                                          rebuild();
+                                        });
+                                  }));
+                    }
+                    Ui.add(
+                        sessList,
+                        "모든 관리자 세션 일괄 해제",
+                        false,
+                        R.drawable.ic_trash,
+                        () ->
+                            a.io.execute(
+                                () -> {
+                                  a.db.studio().revokeAllSessions();
+                                  a.main.post(
+                                      () -> {
+                                        Ui.toast(host, "모든 세션을 해제했습니다.");
+                                        rebuild();
+                                      });
+                                }));
+                  }
+                });
+          });
     }
 
     // Section 7.7: 절전 설정 UI (순서: 화면 쉬는 시간 → 주변 움직임에 반응 → 움직임이 없으면 → 움직임을 감지하면 → 동작 확인 → 자세히)
@@ -608,8 +833,40 @@ public final class SettingsActivity extends Activity {
     }
 
     private void buildBackupSection(LinearLayout pane) {
+      LinearLayout pkgCard = Ui.card(pane);
+      Ui.section(pkgCard, R.drawable.ic_upload, "누니담 패키지(.nunidam) 전체 백업 · 복원");
+      pkgCard.addView(
+          Ui.text(
+              host,
+              "인터넷 없이 USB나 파일 전송으로 사진, 앨범, 명언·시, 재생 장면, 요일별 시간표를 한 번에 백업하고 복원합니다 (SHA-256 체크섬 무결성 검증 포함).",
+              13.5f,
+              Ui.MUTED));
+      Ui.add(
+          pkgCard,
+          "전체 백업 패키지(.nunidam) 내보내기",
+          true,
+          R.drawable.ic_upload,
+          () ->
+              host.startActivityForResult(
+                  new Intent(Intent.ACTION_CREATE_DOCUMENT)
+                      .setType("application/octet-stream")
+                      .addCategory(Intent.CATEGORY_OPENABLE)
+                      .putExtra(Intent.EXTRA_TITLE, "family.nunidam"),
+                  12));
+      Ui.add(
+          pkgCard,
+          "백업 패키지(.nunidam) 가져오기 · 복원",
+          false,
+          R.drawable.ic_download,
+          () ->
+              host.startActivityForResult(
+                  new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                      .setType("*/*")
+                      .addCategory(Intent.CATEGORY_OPENABLE),
+                  13));
+
       LinearLayout backup = Ui.card(pane);
-      Ui.section(backup, R.drawable.ic_upload, "설정 옮기기");
+      Ui.section(backup, R.drawable.ic_upload, "기본 화면 설정만 옮기기 (JSON)");
       Ui.add(
           backup,
           "설정 JSON 내보내기",
@@ -636,7 +893,7 @@ public final class SettingsActivity extends Activity {
       backup.addView(
           Ui.text(
               host,
-              "사진 파일, 사진별 기록, 폴더 접근 권한, 충전 웹훅 주소, 기기별 센서 검증 상태는 백업에 포함하지 않습니다.",
+              "JSON 내보내기는 가벼운 기본 설정만 포함하며, 사진·앨범·편성표 전체 백업은 위 ‘.nunidam 패키지’를 사용하세요.",
               13,
               Ui.MUTED));
     }
@@ -852,6 +1109,18 @@ public final class SettingsActivity extends Activity {
                   if (in == null) throw new IOException("파일을 열 수 없습니다.");
                   a.prefs.restore(
                       new JSONObject(new String(Core.read(in, 32768), StandardCharsets.UTF_8)));
+                }
+              } else if (req == 12) {
+                try (OutputStream out =
+                    host.getContentResolver().openOutputStream(data.getData(), "wt")) {
+                  if (out == null) throw new IOException("패키지 파일을 생성할 수 없습니다.");
+                  a.studio.exportNunidamPackage(out, null);
+                }
+              } else if (req == 13) {
+                try (InputStream in =
+                    host.getContentResolver().openInputStream(data.getData())) {
+                  if (in == null) throw new IOException("패키지 파일을 열 수 없습니다.");
+                  a.studio.importNunidamPackage(in, true);
                 }
               }
               a.main.post(

@@ -11,16 +11,22 @@ import java.util.*;
 public final class FrameView extends View {
   /** Shared rendering configuration for fullscreen playback and live previews (Section 6.4 & 10). */
   public static final class Config {
-    public String mode = "MAGAZINE";
-    public String theme = "MILK";
+    public String mode = "MAGAZINE"; // PHOTO, MAGAZINE, BOARD, TEXT_ONLY, SPLIT
+    public String theme = "MILK"; // MILK, INK, SAGE
     public boolean showClock = true;
+    public boolean showWeather = false;
     public boolean showCaptureDate = true;
     public boolean quoteOnPhoto = true;
+    public String textDisplayMode = "OVERLAY"; // OVERLAY, DEDICATED, SPLIT, NONE
     public String quoteKind = "ALL";
     public String quoteCycle = "PHOTO";
     public int fontScale = 100;
     public int seconds = 45;
     public boolean animate = true;
+    public String transitionEffect = "ZOOM"; // ZOOM, FADE, NONE
+    public String textAlign = "LEFT"; // LEFT, CENTER, RIGHT
+    public int scrimOpacity = 70;
+    public String customTextColor = "";
 
     public static Config from(Prefs p) {
       Config c = new Config();
@@ -29,11 +35,35 @@ public final class FrameView extends View {
       c.showClock = p.showClock();
       c.showCaptureDate = p.showCaptureDate();
       c.quoteOnPhoto = p.quoteOnPhoto();
+      c.textDisplayMode = p.quoteOnPhoto() ? "OVERLAY" : "NONE";
       c.quoteKind = p.quoteKind();
       c.quoteCycle = p.quoteCycle();
       c.fontScale = p.fontScale();
       c.seconds = p.seconds();
       c.animate = p.animate();
+      c.transitionEffect = c.animate ? "ZOOM" : "NONE";
+      return c;
+    }
+
+    public static Config fromScene(Scene sc, Prefs fallback) {
+      if (sc == null) return from(fallback);
+      Config c = new Config();
+      c.mode = sc.layout;
+      c.theme = sc.theme;
+      c.showClock = sc.showClock;
+      c.showWeather = sc.showWeather;
+      c.showCaptureDate = sc.showCaptureDate;
+      c.textDisplayMode = sc.textDisplayMode;
+      c.quoteOnPhoto = !"NONE".equals(sc.textDisplayMode);
+      c.quoteKind = "ALL";
+      c.quoteCycle = sc.quoteCycle;
+      c.fontScale = sc.fontScale;
+      c.seconds = sc.seconds;
+      c.transitionEffect = sc.transitionEffect;
+      c.animate = !"NONE".equals(sc.transitionEffect) && !fallback.low();
+      c.textAlign = sc.textAlign;
+      c.scrimOpacity = sc.scrimOpacity;
+      c.customTextColor = sc.textColor;
       return c;
     }
 
@@ -192,7 +222,11 @@ public final class FrameView extends View {
     updateClock();
     c.drawColor(background);
 
-    boolean hasContent = samplePreview || (photo != null && image != null);
+    boolean hasContent =
+        samplePreview
+            || (photo != null && image != null)
+            || ("DEDICATED".equals(cfg.textDisplayMode) && !phrase.isEmpty())
+            || ("TEXT_ONLY".equals(cfg.mode) && !phrase.isEmpty());
     if (!hasContent) {
       text(c, "nuni dam", w * .09f, h * .38f, 68 * s, ink, true);
       wrap(
@@ -212,14 +246,20 @@ public final class FrameView extends View {
           17 * s,
           muted,
           false);
+    } else if ("TEXT_ONLY".equals(cfg.mode) || "DEDICATED".equals(cfg.textDisplayMode)) {
+      drawDedicatedTextScreen(c, w, h, s, fs, ink, muted, cfg);
     } else if ("PHOTO".equals(cfg.mode)
-        || ("MAGAZINE".equals(cfg.mode) && photo.width >= photo.height && w >= h * .85f)) {
+        || ("MAGAZINE".equals(cfg.mode)
+            && !"SPLIT".equals(cfg.textDisplayMode)
+            && photo != null
+            && photo.width >= photo.height
+            && w >= h * .85f)) {
       photoBox.set(0, 0, w, h);
       drawPhotoOrSample(c, photoBox, cfg);
       String rawCaption =
-          !photo.note.isEmpty()
+          photo != null && !photo.note.isEmpty()
               ? photo.note
-              : (cfg.quoteOnPhoto && !"NONE".equals(cfg.quoteKind) ? phrase : "");
+              : (cfg.quoteOnPhoto && !"NONE".equals(cfg.quoteKind) && !"NONE".equals(cfg.textDisplayMode) ? phrase : "");
       Core.QuoteEntry entry = Core.parseQuote(rawCaption);
       boolean hasText = !entry.body.isEmpty() || cfg.showClock || cfg.showCaptureDate;
       if (hasText) {
@@ -429,6 +469,52 @@ public final class FrameView extends View {
     c.restore();
   }
 
+  private void drawDedicatedTextScreen(
+      Canvas c, float w, float h, float s, float fs, int ink, int muted, Config cfg) {
+    float sh = previewMode ? 0 : shift(s);
+    float marginX = w * .11f + sh;
+    float boxW = w * .78f;
+    // Subtle decorative frame
+    p.setStyle(Paint.Style.STROKE);
+    p.setStrokeWidth(Math.max(1f, 1.5f * s));
+    p.setColor(0x33626d65);
+    c.drawRoundRect(
+        w * .055f, h * .07f, w * .945f, h * .93f, 20 * s, 20 * s, p);
+    p.setStyle(Paint.Style.FILL);
+
+    if (cfg.showClock) {
+      text(c, time() + "  ·  " + dayText, marginX, h * .16f + sh, 16 * s * fs, muted, false);
+    }
+    Core.QuoteEntry entry = Core.parseQuote(phrase);
+    java.util.List<String> pages = Core.paginatePoem(entry.body, 7);
+    int pageIdx =
+        pages.size() <= 1
+            ? 0
+            : (int) ((Math.max(0L, SystemClock.elapsedRealtime() - began) / 6000L) % pages.size());
+    String pageBody = pages.get(pageIdx);
+    float fontSize = (entry.isPoem() ? 22f : 26f) * s * fs;
+    StaticLayout l = layout(pageBody, boxW, fontSize, ink, 8);
+    float topY = Math.max(h * .23f, (h - l.getHeight()) * .46f) + sh;
+    c.save();
+    c.translate(marginX, topY);
+    l.draw(c);
+    c.restore();
+    float afterY = topY + l.getHeight() + 26 * s * fs;
+    if (!entry.author.isEmpty()) {
+      text(c, "— " + entry.author, marginX, Math.min(h * .86f, afterY), 16f * s * fs, muted, true);
+    }
+    if (pages.size() > 1) {
+      text(
+          c,
+          (pageIdx + 1) + " / " + pages.size(),
+          w * .88f,
+          h * .88f,
+          13f * s,
+          muted,
+          false);
+    }
+  }
+
   private void drawBoardQuote(
       Canvas c,
       Core.QuoteEntry entry,
@@ -442,17 +528,32 @@ public final class FrameView extends View {
     if (entry.body.isEmpty() || maxBottom <= topY + 20 * s) return;
     float avail = maxBottom - topY - (entry.author.isEmpty() ? 0 : 22 * s);
     boolean poem = entry.isPoem() || entry.body.indexOf('\n') >= 0;
-    float fontSize = (poem ? 18f : 21f) * s;
-    if (entry.body.length() > 90) fontSize = 15.5f * s;
-    int maxLines = Math.max(1, Math.min(poem ? 8 : 4, (int) (avail / (fontSize * 1.32f))));
-    StaticLayout l = layout(entry.body, width, fontSize, ink, maxLines);
+    float fontSize = (poem ? 18f : 20f) * s;
+    int maxLines = Math.max(2, Math.min(poem ? 7 : 4, (int) (avail / (fontSize * 1.32f))));
+    java.util.List<String> pages = Core.paginatePoem(entry.body, maxLines);
+    int pageIdx =
+        pages.size() <= 1
+            ? 0
+            : (int) ((Math.max(0L, SystemClock.elapsedRealtime() - began) / 6000L) % pages.size());
+    String bodyText = pages.get(pageIdx);
+    StaticLayout l = layout(bodyText, width, fontSize, ink, maxLines);
     c.save();
     c.translate(x, topY);
     l.draw(c);
     c.restore();
-    if (!entry.author.isEmpty()) {
+    String authorLine = entry.author;
+    if (pages.size() > 1) {
+      authorLine =
+          (authorLine.isEmpty() ? "" : authorLine + "  ")
+              + "("
+              + (pageIdx + 1)
+              + "/"
+              + pages.size()
+              + ")";
+    }
+    if (!authorLine.isEmpty()) {
       float ay = Math.min(maxBottom - 4 * s, topY + l.getHeight() + 17 * s);
-      text(c, "— " + entry.author, x, ay, 13f * s, muted, false);
+      text(c, "— " + authorLine, x, ay, 13f * s, muted, false);
     }
   }
 
@@ -468,14 +569,27 @@ public final class FrameView extends View {
     float width = Math.max(1, right - left);
     boolean poem = entry.isPoem() || entry.body.indexOf('\n') >= 0;
     float fontSize = (poem ? 18f : 20f) * s;
-    if (entry.body.length() > 90) fontSize = 16f * s;
     int maxLines = poem ? 6 : 3;
+    java.util.List<String> pages = Core.paginatePoem(entry.body, maxLines);
+    int pageIdx =
+        pages.size() <= 1
+            ? 0
+            : (int) ((Math.max(0L, SystemClock.elapsedRealtime() - began) / 6000L) % pages.size());
+    String pageText = pages.get(pageIdx);
     float curBottom = bottomY;
-    if (!entry.author.isEmpty()) {
-      text(c, "— " + entry.author, left, curBottom, 13.5f * s, authorColor, false);
+    String authorLine = entry.author;
+    if (pages.size() > 1) {
+      authorLine =
+          (authorLine.isEmpty() ? "" : authorLine + " · ")
+              + (pageIdx + 1)
+              + "/"
+              + pages.size();
+    }
+    if (!authorLine.isEmpty()) {
+      text(c, "— " + authorLine, left, curBottom, 13.5f * s, authorColor, false);
       curBottom -= 20 * s;
     }
-    StaticLayout l = layout(entry.body, width, fontSize, bodyColor, maxLines);
+    StaticLayout l = layout(pageText, width, fontSize, bodyColor, maxLines);
     float topY = curBottom - l.getHeight();
     p.setColor(0xccdfe7dc);
     c.drawRect(left - 12 * s, topY + 3 * s, left - 9 * s, curBottom - 2 * s, p);
