@@ -45,18 +45,6 @@ public final class NuniApp extends Application {
     io.execute(
         () -> {
           store.cleanup();
-          try (InputStream in = getAssets().open("phrases.txt")) {
-            String text = new String(Core.read(in, 128 * 1024), StandardCharsets.UTF_8);
-            int id = 0;
-            for (String line : text.split("\\r?\\n"))
-              if (!line.trim().isEmpty()) {
-                Quote q = new Quote();
-                q.id = id++;
-                q.text = line.trim();
-                db.photos().quote(q);
-              }
-          } catch (Exception ignored) {
-          }
           try {
             studio.ensureSeeded();
           } catch (Exception ignored) {

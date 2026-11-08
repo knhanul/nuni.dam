@@ -119,11 +119,25 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
       logo.setBackground(Ui.bg(Ui.SURFACE_SUBTLE, Ui.dp(this, 10)));
       logo.setClipToOutline(true);
       rail.addView(logo, new LinearLayout.LayoutParams(Ui.dp(this, 36), Ui.dp(this, 36)));
-      Ui.gap(rail, 20);
+      ImageView railKrLogo = new ImageView(this);
+      railKrLogo.setImageResource(R.drawable.nunidam_kr_logo);
+      railKrLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+      LinearLayout.LayoutParams rklp = new LinearLayout.LayoutParams(Ui.dp(this, 66), Ui.dp(this, 22));
+      rklp.topMargin = Ui.dp(this, 6);
+      rail.addView(railKrLogo, rklp);
+      Ui.gap(rail, 14);
       addNavButton(rail, "FRAME", "액자", R.drawable.ic_screen, true);
       addNavButton(rail, "PHOTOS", "사진", R.drawable.ic_gallery, true);
       addNavButton(rail, "CUSTOMIZE", "꾸미기", R.drawable.ic_sun, true);
       addNavButton(rail, "SETTINGS", "설정", R.drawable.ic_tune, true);
+      View railSpacer = new View(this);
+      rail.addView(railSpacer, new LinearLayout.LayoutParams(1, 0, 1));
+      Button railExitBtn = Ui.tile(this, "종료", R.drawable.ic_exit, Ui.DANGER, () -> Ui.exitApp(this));
+      railExitBtn.setContentDescription("앱 종료");
+      LinearLayout.LayoutParams exitLp = new LinearLayout.LayoutParams(-1, Ui.dp(this, 64));
+      int em = Ui.dp(this, 3);
+      exitLp.setMargins(em, em, em, em);
+      rail.addView(railExitBtn, exitLp);
       shell.addView(rail, new LinearLayout.LayoutParams(Ui.dp(this, 96), -1));
       shell.addView(Ui.divider(this), new LinearLayout.LayoutParams(Ui.dp(this, 1), -1));
 
@@ -145,6 +159,12 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
       addNavButton(bottomBar, "PHOTOS", "사진", R.drawable.ic_gallery, false);
       addNavButton(bottomBar, "CUSTOMIZE", "꾸미기", R.drawable.ic_sun, false);
       addNavButton(bottomBar, "SETTINGS", "설정", R.drawable.ic_tune, false);
+      Button botExitBtn = Ui.tile(this, "종료", R.drawable.ic_exit, Ui.DANGER, () -> Ui.exitApp(this));
+      botExitBtn.setContentDescription("앱 종료");
+      LinearLayout.LayoutParams botExitLp = new LinearLayout.LayoutParams(0, Ui.dp(this, 58), 1);
+      int bm = Ui.dp(this, 3);
+      botExitLp.setMargins(bm, bm, bm, bm);
+      bottomBar.addView(botExitBtn, botExitLp);
       shell.addView(bottomBar, new LinearLayout.LayoutParams(-1, -2));
     }
 
@@ -264,14 +284,26 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
 
     a.io.execute(
         () -> {
+          if (a.studio != null) a.studio.ensureSeeded();
           List<Photo> active = a.db.photos().active();
           int n = active.size();
           long bytes = a.db.photos().used();
-          List<Quote> qs = a.db.photos().quotes();
-          String samplePhrase =
-              !a.prefs.phrase().isEmpty()
-                  ? a.prefs.phrase()
-                  : qs.isEmpty() ? "눈이 머무는 곳에 마음도 잠시 쉬어갑니다.|누니담" : qs.get(0).text;
+          List<TextItem> tItems =
+              a.studio != null ? a.studio.dao().enabledTextItems() : Collections.emptyList();
+          String samplePhrase;
+          if (!a.prefs.phrase().isEmpty()) {
+            samplePhrase = a.prefs.phrase();
+          } else if (!tItems.isEmpty()) {
+            TextItem ti = tItems.get(0);
+            String authorStr = ti.author;
+            if (!ti.title.isEmpty() && !ti.author.contains(ti.title)) {
+              authorStr = ti.author.isEmpty() ? ti.title : (ti.author + " · " + ti.title);
+            }
+            String k = "POEM".equals(ti.kind) || ti.body.indexOf('\n') >= 0 ? "POEM" : "QUOTE";
+            samplePhrase = new Core.QuoteEntry(k, ti.body, authorStr).encode();
+          } else {
+            samplePhrase = "눈이 머무는 곳에 마음도 잠시 쉬어갑니다.|누니담";
+          }
           Photo heroPhoto = null;
           String lastId = a.prefs.raw.getString("lastPhoto", "");
           for (Photo p : active) {
@@ -342,6 +374,12 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
                       false,
                       R.drawable.ic_folder,
                       this::pickSyncFolder);
+                  Ui.add(
+                      actionCard,
+                      "앱 종료",
+                      false,
+                      R.drawable.ic_exit,
+                      () -> Ui.exitApp(this));
                 } else {
                   // Returning user: one primary action to start frame
                   Ui.section(actionCard, R.drawable.ic_play, "지금 감상하기");
@@ -369,6 +407,12 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
                       false,
                       R.drawable.ic_sun,
                       () -> switchTab("CUSTOMIZE"));
+                  Ui.add(
+                      actionCard,
+                      "앱 종료",
+                      false,
+                      R.drawable.ic_exit,
+                      () -> Ui.exitApp(this));
                 }
 
                 if (!homeOpened && getIntent().hasCategory(Intent.CATEGORY_HOME) && n > 0) {
@@ -452,14 +496,24 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
     // Load user photo or sample into preview
     a.io.execute(
         () -> {
+          if (a.studio != null) a.studio.ensureSeeded();
           List<Photo> active = a.db.photos().active();
-          List<Quote> qs = a.db.photos().quotes();
-          String samplePhrase =
-              !a.prefs.phrase().isEmpty()
-                  ? a.prefs.phrase()
-                  : qs.isEmpty()
-                      ? "POEM|산에는 꽃 피네\\n꽃이 피네\\n갈 봄 여름 없이\\n꽃이 피네|김소월 · 산유화"
-                      : qs.get(0).text;
+          List<TextItem> tItems =
+              a.studio != null ? a.studio.dao().enabledTextItems() : Collections.emptyList();
+          String samplePhrase;
+          if (!a.prefs.phrase().isEmpty()) {
+            samplePhrase = a.prefs.phrase();
+          } else if (!tItems.isEmpty()) {
+            TextItem ti = tItems.get(0);
+            String authorStr = ti.author;
+            if (!ti.title.isEmpty() && !ti.author.contains(ti.title)) {
+              authorStr = ti.author.isEmpty() ? ti.title : (ti.author + " · " + ti.title);
+            }
+            String k = "POEM".equals(ti.kind) || ti.body.indexOf('\n') >= 0 ? "POEM" : "QUOTE";
+            samplePhrase = new Core.QuoteEntry(k, ti.body, authorStr).encode();
+          } else {
+            samplePhrase = "POEM|산에는 꽃 피네\\n꽃이 피네\\n갈 봄 여름 없이\\n꽃이 피네|김소월 · 산유화";
+          }
           Photo p = active.isEmpty() ? null : active.get(0);
           Bitmap b = p != null ? a.store.load(p, 800) : null;
           a.main.post(
@@ -789,7 +843,10 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
                 progressDialog.dismiss();
                 renderCurrentTab();
                 if (failedUris.isEmpty()) {
-                  Ui.toast(this, finalOk + "장 사진을 담았습니다.");
+                  Ui.toast(
+                      this,
+                      finalOk
+                          + "장 사진을 ‘모든 사진’에 담았습니다. 다른 앨범에 정리하려면 사진 탭에서 사진을 선택한 뒤 ‘앨범에 담기’를 누르거나 새 앨범을 만들어 주세요.");
                 } else {
                   new AlertDialog.Builder(this)
                       .setTitle("일부 사진을 담지 못했어요")

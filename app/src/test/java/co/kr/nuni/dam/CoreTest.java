@@ -233,6 +233,36 @@ public class CoreTest {
   }
 
   @Test
+  public void allPhotosAlbumIsExclusiveWithNamedAlbums() {
+    assertEquals(
+        java.util.Arrays.asList("album_family", "album_trip"),
+        Core.exclusiveAlbumSelection(
+            java.util.Arrays.asList("album_default", "album_family", "album_trip"),
+            "album_default"));
+    assertEquals(
+        java.util.Arrays.asList("album_family", "album_trip"),
+        Core.exclusiveAlbumSelection(
+            java.util.Arrays.asList("album_family", "album_default", "album_trip"),
+            "album_default"));
+    assertEquals(
+        java.util.Collections.singletonList("album_default"),
+        Core.exclusiveAlbumSelection(
+            java.util.Collections.singletonList("album_default"), "album_default"));
+    assertEquals(
+        java.util.Arrays.asList("album_family", "album_trip"),
+        Core.exclusiveAlbumSelection(
+            java.util.Arrays.asList("album_family", "album_trip"), "album_default"));
+    assertEquals(
+        java.util.Collections.emptyList(),
+        Core.exclusiveAlbumSelection(
+            java.util.Arrays.asList("", null, "  "), "album_default"));
+    assertEquals(
+        java.util.Collections.singletonList("album_family"),
+        Core.exclusiveAlbumSelection(
+            java.util.Arrays.asList("album_family", "album_family"), "album_default"));
+  }
+
+  @Test
   public void powerStateTransitionsAndHold() {
     Core.PowerConfig cfg =
         new Core.PowerConfig(false, 1320, 420, true, 300_000L, false, false, false, true);
@@ -403,5 +433,33 @@ public class CoreTest {
     assertEquals(h1, h2);
     assertNotEquals(h1, h3);
     assertNotEquals("1234", h1);
+  }
+
+  @Test
+  public void parseCsvRecordsHandlesSampleCsvAndMultilinePoems() throws Exception {
+    File f = new File("../docs/nunidam_sample.csv");
+    if (!f.exists()) f = new File("docs/nunidam_sample.csv");
+    assertTrue("nunidam_sample.csv should exist", f.isFile());
+    String csv;
+    try (FileInputStream in = new FileInputStream(f)) {
+      csv = new String(Core.read(in, 2 * 1024 * 1024), java.nio.charset.StandardCharsets.UTF_8);
+    }
+    java.util.List<String[]> rows = Core.parseCsvRecords(csv);
+    // 1 header row + 250 data rows = 251 rows
+    assertEquals(251, rows.size());
+    assertEquals("카테고리", rows.get(0)[0].trim());
+    assertEquals("본문", rows.get(0)[1].trim());
+    assertEquals("인생문장", rows.get(1)[0].trim());
+    assertEquals("윌리엄 셰익스피어", rows.get(1)[2].trim());
+    // Check multiline poem row (윤동주 · 서시 at index 51 + 50 = 101)
+    String[] poemRow = rows.get(101);
+    assertEquals("시 한 구절", poemRow[0].trim());
+    assertTrue(poemRow[1].contains("\n"));
+    assertEquals("윤동주", poemRow[2].trim());
+    assertEquals("서시", poemRow[3].trim());
+    // Check last row (Bilbe Verse)
+    String[] lastRow = rows.get(250);
+    assertEquals("Bilbe Verse", lastRow[0].trim());
+    assertEquals("Matthew 11:28", lastRow[3].trim());
   }
 }

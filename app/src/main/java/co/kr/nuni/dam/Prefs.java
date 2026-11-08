@@ -145,6 +145,55 @@ public final class Prefs {
     return raw.getBoolean("studioScheduleEnabled", true);
   }
 
+  public static final String[] DEFAULT_TEXT_CATEGORIES = {
+    "인생문장", "영문 글귀", "시 한 구절", "성경 말씀", "Bilbe Verse"
+  };
+
+  public java.util.List<String> textCategories() {
+    String json = raw.getString("textCategoriesJson", "");
+    java.util.List<String> list = new java.util.ArrayList<>();
+    if (!json.isEmpty()) {
+      try {
+        JSONArray arr = new JSONArray(json);
+        for (int i = 0; i < arr.length(); i++) {
+          String c = arr.optString(i, "").trim();
+          if (!c.isEmpty() && !list.contains(c)) list.add(c);
+        }
+      } catch (Exception ignored) {
+      }
+    }
+    if (list.isEmpty()) {
+      for (String c : DEFAULT_TEXT_CATEGORIES) list.add(c);
+    }
+    return list;
+  }
+
+  public void setTextCategories(java.util.List<String> cats) {
+    JSONArray arr = new JSONArray();
+    java.util.Set<String> seen = new java.util.LinkedHashSet<>();
+    if (cats != null) {
+      for (String c : cats) {
+        if (c == null) continue;
+        String t = c.trim();
+        if (!t.isEmpty() && seen.add(t)) {
+          arr.put(t);
+        }
+      }
+    }
+    raw.edit().putString("textCategoriesJson", arr.toString()).apply();
+  }
+
+  public void ensureTextCategory(String cat) {
+    if (cat == null) return;
+    String t = cat.trim();
+    if (t.isEmpty() || "기타".equals(t)) return;
+    java.util.List<String> list = textCategories();
+    if (!list.contains(t)) {
+      list.add(t);
+      setTextCategories(list);
+    }
+  }
+
   // Power saving / motion settings (default OFF on new install per Section 7.3)
   public boolean motionEnabled() {
     return raw.getBoolean("motionEnabled", false);

@@ -1,8 +1,16 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>누니담 · 사진 보내기</title>
+<link rel="icon" type="image/svg+xml" href="/assets/nuni_icon.svg">
+<link rel="alternate icon" href="/favicon.ico">
 <style>
-*{box-sizing:border-box}body{margin:0;background:#f4f2ec;color:#24332b;font-family:system-ui,-apple-system,sans-serif;line-height:1.6}main{max-width:720px;margin:auto;padding:30px 20px 60px}.brand{font-family:Georgia,serif;font-size:22px;letter-spacing:.12em}.eyebrow{font-size:11px;letter-spacing:.18em;color:#626d65}h1{font-size:30px;letter-spacing:-.04em;margin:28px 0 8px}h2{font-size:19px;margin:0 0 12px}p,small{color:#626d65}p{font-size:14px}.card{background:white;border-radius:22px;padding:24px;margin-top:18px;border:1px solid #cdd4c9}.status{background:#e8ede5;border-radius:12px;padding:14px 18px;font-size:14px;margin-top:22px}.error{background:#f6e4dc;color:#7d3c28}button,.file-button{border:0;border-radius:12px;background:#365b46;color:white;font:inherit;font-size:15px;padding:13px 20px;cursor:pointer;display:inline-block;text-align:center}button.secondary{background:#e8ede5;color:#365b46}button:disabled{opacity:.45}.wide{width:100%}.upload{padding:28px 18px;text-align:center;border:1px dashed #cdd4c9;border-radius:16px;background:#fbfcf8}input[type=file]{display:none}input,select,textarea{width:100%;border:1px solid #cdd4c9;border-radius:10px;font:inherit;color:inherit;background:white;padding:11px;margin:7px 0 16px}textarea{min-height:90px;resize:vertical}progress{width:100%;height:10px;border-radius:5px;accent-color:#365b46;margin:8px 0}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.photo{min-width:0;position:relative}.photo button{padding:0;border-radius:12px;width:100%;background:#e8ede5;overflow:hidden;aspect-ratio:1;display:block}.photo img{width:100%;height:100%;object-fit:cover}.caption{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.star{position:absolute;right:8px;top:5px;color:white;text-shadow:0 1px 5px #000}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:15px}.toolbar h2{margin:0}.toolbar button{padding:8px 12px;font-size:12px}details summary{font-size:19px;font-weight:600;cursor:pointer}details[open] summary{margin-bottom:18px}.hidden{display:none!important}.pagination{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:18px}.pagination button{padding:7px 14px}.footer{text-align:center;font-size:12px;color:#626d65;margin-top:30px}dialog{border:0;border-radius:20px;max-width:92vw;width:420px;padding:25px;color:#24332b}dialog::backdrop{background:#18221da8}.actions{display:flex;gap:8px;margin-top:10px}.actions button{flex:1}.danger{background:#f7e6e0!important;color:#993f29!important}#progressWrap{margin-top:12px}#progressText{white-space:pre-line;font-size:13px;margin:6px 0;line-height:1.4}#currentFile{font-weight:600;font-size:14px;margin-bottom:4px}#fileList{font-size:12px;max-height:160px;overflow:auto;margin-top:8px;padding:8px;background:#fbfcf8;border-radius:8px;border:1px solid #e8ede5}#fileList div{padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ok{color:#365b46}.fail{color:#a64932}#usage{font-size:12px;margin-bottom:15px}@media(max-width:370px){main{padding:20px 12px}.card{padding:18px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-</style></head><body><main><div class="brand">nuni dam</div><div class="eyebrow">A LITTLE GALLERY OF OUR DAYS</div><h1>좋아하는 순간을 더해요.</h1><p>스마트폰의 사진을 누니담 액자에 담아보세요.</p><div id="status" class="status" role="status" aria-live="polite">태블릿에서 연결을 승인해 주세요.</div>
-<div id="content" class="hidden"><section class="card"><h2>새로운 추억 담기</h2><div class="upload"><div style="font-size:36px">＋</div><p>여러 장을 한 번에 선택할 수 있어요.</p><label class="file-button" for="files">사진 선택하기</label><input id="files" type="file" accept="image/*" multiple><p style="font-size:12px">한 장 최대 40 MB · 기기에 맞게 최적화하여 저장</p></div>
+*{box-sizing:border-box}body{margin:0;background:#f5f8fd;color:#0f1e36;font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif;line-height:1.6}main{max-width:720px;margin:auto;padding:30px 20px 60px}.brand{display:flex;align-items:center;gap:8px;margin-bottom:6px}.brand img.brand-icon{width:28px;height:28px;object-fit:contain}.brand img.brand-ko{height:24px;width:auto;object-fit:contain}.brand img.brand-en{height:18px;width:auto;object-fit:contain;opacity:.88}.eyebrow{font-size:11px;letter-spacing:.18em;color:#556987;font-weight:600}h1{font-size:30px;letter-spacing:-.04em;margin:28px 0 8px}h2{font-size:19px;margin:0 0 12px}p,small{color:#556987}p{font-size:14px}.card{background:white;border-radius:22px;padding:24px;margin-top:18px;border:1px solid #d2e1f5}.status{background:#e8f2ff;color:#026ef8;font-weight:600;border-radius:12px;padding:14px 18px;font-size:14px;margin-top:22px}.error{background:#ffeef0;color:#d9383a}button,.file-button{border:0;border-radius:12px;background:#026ef8;color:white;font:inherit;font-size:15px;font-weight:600;padding:13px 20px;cursor:pointer;display:inline-block;text-align:center}button.secondary{background:#e8f2ff;color:#026ef8}button:disabled{opacity:.45}.wide{width:100%}.upload{padding:28px 18px;text-align:center;border:1px dashed #d2e1f5;border-radius:16px;background:#f8fbff}input[type=file]{display:none}input,select,textarea{width:100%;border:1px solid #d2e1f5;border-radius:10px;font:inherit;color:inherit;background:white;padding:11px;margin:7px 0 16px}textarea{min-height:90px;resize:vertical}progress{width:100%;height:10px;border-radius:5px;accent-color:#026ef8;margin:8px 0}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.photo{min-width:0;position:relative}.photo button{padding:0;border-radius:12px;width:100%;background:#e8f2ff;overflow:hidden;aspect-ratio:1;display:block}.photo img{width:100%;height:100%;object-fit:cover}.caption{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.album-badge{font-size:10px;color:#026ef8;background:#e8f2ff;border-radius:6px;padding:1px 6px;display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;font-weight:600}.star{position:absolute;right:8px;top:5px;color:white;text-shadow:0 1px 5px #000}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}.toolbar h2{margin:0}.toolbar button{padding:8px 12px;font-size:12px}.album-bar{display:flex;gap:8px;align-items:center;margin:6px 0 14px}.album-bar select{margin:0;flex:1}.album-bar button{padding:11px 14px;font-size:13px;white-space:nowrap}.album-chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}.album-chip{font-size:12px;background:#e8f2ff;color:#0f1e36;border-radius:999px;padding:4px 10px;display:inline-flex;align-items:center;gap:6px}.album-chip button{background:none;color:#d9383a;padding:0 2px;font-size:13px;border-radius:0}details summary{font-size:19px;font-weight:600;cursor:pointer}details[open] summary{margin-bottom:18px}.hidden{display:none!important}.pagination{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:18px}.pagination button{padding:7px 14px}.footer{text-align:center;font-size:12px;color:#556987;margin-top:30px}dialog{border:0;border-radius:20px;max-width:92vw;width:420px;padding:25px;color:#0f1e36}dialog::backdrop{background:rgba(11,21,40,.72)}.actions{display:flex;gap:8px;margin-top:10px}.actions button{flex:1}.danger{background:#ffeef0!important;color:#d9383a!important}#progressWrap{margin-top:12px}#progressText{white-space:pre-line;font-size:13px;margin:6px 0;line-height:1.4}#currentFile{font-weight:600;font-size:14px;margin-bottom:4px}#fileList{font-size:12px;max-height:160px;overflow:auto;margin-top:8px;padding:8px;background:#f8fbff;border-radius:8px;border:1px solid #e8f2ff}#fileList div{padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ok{color:#026ef8}.fail{color:#d9383a}#usage{font-size:12px;margin-bottom:12px}@media(max-width:370px){main{padding:20px 12px}.card{padding:18px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style></head><body><main><div class="brand"><img class="brand-icon" src="/assets/nuni_icon.svg" alt="nuni icon"><img class="brand-ko" src="/assets/nunidam_kr_logo.png" alt="누니담"></div><div class="eyebrow">A LITTLE GALLERY OF OUR DAYS</div><h1>좋아하는 순간을 더해요.</h1><p>스마트폰의 사진을 원하는 앨범에 골라 담아보세요.</p><div id="status" class="status" role="status" aria-live="polite">태블릿에서 연결을 승인해 주세요.</div>
+<div id="content" class="hidden"><section class="card"><h2>새로운 추억 담기</h2>
+<label for="uploadAlbum" style="font-size:13px;font-weight:600;color:#026ef8">사진을 담을 앨범 선택</label>
+<div class="album-bar">
+  <select id="uploadAlbum" aria-label="사진을 담을 앨범"></select>
+  <button id="newAlbumBtn" type="button" class="secondary">＋ 새 앨범</button>
+</div>
+<div class="upload"><div style="font-size:36px">＋</div><p id="uploadTargetHint">선택한 앨범에 여러 장을 한 번에 담을 수 있어요.</p><label class="file-button" for="files">사진 선택하기</label><input id="files" type="file" accept="image/*" multiple><p style="font-size:12px">한 장 최대 40 MB · 기기에 맞게 최적화하여 저장</p></div>
 <div id="progressWrap" class="hidden">
   <div id="currentFile"></div>
   <progress id="progress" max="100" value="0"></progress>
@@ -10,22 +18,89 @@
   <div id="fileList"></div>
 </div>
 <button id="retry" class="secondary hidden">실패한 사진만 다시 보내기</button></section>
-<section class="card"><div class="toolbar"><h2>액자에 담긴 사진</h2><button id="refresh" class="secondary">새로고침</button></div><div id="usage"></div><div id="photos" class="grid"></div><p id="empty" class="hidden">첫 번째 사진을 담아보세요.</p><div class="pagination"><button id="prev" class="secondary">이전</button><small id="page"></small><button id="next" class="secondary">다음</button></div><small>사진을 눌러 문구·즐겨찾기를 바꿀 수 있습니다.</small></section>
+<section class="card"><div class="toolbar"><h2>액자에 담긴 사진</h2><button id="refresh" class="secondary">새로고침</button></div>
+<div class="album-bar">
+  <select id="filterAlbum" aria-label="앨범별 사진 보기"></select>
+</div>
+<div id="usage"></div><div id="photos" class="grid"></div><p id="empty" class="hidden">이 앨범에 담긴 사진이 없습니다.</p><div class="pagination"><button id="prev" class="secondary">이전</button><small id="page"></small><button id="next" class="secondary">다음</button></div><small>사진을 눌러 앨범 이동·문구·즐겨찾기를 바꿀 수 있습니다.</small></section>
 <details class="card"><summary>액자 분위기 바꾸기</summary><form id="settings"><label for="mode">화면 구성</label><select id="mode"><option value="PHOTO">사진 액자</option><option value="MAGAZINE">매거진</option><option value="BOARD">생활 보드</option></select><label for="theme">색감</label><select id="theme"><option value="MILK">밀크</option><option value="INK">잉크</option><option value="SAGE">세이지</option></select><label for="quoteKind">표시할 명언 · 시</label><select id="quoteKind"><option value="ALL">명언과 시 모두</option><option value="QUOTE">명언 · 짧은 문구만</option><option value="POEM">시(詩)만</option><option value="NONE">표시 안 함</option></select><label for="quoteCycle">명언 · 시 변경 주기</label><select id="quoteCycle"><option value="PHOTO">사진이 바뀔 때마다</option><option value="MINUTES_15">15분마다</option><option value="HOUR">1시간마다</option><option value="DAY">하루에 한 번</option></select><label for="seconds">사진 전환 간격 · 초</label><input id="seconds" type="number" min="10" max="3600" required><label for="brightness">낮 밝기 · %</label><input id="brightness" type="number" min="10" max="100" required><label for="phrase">고정 한마디 (비워두면 명언·시 모음 자동 표시)</label><textarea id="phrase" maxlength="400"></textarea><button type="submit" class="wide">분위기 저장하기</button></form></details></div>
 <div class="footer">같은 네트워크 안에서 직접 연결합니다.<br>전송을 마치면 태블릿에서 이 화면을 닫아주세요.</div>
-<dialog id="edit"><h2>이 순간의 기록</h2><p id="editName"></p><textarea id="editNote" maxlength="400"></textarea><div class="actions"><button id="saveNote">기록 저장</button><button id="favourite" class="secondary">즐겨찾기</button></div><div class="actions"><button id="trash" class="danger">휴지통으로</button><button id="closeEdit" class="secondary">닫기</button></div></dialog>
+<dialog id="edit"><h2>이 순간의 기록</h2><p id="editName"></p>
+<label for="editAlbumSelect" style="font-size:13px;font-weight:600;color:#026ef8">소속 앨범</label>
+<div id="editAlbumChips" class="album-chips"></div>
+<div class="album-bar">
+  <select id="editAlbumSelect"></select>
+  <button id="addPhotoAlbumBtn" type="button" class="secondary">앨범에 추가</button>
+</div>
+<label for="editNote" style="font-size:13px;font-weight:600;color:#026ef8">사진 문구 · 기록</label>
+<textarea id="editNote" maxlength="400" placeholder="사진과 함께 표시할 한마디를 남겨보세요"></textarea><div class="actions"><button id="saveNote">기록 저장</button><button id="favourite" class="secondary">즐겨찾기</button></div><div class="actions"><button id="trash" class="danger">휴지통으로</button><button id="closeEdit" class="secondary">닫기</button></div></dialog>
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-let token=location.hash.slice(1),photos=[],page=0,failed=[],busy=false,selected=null,urls=[],renderVersion=0,pairAttempts=0;
+let token=location.hash.slice(1),photos=[],albums=[],page=0,failed=[],busy=false,selected=null,urls=[],renderVersion=0,pairAttempts=0;
 history.replaceState(null,'',location.pathname);
 function status(text,error=false){$('status').textContent=text;$('status').classList.toggle('error',error);}
 function fmtSize(n){if(n<1024)return n+' B';if(n<1048576)return (n/1024).toFixed(1)+' KB';return (n/1048576).toFixed(1)+' MB';}
 async function api(path,options={}){const r=await fetch(path,{...options,headers:{Authorization:'Bearer '+token,...options.headers},cache:'no-store'});const b=await r.json();if(!r.ok)throw Error(b.error||'요청을 완료하지 못했습니다.');return b;}
 const post=(path,b)=>api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});
-async function pair(){if(!/^[a-f0-9]{48}$/.test(token)){status('태블릿의 QR 코드를 스캔해 주세요.',true);return;}try{const s=await api('/api/status');pairAttempts=0;if(s.approved){status('연결되었습니다. 사진을 담아보세요.');$('content').classList.remove('hidden');await Promise.all([loadPhotos(),loadSettings()]);}else setTimeout(pair,1500);}catch(e){pairAttempts++;status(e.message+' (재시도 중…)',true);if(pairAttempts<20)setTimeout(pair,2000+pairAttempts*500);else status(e.message,true);}}
-async function loadPhotos(){const r=await api('/api/photos');photos=r.photos;page=Math.min(page,Math.max(0,Math.ceil(photos.length/24)-1));$('usage').textContent=photos.length+'장 · '+(r.used/1048576).toFixed(1)+' / '+Math.round(r.quota/1048576)+' MB';render();}
-function render(){const version=++renderVersion;urls.forEach(URL.revokeObjectURL);urls=[];$('photos').replaceChildren();$('empty').classList.toggle('hidden',photos.length>0);const queue=[];photos.slice(page*24,page*24+24).forEach(p=>{const item=document.createElement('div');item.className='photo';const button=document.createElement('button');button.type='button';button.setAttribute('aria-label',p.note||p.name);const img=document.createElement('img');img.alt=p.note||p.name;button.appendChild(img);button.onclick=()=>edit(p);item.appendChild(button);if(p.favourite){const star=document.createElement('span');star.className='star';star.textContent='★';item.appendChild(star);}const cap=document.createElement('div');cap.className='caption';cap.textContent=p.note||p.name;item.appendChild(cap);$('photos').appendChild(item);queue.push(async()=>{try{const r=await fetch('/api/image?id='+encodeURIComponent(p.id),{headers:{Authorization:'Bearer '+token},cache:'no-store'});if(!r.ok)throw Error();const blob=await r.blob();if(!item.isConnected||version!==renderVersion)return;const url=URL.createObjectURL(blob);urls.push(url);img.src=url;}catch{img.alt='미리보기를 불러오지 못했어요';}});});async function consume(){while(queue.length&&version===renderVersion)await queue.shift()();}consume();consume();$('page').textContent=(page+1)+' / '+Math.max(1,Math.ceil(photos.length/24));$('prev').disabled=page===0;$('next').disabled=(page+1)*24>=photos.length;}
+async function pair(){if(!/^[a-f0-9]{48}$/.test(token)){status('태블릿의 QR 코드를 스캔해 주세요.',true);return;}try{const s=await api('/api/status');pairAttempts=0;if(s.approved){status('연결되었습니다. 앨범을 선택해 사진을 담아보세요.');$('content').classList.remove('hidden');await Promise.all([loadPhotos(),loadSettings()]);}else setTimeout(pair,1500);}catch(e){pairAttempts++;status(e.message+' (재시도 중…)',true);if(pairAttempts<20)setTimeout(pair,2000+pairAttempts*500);else status(e.message,true);}}
+
+function syncAlbumSelectors(){
+  const up=$('uploadAlbum'),fl=$('filterAlbum'),ed=$('editAlbumSelect');
+  const prevUp=up.value||'album_default',prevFl=fl.value||'ALL';
+  up.replaceChildren();fl.replaceChildren();ed.replaceChildren();
+  const allOpt=document.createElement('option');
+  allOpt.value='ALL';allOpt.textContent='전체 사진 보기';
+  fl.appendChild(allOpt);
+  albums.forEach(a=>{
+    const o1=document.createElement('option');
+    o1.value=a.id;o1.textContent=a.name+' ('+a.photoCount+'장)';
+    up.appendChild(o1);
+    const o2=document.createElement('option');
+    o2.value=a.id;o2.textContent='앨범: '+a.name+' ('+a.photoCount+'장)';
+    fl.appendChild(o2);
+    const o3=document.createElement('option');
+    o3.value=a.id;o3.textContent=a.name;
+    ed.appendChild(o3);
+  });
+  if(albums.some(a=>a.id===prevUp))up.value=prevUp;
+  if(prevFl==='ALL'||albums.some(a=>a.id===prevFl))fl.value=prevFl;
+  updateUploadHint();
+}
+
+function updateUploadHint(){
+  const sel=albums.find(a=>a.id===$('uploadAlbum').value);
+  $('uploadTargetHint').textContent=sel?`‘${sel.name}’ 앨범에 여러 장을 한 번에 담을 수 있어요.`:'여러 장을 한 번에 선택할 수 있어요.';
+}
+$('uploadAlbum').onchange=updateUploadHint;
+$('filterAlbum').onchange=()=>{page=0;loadPhotos().catch(e=>status(e.message,true));};
+
+$('newAlbumBtn').onclick=async()=>{
+  const name=prompt('새로 만들 앨범 이름을 입력하세요 (예: 가족 여행, 손주 사진)');
+  if(!name||!name.trim())return;
+  try{
+    const res=await post('/api/albums',{name:name.trim()});
+    await loadPhotos();
+    if(res.album&&res.album.id){
+      $('uploadAlbum').value=res.album.id;
+      updateUploadHint();
+      status(`‘${res.album.name}’ 앨범을 만들었습니다. 이제 사진을 선택해 담아보세요.`);
+    }
+  }catch(e){status(e.message,true);}
+};
+
+async function loadPhotos(){
+  const filterId=$('filterAlbum').value||'ALL';
+  const q=filterId&&filterId!=='ALL'?'?albumId='+encodeURIComponent(filterId):'';
+  const r=await api('/api/photos'+q);
+  albums=r.albums||[];
+  syncAlbumSelectors();
+  photos=r.photos||[];
+  page=Math.min(page,Math.max(0,Math.ceil(photos.length/24)-1));
+  $('usage').textContent=photos.length+'장 표시 중 · 저장공간 '+(r.used/1048576).toFixed(1)+' / '+Math.round(r.quota/1048576)+' MB';
+  render();
+}
+function render(){const version=++renderVersion;urls.forEach(URL.revokeObjectURL);urls=[];$('photos').replaceChildren();$('empty').classList.toggle('hidden',photos.length>0);const queue=[];photos.slice(page*24,page*24+24).forEach(p=>{const item=document.createElement('div');item.className='photo';const button=document.createElement('button');button.type='button';button.setAttribute('aria-label',p.note||p.name);const img=document.createElement('img');img.alt=p.note||p.name;button.appendChild(img);button.onclick=()=>edit(p);item.appendChild(button);if(p.favourite){const star=document.createElement('span');star.className='star';star.textContent='★';item.appendChild(star);}const cap=document.createElement('div');cap.className='caption';cap.textContent=p.note||p.name;item.appendChild(cap);if(p.albumNames&&p.albumNames.length){const badge=document.createElement('div');badge.className='album-badge';badge.textContent=p.albumNames.join(', ');item.appendChild(badge);}$('photos').appendChild(item);queue.push(async()=>{try{const r=await fetch('/api/image?id='+encodeURIComponent(p.id),{headers:{Authorization:'Bearer '+token},cache:'no-store'});if(!r.ok)throw Error();const blob=await r.blob();if(!item.isConnected||version!==renderVersion)return;const url=URL.createObjectURL(blob);urls.push(url);img.src=url;}catch{img.alt='미리보기를 불러오지 못했어요';}});});async function consume(){while(queue.length&&version===renderVersion)await queue.shift()();}consume();consume();$('page').textContent=(page+1)+' / '+Math.max(1,Math.ceil(photos.length/24));$('prev').disabled=page===0;$('next').disabled=(page+1)*24>=photos.length;}
 $('prev').onclick=()=>{page--;render();};$('next').onclick=()=>{page++;render();};$('refresh').onclick=()=>loadPhotos().catch(e=>status(e.message,true));
 
 function updateFileStatus(listEl, index, name, state, detail){
@@ -36,13 +111,13 @@ function updateFileStatus(listEl, index, name, state, detail){
   row.textContent=icon+(index+1)+'. '+name+(detail?'  '+detail:'');
 }
 
-function upload(file,i,total,listEl){return new Promise((resolve,reject)=>{if(file.size>40*1024*1024){reject(Error('40 MB를 초과한 파일입니다.'));return;}const x=new XMLHttpRequest();x.open('POST','/api/upload?name='+encodeURIComponent(file.name));x.setRequestHeader('Authorization','Bearer '+token);x.setRequestHeader('Content-Type',file.type||'application/octet-stream');x.timeout=300000;
+function upload(file,i,total,listEl,albumId){return new Promise((resolve,reject)=>{if(file.size>40*1024*1024){reject(Error('40 MB를 초과한 파일입니다.'));return;}const x=new XMLHttpRequest();const q='?name='+encodeURIComponent(file.name)+(albumId?'&albumId='+encodeURIComponent(albumId):'');x.open('POST','/api/upload'+q);x.setRequestHeader('Authorization','Bearer '+token);x.setRequestHeader('Content-Type',file.type||'application/octet-stream');x.timeout=300000;
 x.upload.onprogress=e=>{
   const pct=e.lengthComputable?Math.round(e.loaded/e.total*100):0;
   const overall=Math.round(((i + (e.lengthComputable?e.loaded/e.total:0))/total)*100);
   $('progress').value=overall;
   $('currentFile').textContent=`${i+1} / ${total} · ${file.name}`;
-  $('progressText').textContent=`현재 파일 ${pct}%  (${fmtSize(e.loaded)} / ${fmtSize(e.total||file.size)})\n전첰 진행 ${overall}%`;
+  $('progressText').textContent=`현재 파일 ${pct}%  (${fmtSize(e.loaded)} / ${fmtSize(e.total||file.size)})\n전체 진행 ${overall}%`;
   updateFileStatus(listEl,i,file.name,'uploading',pct+'%');
 };
 x.onload=()=>{try{const b=JSON.parse(x.responseText);if(x.status>=200&&x.status<300){updateFileStatus(listEl,i,file.name,'ok','완료');resolve(b);}else{updateFileStatus(listEl,i,file.name,'fail',b.error||'실패');reject(Error(b.error||'전송 실패'));}}catch{updateFileStatus(listEl,i,file.name,'fail','응답 오류');reject(Error('응답을 읽지 못했습니다.'));}};
@@ -51,13 +126,15 @@ x.ontimeout=()=>{updateFileStatus(listEl,i,file.name,'fail','시간 초과');rej
 x.send(file);});}
 
 async function send(files){if(busy||!files.length)return;busy=true;failed=[];$('files').disabled=true;$('retry').classList.add('hidden');
+const targetAlbumId=$('uploadAlbum').value||'album_default';
+const targetAlbum=albums.find(a=>a.id===targetAlbumId);
 const wrap=$('progressWrap');wrap.classList.remove('hidden');$('progress').value=0;$('currentFile').textContent='';$('progressText').textContent='';
 const listEl=$('fileList');listEl.innerHTML='';
 files.forEach((f,i)=>updateFileStatus(listEl,i,f.name,'pending',''));
 let ok=0,last='';
-for(let i=0;i<files.length;i++){try{await upload(files[i],i,files.length,listEl);ok++;await new Promise(r=>setTimeout(r,250));}catch(e){failed.push(files[i]);last=e.message;}}
+for(let i=0;i<files.length;i++){try{await upload(files[i],i,files.length,listEl,targetAlbumId);ok++;await new Promise(r=>setTimeout(r,250));}catch(e){failed.push(files[i]);last=e.message;}}
 $('progress').value=100;
-$('currentFile').textContent='전송 완료';
+$('currentFile').textContent='전송 완료'+(targetAlbum?` · ${targetAlbum.name}`:'');
 $('progressText').textContent=`${ok}장 성공`+(failed.length?` · ${failed.length}장 실패\n${last}`:' · 모두 성공했습니다.');
 $('retry').classList.toggle('hidden',failed.length===0);
 $('files').disabled=false;$('files').value='';busy=false;
@@ -65,8 +142,49 @@ try{await loadPhotos();}catch(e){status(e.message,true);}}
 
 $('files').onchange=e=>send(Array.from(e.target.files));
 $('retry').onclick=()=>send([...failed]);
-function edit(p){selected=p;$('editName').textContent=p.name;$('editNote').value=p.note;$('favourite').textContent=p.favourite?'★ 즐겨찾기 해제':'☆ 즐겨찾기';typeof $('edit').showModal==='function'?$('edit').showModal():$('edit').setAttribute('open','');
+
+function renderEditAlbums(p){
+  const box=$('editAlbumChips');
+  box.replaceChildren();
+  const ids=p.albumIds||['album_default'];
+  ids.forEach(aid=>{
+    const al=albums.find(a=>a.id===aid);
+    if(!al)return;
+    const chip=document.createElement('span');
+    chip.className='album-chip';
+    chip.textContent=al.name;
+    if(aid!=='album_default'){
+      const rm=document.createElement('button');
+      rm.type='button';
+      rm.textContent='✕';
+      rm.title='이 앨범에서 빼기';
+      rm.onclick=async()=>{
+        try{
+          await post('/api/photo',{id:p.id,action:'album',albumId:aid,add:false});
+          await loadPhotos();
+          const updated=photos.find(x=>x.id===p.id);
+          if(updated){selected=updated;renderEditAlbums(updated);}
+        }catch(e){status(e.message,true);}
+      };
+      chip.appendChild(rm);
+    }
+    box.appendChild(chip);
+  });
 }
+
+function edit(p){selected=p;$('editName').textContent=p.name;$('editNote').value=p.note;$('favourite').textContent=p.favourite?'★ 즐겨찾기 해제':'☆ 즐겨찾기';renderEditAlbums(p);typeof $('edit').showModal==='function'?$('edit').showModal():$('edit').setAttribute('open','');
+}
+$('addPhotoAlbumBtn').onclick=async()=>{
+  if(!selected)return;
+  const aid=$('editAlbumSelect').value;
+  if(!aid)return;
+  try{
+    await post('/api/photo',{id:selected.id,action:'album',albumId:aid,add:true});
+    await loadPhotos();
+    const updated=photos.find(x=>x.id===selected.id);
+    if(updated){selected=updated;renderEditAlbums(updated);}
+  }catch(e){status(e.message,true);}
+};
 function closeEdit(){typeof $('edit').close==='function'?$('edit').close():$('edit').removeAttribute('open');}
 $('closeEdit').onclick=closeEdit;
 $('saveNote').onclick=async()=>{try{await post('/api/photo',{id:selected.id,action:'note',note:$('editNote').value});closeEdit();await loadPhotos();}catch(e){status(e.message,true);}};

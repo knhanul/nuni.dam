@@ -3,7 +3,7 @@ package co.kr.nuni.dam;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
-import java.util.Locale;
+import java.util.*;
 
 /** Pure Java policy and geometry; no Android framework required for tests. */
 public final class Core {
@@ -196,6 +196,19 @@ public final class Core {
     if ("POEM".equals(filter)) return e.isPoem();
     if ("QUOTE".equals(filter)) return !e.isPoem();
     return true;
+  }
+
+  /** The virtual all-photos album is exclusive with named albums in a playback scene. */
+  public static List<String> exclusiveAlbumSelection(
+      Collection<String> requestedIds, String allPhotosId) {
+    LinkedHashSet<String> selected = new LinkedHashSet<>();
+    if (requestedIds != null)
+      for (String id : requestedIds)
+        if (id != null && !id.trim().isEmpty()) selected.add(id.trim());
+    boolean allPhotosSelected = allPhotosId != null && selected.remove(allPhotosId);
+    // If a legacy/malfunctioning client submits both, preserve the explicitly chosen named albums.
+    if (selected.isEmpty() && allPhotosSelected) selected.add(allPhotosId);
+    return new ArrayList<>(selected);
   }
 
   public static int pickQuoteIndex(
@@ -808,5 +821,63 @@ public final class Core {
       y = clamp(y, Math.max(0, b - h), Math.min(t, 1 - h));
     }
     return new Crop(x, y, w, h, false);
+  }
+
+  /**
+   * Parses RFC-4180 CSV text (supporting UTF-8 BOM, quoted multiline fields, and "" escaped quotes)
+   * into a list of string arrays.
+   */
+  public static java.util.List<String[]> parseCsvRecords(String text) {
+    java.util.List<String[]> records = new java.util.ArrayList<>();
+    if (text == null || text.isEmpty()) return records;
+    int i = 0;
+    if (text.charAt(0) == '\uFEFF') i = 1;
+    int n = text.length();
+    java.util.List<String> row = new java.util.ArrayList<>();
+    StringBuilder cell = new StringBuilder();
+    boolean inQuotes = false;
+    while (i < n) {
+      char ch = text.charAt(i);
+      if (inQuotes) {
+        if (ch == '"') {
+          if (i + 1 < n && text.charAt(i + 1) == '"') {
+            cell.append('"');
+            i += 2;
+            continue;
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          cell.append(ch);
+        }
+      } else {
+        if (ch == '"' && cell.length() == 0) {
+          inQuotes = true;
+        } else if (ch == ',') {
+          row.add(cell.toString());
+          cell.setLength(0);
+        } else if (ch == '\r' || ch == '\n') {
+          if (ch == '\r' && i + 1 < n && text.charAt(i + 1) == '\n') {
+            i++;
+          }
+          row.add(cell.toString());
+          cell.setLength(0);
+          if (row.size() > 1 || (row.size() == 1 && !row.get(0).trim().isEmpty())) {
+            records.add(row.toArray(new String[0]));
+          }
+          row = new java.util.ArrayList<>();
+        } else {
+          cell.append(ch);
+        }
+      }
+      i++;
+    }
+    if (cell.length() > 0 || !row.isEmpty()) {
+      row.add(cell.toString());
+      if (row.size() > 1 || (row.size() == 1 && !row.get(0).trim().isEmpty())) {
+        records.add(row.toArray(new String[0]));
+      }
+    }
+    return records;
   }
 }

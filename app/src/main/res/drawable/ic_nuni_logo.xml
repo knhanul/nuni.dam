@@ -1,0 +1,38 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="72dp"
+    android:height="32dp"
+    android:viewportWidth="1880"
+    android:viewportHeight="880">
+  <!-- Official nuni_logo.svg wordmark -->
+  <path
+      android:fillColor="#00000000"
+      android:pathData="M167,776 V545.5 A164.5,164.5 0 0,1 496,545.5 V776"
+      android:strokeWidth="170"
+      android:strokeColor="#026EF8"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round" />
+  <path
+      android:fillColor="#00000000"
+      android:pathData="M689,381 V624 A157,157 0 0,0 1003,624 V381"
+      android:strokeWidth="170"
+      android:strokeColor="#026EF8"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round" />
+  <path
+      android:fillColor="#00000000"
+      android:pathData="M1197,776 V545.5 A159.5,159.5 0 0,1 1516,545.5 V776"
+      android:strokeWidth="170"
+      android:strokeColor="#026EF8"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round" />
+  <path
+      android:fillColor="#00000000"
+      android:pathData="M1703.5,381 V776"
+      android:strokeWidth="170"
+      android:strokeColor="#026EF8"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round" />
+  <path
+      android:fillColor="#1E9CFF"
+      android:pathData="M1703.5,196 m-88.8,0 a88.8,88.8 0 1,0 177.6,0 a88.8,88.8 0 1,0 -177.6,0" />
+</vector>

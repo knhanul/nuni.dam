@@ -4,34 +4,38 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>누니담 스튜디오 · NuniDam Studio</title>
+<link rel="icon" type="image/svg+xml" href="/assets/nuni_icon.svg">
+<link rel="alternate icon" href="/favicon.ico">
 <style>
 :root {
-  --bg: #f4f2ec;
+  --bg: #f5f8fd;
   --surface: #ffffff;
-  --subtle: #e8ede5;
-  --ink: #24332b;
-  --muted: #626d65;
-  --primary: #365b46;
+  --subtle: #e8f2ff;
+  --ink: #0f1e36;
+  --muted: #556987;
+  --primary: #026ef8;
+  --primary-glow: #1e9cff;
   --on-primary: #ffffff;
-  --outline: #cdd4c9;
-  --danger: #a64932;
-  --danger-bg: #f7e6e0;
-  --warn-bg: #fdf3dc;
-  --warn-ink: #7a5211;
+  --outline: #d2e1f5;
+  --danger: #d9383a;
+  --danger-bg: #ffeef0;
+  --warn-bg: #fff4db;
+  --warn-ink: #8a5300;
 }
 [data-theme="dark"] {
-  --bg: #18221d;
-  --surface: #212e27;
-  --subtle: #2b3b32;
-  --ink: #edefe8;
-  --muted: #b5bfb4;
-  --primary: #578b6d;
+  --bg: #0b1528;
+  --surface: #13223d;
+  --subtle: #1c3156;
+  --ink: #edf4ff;
+  --muted: #9bb0d1;
+  --primary: #3296ff;
+  --primary-glow: #7ad2ff;
   --on-primary: #ffffff;
-  --outline: #384a40;
-  --danger: #d86c51;
-  --danger-bg: #3d241e;
-  --warn-bg: #3b311a;
-  --warn-ink: #f0cf85;
+  --outline: #294370;
+  --danger: #ff6b6b;
+  --danger-bg: #3b1c22;
+  --warn-bg: #3b2e16;
+  --warn-ink: #ffd479;
 }
 * { box-sizing: border-box; }
 body {
@@ -42,6 +46,55 @@ body {
   line-height: 1.55;
 }
 .hidden { display: none !important; }
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+  background: rgba(15, 30, 54, .42);
+}
+.modal-card {
+  width: min(100%, 460px);
+  max-height: min(720px, calc(100dvh - 48px));
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid var(--outline);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 18px 48px rgba(15, 30, 54, .22);
+}
+.album-upload-disabled {
+  opacity: .56;
+  border-style: solid;
+  cursor: not-allowed;
+}
+.album-upload-disabled label {
+  pointer-events: none;
+}
+.upload-lock {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(11, 21, 40, .48);
+}
+.upload-lock-card {
+  width: min(520px, 100%);
+  padding: 24px;
+  border: 1px solid var(--outline);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 18px 48px rgba(11, 21, 40, .28);
+}
+.upload-lock progress { width: 100%; height: 14px; margin: 14px 0 8px; accent-color: var(--primary); }
 button, .btn {
   border: 1px solid transparent;
   border-radius: 12px;
@@ -112,9 +165,13 @@ label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); 
   top: 0;
   height: 100vh;
 }
-.brand-box { padding: 4px 10px 16px; border-bottom: 1px solid var(--outline); margin-bottom: 8px; }
-.brand-logo { font-family: Georgia, serif; font-size: 21px; font-weight: 700; letter-spacing: .1em; color: var(--primary); }
-.brand-sub { font-size: 11px; color: var(--muted); letter-spacing: .08em; }
+.brand-box { padding: 4px 8px 16px; border-bottom: 1px solid var(--outline); margin-bottom: 8px; }
+.brand-lockup { display: flex; align-items: center; gap: 7px; flex-wrap: nowrap; }
+.brand-lockup img.brand-icon { width: 28px; height: 28px; object-fit: contain; flex-shrink: 0; }
+.brand-lockup img.brand-ko { height: 24px; width: auto; object-fit: contain; }
+.brand-lockup img.brand-en { height: 18px; width: auto; object-fit: contain; opacity: .9; }
+.brand-logo { font-size: 21px; font-weight: 800; letter-spacing: .04em; color: var(--primary); display: flex; align-items: center; gap: 6px; }
+.brand-sub { font-size: 11px; color: var(--muted); letter-spacing: .08em; margin-top: 6px; font-weight: 600; }
 .nav-btn {
   width: 100%;
   justify-content: flex-start;
@@ -216,7 +273,7 @@ label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); 
 .photo-tile .meta { padding: 6px 8px; font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--surface); }
 .photo-tile .badge {
   position: absolute; top: 6px; left: 6px;
-  background: rgba(24,34,29,.78); color: #fff;
+  background: rgba(15,30,54,.82); color: #fff;
   font-size: 11px; padding: 2px 7px; border-radius: 8px;
 }
 .dropzone {
@@ -237,12 +294,12 @@ label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); 
   gap: 10px;
 }
 .preview-frame {
-  border: 6px solid #2b332e;
+  border: 6px solid #162642;
   border-radius: 16px;
   overflow: hidden;
   position: relative;
-  background: #f4f2ec;
-  color: #24332b;
+  background: #f5f8fd;
+  color: #0f1e36;
   transition: width .2s, height .2s;
   display: flex;
 }
@@ -258,6 +315,57 @@ label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); 
   overflow: hidden;
   background: var(--surface);
 }
+.text-grid-wrap {
+  border: 1px solid var(--outline);
+  border-radius: 14px;
+  overflow: auto;
+  max-height: 560px;
+  background: var(--surface);
+}
+.text-grid-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.text-grid-table th, .text-grid-table td {
+  border-bottom: 1px solid var(--outline);
+  padding: 9px 10px;
+  text-align: left;
+  vertical-align: middle;
+}
+.text-grid-table th {
+  background: var(--subtle);
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--ink);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  white-space: nowrap;
+}
+.text-grid-table tbody tr {
+  cursor: pointer;
+  transition: background .1s;
+}
+.text-grid-table tbody tr:hover {
+  background: var(--bg);
+}
+.text-grid-table tbody tr.selected {
+  background: var(--subtle);
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+.row-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.row-badge.saved { background: var(--subtle); color: var(--muted); }
+.row-badge.new { background: #dff0d8; color: #255625; }
+.row-badge.modified { background: var(--warn-bg); color: var(--warn-ink); }
 .week-cell {
   border-right: 1px solid var(--outline);
   border-bottom: 1px solid var(--outline);
@@ -288,7 +396,7 @@ label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); 
 /* Auth Modal */
 .auth-overlay {
   position: fixed; inset: 0;
-  background: rgba(24,34,29,.82);
+  background: rgba(11,21,40,.82);
   display: flex; align-items: center; justify-content: center;
   padding: 16px; z-index: 100;
 }
@@ -329,7 +437,10 @@ label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); 
 <!-- Authentication Overlay -->
 <div id="authOverlay" class="auth-overlay hidden">
   <div class="auth-card">
-    <div class="brand-logo">nuni dam</div>
+    <div class="brand-lockup" style="margin-bottom:8px">
+      <img class="brand-icon" src="/assets/nuni_icon.svg" alt="nuni icon">
+      <img class="brand-ko" src="/assets/nunidam_kr_logo.png" alt="누니담">
+    </div>
     <h2 style="margin:8px 0 6px">누니담 스튜디오 연결</h2>
     <p style="font-size:13.5px;color:var(--muted);margin:0 0 16px">태블릿의 <b>설정 → 원격 관리</b> 화면에 표시된 6자리 일회용 페어링 코드를 입력하세요.</p>
     <form id="authForm">
@@ -347,20 +458,24 @@ label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); 
   </div>
 </div>
 
-<div class="app-shell">
+<div class="app-shell" id="studioShell">
   <aside class="sidebar" aria-label="스튜디오 메인 메뉴">
     <div class="brand-box">
-      <div class="brand-logo">nuni dam</div>
+      <div class="brand-lockup">
+        <img class="brand-icon" src="/assets/nuni_icon.svg" alt="nuni icon">
+        <img class="brand-ko" src="/assets/nunidam_kr_logo.png" alt="누니담">
+      </div>
       <div class="brand-sub">OFFLINE SMART FRAME STUDIO</div>
     </div>
     <button class="nav-btn active" data-tab="dashboard">1. 대시보드</button>
     <button class="nav-btn" data-tab="albums">2. 앨범 · 사진</button>
-    <button class="nav-btn" data-tab="texts">3. 명언 · 시 · 글귀</button>
+    <button class="nav-btn" data-tab="texts">3. 글귀 라이브러리</button>
     <button class="nav-btn" data-tab="scenes">4. 재생 장면(Scene)</button>
     <button class="nav-btn" data-tab="schedules">5. 주간 편성표</button>
     <button class="nav-btn" data-tab="device">6. 기기 · 백업</button>
     <div class="sidebar-footer">
       <button id="themeToggleBtn" class="secondary" type="button">다크 / 라이트 전환</button>
+      <button id="sidebarExitBtn" class="danger" type="button">종료</button>
     </div>
   </aside>
 
@@ -428,8 +543,8 @@ label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); 
             <h2>빠른 시작 안내</h2>
             <p style="font-size:14px;color:var(--muted);margin-bottom:12px">
               1. <b>앨범 · 사진</b>에서 앨범을 만들고 PC·스마트폰 사진을 드래그하여 업로드합니다.<br>
-              2. <b>명언 · 시 · 글귀</b>에서 사진과 함께 띄울 문장과 글귀 모음을 구성합니다.<br>
-              3. <b>재생 장면(Scene)</b>에서 앨범 + 글귀 모음 + 화면 레이아웃을 조합하고 가로·세로 미리보기를 확인합니다.<br>
+              2. <b>글귀 라이브러리</b>에서 사진과 함께 띄울 문장을 카테고리별로 등록합니다.<br>
+              3. <b>재생 장면(Scene)</b>에서 앨범 + 글귀 카테고리 + 화면 레이아웃을 조합하고 가로·세로 미리보기를 확인합니다.<br>
               4. <b>주간 편성표</b>에서 요일별·시간대별 재생 장면을 지정한 뒤 우측 상단 <b>‘태블릿에 적용’</b>을 누르면 즉시 반영됩니다.
             </p>
             <div id="dashPublishInfo" style="font-size:13px;color:var(--primary);font-weight:600"></div>
@@ -442,36 +557,34 @@ label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); 
         <div class="page-header">
           <div>
             <h1>앨범 및 사진 관리</h1>
-            <p>한 장의 사진을 중복 저장 없이 여러 앨범에 담고 순서를 정리합니다.</p>
+            <p>‘모든 사진’은 보관함 전체를 자동으로 보여주는 기본 보기입니다. 사진을 넣으려면 다른 앨범을 선택하거나 새 앨범을 만든 뒤 추가하세요.</p>
           </div>
           <div style="display:flex;gap:8px">
             <button id="newAlbumBtn" type="button">+ 새 앨범 만들기</button>
           </div>
         </div>
 
-        <div class="two-col">
-          <div class="card">
-            <h2>앨범 목록</h2>
-            <div id="albumListBox" style="display:flex;flex-direction:column;gap:8px"></div>
-          </div>
-
-          <div>
+        <div class="two-col" style="grid-template-columns: 380px 1fr;">
+          <!-- LEFT: Selected Album Detail Editor & Photo Upload -->
+          <div style="position:sticky;top:76px">
             <div class="card">
-              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-                <h2 id="currentAlbumTitle" style="margin:0">앨범 설정</h2>
-                <div style="display:flex;gap:6px">
-                  <button id="cloneAlbumBtn" class="secondary" type="button">앨범 복제</button>
-                  <button id="deleteAlbumBtn" class="danger" type="button">앨범 삭제</button>
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">
+                <h2 id="currentAlbumTitle" style="margin:0">선택한 앨범 상세 · 설정</h2>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span id="albumDefaultBadge" class="row-badge saved">앨범 선택됨</span>
+                  <button id="leftNewAlbumBtn" class="secondary" type="button" style="min-height:32px;padding:4px 10px;font-size:12px">+ 새 앨범 작성</button>
                 </div>
               </div>
-              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:8px">
-                <div>
+              <p id="albumEditorSub" style="font-size:12.5px;color:var(--muted);margin:0 0 10px">‘모든 사진’은 이름을 바꾸거나 사진을 직접 추가하는 앨범이 아닙니다. 사진을 담으려면 다른 앨범을 선택하거나 새 앨범을 만들어 주세요.</p>
+              <input id="albumIdIn" type="hidden">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div style="grid-column: 1 / -1">
                   <label for="albumNameIn">앨범 이름</label>
-                  <input id="albumNameIn" type="text">
+                  <input id="albumNameIn" type="text" placeholder="예: 가족 여행, 손주 사진, 봄날 풍경">
                 </div>
-                <div>
+                <div style="grid-column: 1 / -1">
                   <label for="albumDescIn">앨범 설명</label>
-                  <input id="albumDescIn" type="text">
+                  <input id="albumDescIn" type="text" placeholder="앨범에 대한 간단한 메모">
                 </div>
                 <div>
                   <label for="albumSortIn">재생 정렬 기준</label>
@@ -490,40 +603,75 @@ label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); 
               <label class="checkbox-row">
                 <input id="albumShuffleIn" type="checkbox" checked> 앨범 내 사진 무작위(셔플) 재생
               </label>
-              <div style="margin-top:12px;display:flex;gap:8px">
-                <button id="saveAlbumMetaBtn" type="button">앨범 정보 초안 저장</button>
+              <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+                <button id="saveAlbumMetaBtn" type="button" style="flex:1">앨범 설정 저장</button>
+                <button id="cloneAlbumBtn" class="secondary" type="button">복제</button>
+                <button id="deleteAlbumBtn" class="danger" type="button">삭제</button>
               </div>
             </div>
 
             <div class="card">
-              <h2>사진 업로드 (드래그 앤 드롭 · 다중 선택)</h2>
-              <div id="dropzone" class="dropzone">
-                <div style="font-size:15px;font-weight:600">여기로 사진을 끌어다 놓거나 파일을 선택하세요</div>
-                <p style="font-size:12.5px;color:var(--muted);margin:6px 0 12px">자동 EXIF 회전 보정 · SHA-256 중복 방지 · 썸네일 자동 생성 · 최대 40MB/장</p>
+              <h2 style="margin-bottom:6px">선택 앨범에 사진 업로드</h2>
+              <p id="albumUploadGuidance" style="font-size:12.5px;color:var(--muted);margin:0 0 10px">사진은 현재 선택된 사용자 앨범에 추가됩니다. ‘모든 사진’은 모든 보관 사진을 자동으로 보여주는 기본 보기이므로 사진을 직접 넣을 수 없습니다.</p>
+              <div id="dropzone" class="dropzone" style="padding:18px;margin-bottom:0">
+                <div style="font-size:14px;font-weight:600">여기로 사진을 끌어다 놓거나 선택하세요</div>
+                <p style="font-size:12px;color:var(--muted);margin:4px 0 10px">EXIF 자동 회전 · 중복 방지 · 최대 40MB/장</p>
                 <label class="btn" for="uploadInput" style="margin:0;display:inline-flex">사진 파일 선택</label>
                 <input id="uploadInput" type="file" accept="image/*" multiple class="hidden">
               </div>
-              <div id="uploadStatusWrap" class="hidden" style="margin-bottom:14px;padding:12px;background:var(--subtle);border-radius:12px">
+              <div id="uploadStatusWrap" class="hidden" style="margin-top:12px;padding:12px;background:var(--subtle);border-radius:12px">
                 <div style="display:flex;justify-content:space-between;align-items:center">
-                  <strong id="uploadHeaderText" style="font-size:13.5px">업로드 중…</strong>
+                  <strong id="uploadHeaderText" style="font-size:13px">업로드 중…</strong>
                   <div style="display:flex;gap:6px">
-                    <button id="cancelUploadBtn" class="secondary" type="button" style="min-height:32px;padding:4px 10px;font-size:12px">업로드 취소</button>
-                    <button id="retryUploadBtn" class="secondary hidden" type="button" style="min-height:32px;padding:4px 10px;font-size:12px">실패 항목 재시도</button>
+                    <button id="cancelUploadBtn" class="secondary" type="button" style="min-height:30px;padding:4px 8px;font-size:12px">취소</button>
+                    <button id="retryUploadBtn" class="secondary hidden" type="button" style="min-height:30px;padding:4px 8px;font-size:12px">재시도</button>
                   </div>
                 </div>
                 <progress id="uploadProgressBar" max="100" value="0" style="width:100%;height:10px;margin-top:8px"></progress>
-                <div id="uploadDetailLog" style="font-size:12px;max-height:110px;overflow:auto;margin-top:6px"></div>
+                <div id="uploadDetailLog" style="font-size:12px;max-height:100px;overflow:auto;margin-top:6px"></div>
               </div>
+            </div>
+          </div>
 
+          <!-- RIGHT: Albums Grid Table + Selected Album Photos Grid -->
+          <div>
+            <div class="card">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+                <div>
+                  <h2 style="margin:0">앨범 그리드 목록</h2>
+                  <small style="color:var(--muted)">행 클릭 시 왼쪽 상세 설정 및 아래 사진 목록이 전환됩니다.</small>
+                </div>
+              </div>
+              <div class="text-grid-wrap" style="max-height:240px">
+                <table class="text-grid-table">
+                  <thead>
+                    <tr>
+                      <th style="width:44px">#</th>
+                      <th style="width:160px">앨범 이름</th>
+                      <th>설명</th>
+                      <th style="width:80px">사진 수</th>
+                      <th style="width:110px">정렬 기준</th>
+                      <th style="width:70px">간격</th>
+                      <th style="width:64px">셔플</th>
+                      <th style="width:54px">삭제</th>
+                    </tr>
+                  </thead>
+                  <tbody id="albumGridBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="card">
               <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+                <h2 id="rightAlbumPhotosHeading" style="margin:0">앨범 사진 그리드</h2>
                 <div style="display:flex;gap:6px;flex-wrap:wrap">
-                  <button id="selectAllPhotosBtn" class="secondary" type="button">전체 선택/해제</button>
-                  <button id="setCoverPhotoBtn" class="secondary" type="button">대표 사진 지정</button>
-                  <select id="targetAlbumSelect" style="width:auto;margin:0;min-height:44px"></select>
-                  <button id="copyPhotosToAlbumBtn" class="secondary" type="button">선택 사진 다른 앨범에 추가</button>
-                  <button id="movePhotosToAlbumBtn" class="secondary" type="button">선택 사진 이동</button>
-                  <button id="removeFromAlbumBtn" class="secondary" type="button">현재 앨범에서 제외</button>
-                  <button id="trashPhotosBtn" class="danger" type="button">휴지통으로</button>
+                  <button id="selectAllPhotosBtn" class="secondary" type="button" style="min-height:38px;padding:6px 12px;font-size:13px">전체 선택/해제</button>
+                  <button id="setCoverPhotoBtn" class="secondary" type="button" style="min-height:38px;padding:6px 12px;font-size:13px">대표 사진 지정</button>
+                  <select id="targetAlbumSelect" style="width:auto;margin:0;min-height:38px;padding:6px 10px;font-size:13px"></select>
+                  <button id="copyPhotosToAlbumBtn" class="secondary" type="button" style="min-height:38px;padding:6px 12px;font-size:13px">다른 앨범에 추가</button>
+                  <button id="movePhotosToAlbumBtn" class="secondary" type="button" style="min-height:38px;padding:6px 12px;font-size:13px">이동</button>
+                  <button id="removeFromAlbumBtn" class="secondary" type="button" style="min-height:38px;padding:6px 12px;font-size:13px">앨범에서 제외</button>
+                  <button id="trashPhotosBtn" class="danger" type="button" style="min-height:38px;padding:6px 12px;font-size:13px">휴지통으로</button>
                 </div>
               </div>
               <div id="albumPhotosGrid" class="photo-grid"></div>
@@ -532,131 +680,131 @@ label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); 
         </div>
       </section>
 
-      <!-- 3. TEXTS & POEMS -->
+      <!-- 3. TEXTS LIBRARY -->
       <section id="tab-texts" class="tab-pane hidden">
         <div class="page-header">
           <div>
-            <h1>명언 · 시 · 글귀 라이브러리</h1>
-            <p>사진과 함께 표시할 명언, 시, 직접 작성한 글과 글귀 모음을 관리합니다.</p>
+            <h1>글귀 라이브러리</h1>
+            <p>오른쪽 목록에서 글귀를 선택해 왼쪽에서 수정·저장하거나, 엑셀 복사·붙여넣기(Ctrl+V) 및 CSV 불러오기로 즉시 일괄 등록할 수 있습니다.</p>
           </div>
-          <div style="display:flex;gap:8px">
-            <button id="newTextBtn" type="button">+ 새 글귀 등록</button>
-            <button id="newCollectionBtn" class="secondary" type="button">+ 글귀 모음 만들기</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <span id="textGridDirtyBadge" class="draft-badge">자동 저장됨</span>
+            <button id="revertTextGridBtn" class="secondary hidden" type="button">되돌리기</button>
+            <button id="saveTextGridBtn" class="hidden" type="button">저장</button>
           </div>
         </div>
 
-        <div class="two-col">
-          <div class="card">
-            <h2>글귀 모음 (Collections)</h2>
-            <p style="font-size:12.5px;color:var(--muted)">장면(Scene)에서 연결할 글귀 묶음입니다.</p>
-            <div id="collectionListBox" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px"></div>
-            <hr style="border:0;border-top:1px solid var(--outline);margin:14px 0">
-            <h3 id="colEditorTitle">글귀 모음 편집</h3>
-            <input id="colIdIn" type="hidden">
-            <label for="colNameIn">모음 이름</label>
-            <input id="colNameIn" type="text" placeholder="예: 긍정적인 아침 명언">
-            <label for="colCatsIn">포함할 카테고리 (쉼표 구분, 비워두면 전체)</label>
-            <input id="colCatsIn" type="text" placeholder="아침의 명언,행복,인생">
-            <label for="colKindIn">콘텐츠 종류 필터</label>
-            <select id="colKindIn">
-              <option value="ALL">모든 종류</option>
-              <option value="QUOTE">명언</option>
-              <option value="POEM">시(詩)</option>
-              <option value="CUSTOM">직접 작성한 글</option>
-              <option value="SHORT">짧은 문장</option>
-              <option value="ANNIVERSARY">기념일 메시지</option>
-            </select>
-            <div style="display:flex;gap:8px;margin-top:12px">
-              <button id="saveColBtn" type="button" style="flex:1">모음 저장</button>
-              <button id="deleteColBtn" class="danger" type="button">삭제</button>
+        <div class="two-col" style="grid-template-columns: 380px 1fr;">
+          <!-- LEFT: Selected Grid Row Detail Editor -->
+          <div class="card" id="textEditorCard" style="position:sticky;top:76px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <h2 id="textEditorHeading" style="margin:0">선택한 글귀 상세 · 편집</h2>
+                <span id="textEditorRowBadge" class="row-badge saved">행 선택됨</span>
+              </div>
+              <button id="addNewRowBtn" class="secondary" type="button" style="min-height:32px;padding:4px 10px;font-size:12px">+ 새 글귀 작성</button>
+            </div>
+            <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px">오른쪽 그리드에서 선택한 글귀를 수정하거나 새로 작성한 뒤 <b>‘글귀 저장’</b>을 누르세요.</p>
+            <input id="textIdIn" type="hidden">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <label for="textCategoryIn" style="margin-bottom:4px">카테고리 (분류)</label>
+                  <button id="openCategoryModalBtn" class="secondary" type="button" style="min-height:26px;padding:2px 8px;font-size:11.5px;margin-bottom:4px">⚙ 카테고리 관리</button>
+                </div>
+                <select id="textCategoryIn"></select>
+              </div>
+              <div>
+                <label for="textTitleIn">제목 (선택)</label>
+                <input id="textTitleIn" type="text" placeholder="예: 오늘의 햇살">
+              </div>
+              <div>
+                <label for="textAuthorIn">작가 · 쓴 사람 (선택)</label>
+                <input id="textAuthorIn" type="text" placeholder="예: 누니담, 엄마가">
+              </div>
+              <div>
+                <label for="textSourceIn">출처 · 메모 (선택)</label>
+                <input id="textSourceIn" type="text" placeholder="예: 직접 작성">
+              </div>
+            </div>
+            <label for="textBodyIn">글귀 본문 (여러 줄이나 긴 시는 자동으로 페이지가 나뉩니다)</label>
+            <textarea id="textBodyIn" rows="6" placeholder="여기에 글귀나 시 본문을 입력하세요."></textarea>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div>
+                <label for="textSecIn">표시 시간(초)</label>
+                <input id="textSecIn" type="number" min="5" max="600" value="15">
+              </div>
+              <div style="display:flex;align-items:flex-end;padding-bottom:8px">
+                <label class="checkbox-row" style="margin:0">
+                  <input id="textEnabledIn" type="checkbox" checked> 액자 재생에 사용
+                </label>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+              <button id="saveDetailTextBtn" type="button" style="flex:1">글귀 저장</button>
+              <button id="cloneRowBtn" class="secondary" type="button">복제</button>
+              <button id="deleteRowBtn" class="danger" type="button">삭제</button>
             </div>
           </div>
 
+          <!-- RIGHT: Grid List + Paste / CSV Upload -->
           <div>
             <div class="card">
-              <div style="display:grid;grid-template-columns:1fr 160px 160px;gap:10px;margin-bottom:14px">
-                <input id="textSearchIn" type="search" placeholder="제목, 본문, 작가, 태그 검색…" style="margin:0">
-                <select id="textCatFilter" style="margin:0">
-                  <option value="">모든 카테고리</option>
-                  <option value="아침의 명언">아침의 명언</option>
-                  <option value="행복">행복</option>
-                  <option value="사랑">사랑</option>
-                  <option value="위로">위로</option>
-                  <option value="인생">인생</option>
-                  <option value="계절의 시">계절의 시</option>
-                  <option value="가족">가족</option>
-                  <option value="직접 작성한 글">직접 작성한 글</option>
-                </select>
-                <select id="textKindFilter" style="margin:0">
-                  <option value="">모든 유형</option>
-                  <option value="QUOTE">명언</option>
-                  <option value="POEM">시(詩)</option>
-                  <option value="CUSTOM">직접 작성한 글</option>
-                  <option value="SHORT">짧은 문장</option>
-                  <option value="ANNIVERSARY">기념일 메시지</option>
-                </select>
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+                <div>
+                  <h2 style="margin:0">글귀 그리드 목록 <small id="textGridCountLabel" style="font-weight:500;color:var(--muted);font-size:14px"></small></h2>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <label class="btn secondary" for="bulkTextCsvFile" style="margin:0;min-height:38px;padding:6px 12px;font-size:13px">CSV 파일 불러오기 (즉시 저장)</label>
+                  <input id="bulkTextCsvFile" type="file" accept=".csv,.tsv,.txt,text/csv,text/plain" class="hidden">
+                  <button id="downloadTextTemplateBtn" class="secondary" type="button" style="min-height:38px;padding:6px 12px;font-size:13px">양식(.csv)</button>
+                  <button id="exportTextsCsvBtn" class="secondary" type="button" style="min-height:38px;padding:6px 12px;font-size:13px">내보내기(.csv)</button>
+                  <button id="restoreDefaultTextsBtn" class="secondary" type="button" style="min-height:38px;padding:6px 12px;font-size:13px">기본 샘플 복원</button>
+                  <button id="clearAllGridRowsBtn" class="danger" type="button" style="min-height:38px;padding:6px 12px;font-size:13px">전체 비우기</button>
+                </div>
               </div>
-              <div id="textItemsList" style="display:flex;flex-direction:column;gap:10px"></div>
-            </div>
 
-            <div class="card" id="textEditorCard">
-              <h2 id="textEditorHeading">글귀 등록 · 편집</h2>
-              <input id="textIdIn" type="hidden">
-              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
-                <div>
-                  <label for="textTitleIn">제목</label>
-                  <input id="textTitleIn" type="text" placeholder="예: 사계절의 창">
+              <!-- Quick Paste Box for Excel Ctrl+C -> Ctrl+V -->
+              <div style="background:var(--bg);border:1px dashed var(--outline);border-radius:12px;padding:10px 12px;margin-bottom:12px">
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                  <input id="quickPasteInput" type="text" placeholder="여기를 클릭하고 엑셀에서 복사한 표를 붙여넣기(Ctrl+V) 하면 그리드에 즉시 추가·저장됩니다 (카테고리 | 본문 | 작가 | 제목 | 출처 | 초)" style="margin:0;flex:1;font-size:13px">
+                  <button id="togglePasteBoxBtn" class="secondary" type="button" style="min-height:38px;padding:6px 12px;font-size:12.5px">여러 줄 붙여넣기 칸</button>
                 </div>
-                <div>
-                  <label for="textKindIn">콘텐츠 종류</label>
-                  <select id="textKindIn">
-                    <option value="QUOTE">명언</option>
-                    <option value="POEM">시(詩) · 줄바꿈 및 자동 페이지 분할</option>
-                    <option value="CUSTOM">직접 작성한 글</option>
-                    <option value="SHORT">짧은 문장</option>
-                    <option value="ANNIVERSARY">기념일 메시지</option>
-                  </select>
-                </div>
-                <div>
-                  <label for="textCategoryIn">카테고리</label>
-                  <input id="textCategoryIn" type="text" list="categoryPresets" value="아침의 명언">
-                  <datalist id="categoryPresets">
-                    <option value="아침의 명언"><option value="행복"><option value="사랑"><option value="위로">
-                    <option value="인생"><option value="계절의 시"><option value="가족"><option value="직접 작성한 글">
-                  </datalist>
-                </div>
-                <div>
-                  <label for="textAuthorIn">작가</label>
-                  <input id="textAuthorIn" type="text" placeholder="예: 누니담">
-                </div>
-                <div>
-                  <label for="textSourceIn">출처</label>
-                  <input id="textSourceIn" type="text" placeholder="예: 직접 작성">
-                </div>
-                <div>
-                  <label for="textTagsIn">태그 (쉼표 구분)</label>
-                  <input id="textTagsIn" type="text" placeholder="아침,응원,가족">
+                <div id="multiPasteWrap" class="hidden" style="margin-top:8px">
+                  <textarea id="bulkTextPasteArea" rows="3" placeholder="엑셀에서 복사한 여러 행을 여기에 붙여넣고(Ctrl+V) ‘그리드에 추가 · 즉시 저장’을 누르세요."></textarea>
+                  <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px">
+                    <button id="applyPasteToGridBtn" type="button" style="min-height:36px;padding:6px 14px;font-size:13px">그리드에 추가 · 즉시 저장</button>
+                  </div>
                 </div>
               </div>
-              <label for="textBodyIn">본문 (긴 시는 줄바꿈과 연을 유지하며 자동으로 페이지가 나뉩니다)</label>
-              <textarea id="textBodyIn" rows="5" placeholder="여기에 명언이나 시 본문을 입력하세요."></textarea>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                <div>
-                  <label for="textSecIn">권장 표시 시간(초)</label>
-                  <input id="textSecIn" type="number" min="5" max="600" value="15">
-                </div>
-                <div>
-                  <label for="textLicenseIn">저작권 및 이용 허락 메모</label>
-                  <input id="textLicenseIn" type="text" placeholder="직접 작성 / 만료 저작물 등">
-                </div>
+
+              <!-- Filter & Search Bar -->
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+                <select id="textCatFilter" style="margin:0;width:auto;min-width:160px"></select>
+                <input id="textSearchIn" type="search" placeholder="그리드 내 본문, 제목, 작가 검색…" style="margin:0;flex:1">
               </div>
-              <label class="checkbox-row">
-                <input id="textEnabledIn" type="checkbox" checked> 액자 재생에 이 글귀 사용
-              </label>
-              <div style="display:flex;gap:8px;margin-top:14px">
-                <button id="saveTextBtn" type="button">글귀 초안 저장</button>
-                <button id="cloneTextBtn" class="secondary" type="button">복제</button>
-                <button id="deleteTextBtn" class="danger" type="button">삭제</button>
+
+              <!-- Spreadsheet Grid Table -->
+              <div class="text-grid-wrap" id="textGridWrap" tabindex="0">
+                <table class="text-grid-table">
+                  <thead>
+                    <tr>
+                      <th style="width:44px">#</th>
+                      <th style="width:115px">카테고리</th>
+                      <th style="width:130px">제목</th>
+                      <th>본문 내용</th>
+                      <th style="width:100px">작가</th>
+                      <th style="width:64px">초</th>
+                      <th style="width:56px">사용</th>
+                      <th style="width:50px">삭제</th>
+                    </tr>
+                  </thead>
+                  <tbody id="textGridBody"></tbody>
+                </table>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:8px">
+                <small style="color:var(--muted)">팁: 그리드 행을 클릭하면 왼쪽 상세 창에서 내용을 수정하고 ‘글귀 저장’을 누를 수 있습니다.</small>
+                <button id="saveTextGridBottomBtn" class="hidden" type="button">저장</button>
               </div>
             </div>
           </div>
@@ -668,43 +816,26 @@ label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); 
         <div class="page-header">
           <div>
             <h1>재생 장면(Scene) 관리</h1>
-            <p>사진 앨범, 글귀 모음, 화면 레이아웃, 밝기를 조합하여 재생 장면을 만듭니다.</p>
+            <p>오른쪽 그리드에서 장면 목록을 확인·선택하고, 왼쪽에서 선택한 장면의 상세 설정과 화면 미리보기를 편집합니다.</p>
           </div>
           <button id="newSceneBtn" type="button">+ 새 장면 만들기</button>
         </div>
 
-        <div class="two-col">
-          <div>
-            <div class="card">
-              <h2>장면 목록</h2>
-              <div id="sceneListBox" style="display:flex;flex-direction:column;gap:8px"></div>
-            </div>
-
-            <div class="card">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                <h2 style="margin:0">실시간 화면 미리보기</h2>
-                <div style="display:flex;gap:6px">
-                  <button id="prevOrientLand" class="secondary" type="button" style="min-height:34px;padding:4px 10px;font-size:12px">가로형</button>
-                  <button id="prevOrientPort" class="secondary" type="button" style="min-height:34px;padding:4px 10px;font-size:12px">세로형</button>
-                </div>
-              </div>
-              <div class="preview-stage-wrap">
-                <div id="scenePreviewFrame" class="preview-frame landscape"></div>
-                <small style="color:var(--muted)">태블릿과 동일한 레이아웃·색감 규칙으로 미리 표시됩니다.</small>
-              </div>
-            </div>
-          </div>
-
+        <div class="two-col" style="grid-template-columns: 440px 1fr;">
+          <!-- LEFT: Selected Scene Detail Editor -->
           <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-              <h2 id="sceneEditorHeading" style="margin:0">장면 편집</h2>
+              <h2 id="sceneEditorHeading" style="margin:0">선택한 장면 상세 · 편집</h2>
               <div style="display:flex;gap:6px">
-                <button id="cloneSceneBtn" class="secondary" type="button">장면 복제</button>
-                <button id="deleteSceneBtn" class="danger" type="button">장면 삭제</button>
+                <button id="cloneSceneBtn" class="secondary" type="button" style="min-height:36px;padding:6px 12px;font-size:12.5px">복제</button>
+                <button id="deleteSceneBtn" class="danger" type="button" style="min-height:36px;padding:6px 12px;font-size:12.5px">삭제</button>
               </div>
             </div>
+            <div id="sceneDefaultNotice" class="hidden" style="margin-top:8px;padding:8px 12px;border-radius:10px;background:var(--subtle);color:var(--primary);font-size:12.5px;font-weight:600">
+              ★ 기본 장면 — 삭제할 수 없으며, 편성표가 설정되지 않은 모든 시간대에 자동으로 재생됩니다.
+            </div>
             <input id="sceneIdIn" type="hidden">
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
               <div>
                 <label for="sceneNameIn">장면 이름</label>
                 <input id="sceneNameIn" type="text" placeholder="예: 좋은 아침">
@@ -769,27 +900,70 @@ label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); 
               </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
               <div>
-                <label>연결할 사진 앨범 (복수 선택 혼합 재생 가능)</label>
-                <div id="sceneAlbumsCheckList" style="border:1px solid var(--outline);border-radius:10px;padding:10px;max-height:150px;overflow:auto;margin-top:4px"></div>
+                <label>연결할 사진 앨범 (복수 선택)</label>
+                <p style="font-size:12px;color:var(--muted);margin:0 0 4px">‘모든 사진’을 선택하면 다른 앨범은 선택할 수 없습니다. 특정 앨범만 재생하려면 ‘모든 사진’을 해제한 뒤 앨범을 고르세요.</p>
+                <div id="sceneAlbumsCheckList" style="border:1px solid var(--outline);border-radius:10px;padding:8px 10px;max-height:130px;overflow:auto;margin-top:4px"></div>
               </div>
               <div>
-                <label>연결할 글귀 모음 (복수 선택 가능)</label>
-                <div id="sceneColsCheckList" style="border:1px solid var(--outline);border-radius:10px;padding:10px;max-height:150px;overflow:auto;margin-top:4px"></div>
+                <label>글귀 카테고리 (미선택 시 전체)</label>
+                <div id="sceneColsCheckList" style="border:1px solid var(--outline);border-radius:10px;padding:8px 10px;max-height:130px;overflow:auto;margin-top:4px"></div>
               </div>
             </div>
 
-            <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:12px">
+            <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:12px">
               <label class="checkbox-row"><input id="sceneClockIn" type="checkbox" checked> 시계 표시</label>
               <label class="checkbox-row"><input id="sceneDateIn" type="checkbox" checked> 촬영일 표시</label>
               <label class="checkbox-row"><input id="sceneShuffleIn" type="checkbox" checked> 사진 무작위 순서</label>
-              <label class="checkbox-row"><input id="sceneNightDimIn" type="checkbox"> 야간 절전 감광 장면으로 사용</label>
-              <label class="checkbox-row"><input id="sceneDefaultIn" type="checkbox"> 기본 장면(예약 없을 때 재생)으로 지정</label>
+              <label class="checkbox-row"><input id="sceneNightDimIn" type="checkbox"> 야간 절전 감광</label>
+              <label class="checkbox-row"><input id="sceneDefaultIn" type="checkbox"> 기본 장면으로 지정</label>
             </div>
 
-            <div style="margin-top:18px">
-              <button id="saveSceneBtn" type="button" style="width:100%">장면 초안 저장</button>
+            <div style="margin-top:16px">
+              <button id="saveSceneBtn" type="button" style="width:100%">장면 저장</button>
+            </div>
+          </div>
+
+          <!-- RIGHT: Scene Grid Table + Live Preview -->
+          <div>
+            <div class="card">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <h2 style="margin:0">재생 장면 그리드 목록</h2>
+                <small style="color:var(--muted)">행 클릭 시 왼쪽 상세 창과 아래 실시간 미리보기에 표시됩니다.</small>
+              </div>
+              <div class="text-grid-wrap" style="max-height:320px">
+                <table class="text-grid-table">
+                  <thead>
+                    <tr>
+                      <th style="width:44px">#</th>
+                      <th style="width:140px">장면 이름</th>
+                      <th style="width:110px">레이아웃</th>
+                      <th style="width:100px">글귀 표시</th>
+                      <th style="width:95px">테마 · 밝기</th>
+                      <th style="width:70px">간격</th>
+                      <th>연결 앨범 · 글귀 분류</th>
+                      <th style="width:60px">기본</th>
+                      <th style="width:54px">삭제</th>
+                    </tr>
+                  </thead>
+                  <tbody id="sceneGridBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="card">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <h2 style="margin:0">선택한 장면 실시간 화면 미리보기</h2>
+                <div style="display:flex;gap:6px">
+                  <button id="prevOrientLand" class="secondary" type="button" style="min-height:34px;padding:4px 10px;font-size:12px">가로형</button>
+                  <button id="prevOrientPort" class="secondary" type="button" style="min-height:34px;padding:4px 10px;font-size:12px">세로형</button>
+                </div>
+              </div>
+              <div class="preview-stage-wrap">
+                <div id="scenePreviewFrame" class="preview-frame landscape"></div>
+                <small style="color:var(--muted)">태블릿과 동일한 레이아웃·색감 규칙으로 미리 표시됩니다.</small>
+              </div>
             </div>
           </div>
         </div>
@@ -800,78 +974,116 @@ label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); 
         <div class="page-header">
           <div>
             <h1>요일별 · 시간대별 재생 편성표</h1>
-            <p>태블릿이 네트워크 연결 없이도 요일과 시간에 맞춰 자동으로 장면을 전환합니다.</p>
+            <p>오른쪽에서 편성 규칙 그리드와 주간 시간표를 확인하고, 왼쪽에서 선택한 규칙의 상세 내용을 편집·추가합니다.</p>
           </div>
           <button id="newScheduleBtn" type="button">+ 새 편성 규칙 추가</button>
         </div>
 
         <div id="scheduleConflictAlert" class="card hidden" style="background:var(--danger-bg);border-color:var(--danger);color:var(--danger)"></div>
 
-        <div class="card">
-          <h2>주간 시간표 한눈에 보기 (자정 통과 일정 포함)</h2>
-          <div id="weeklyCalendarGrid" class="week-grid"></div>
-          <div id="mobileScheduleCards" style="display:flex;flex-direction:column;gap:8px;margin-top:12px"></div>
-        </div>
+        <div class="two-col" style="grid-template-columns: 380px 1fr;">
+          <!-- LEFT: Selected Schedule Rule Detail Editor -->
+          <div class="card" style="position:sticky;top:76px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+              <h2 id="schedEditorHeading" style="margin:0">선택한 편성 규칙 상세 · 편집</h2>
+              <button id="deleteSchedBtn" class="danger" type="button" style="min-height:34px;padding:4px 10px;font-size:12.5px">삭제</button>
+            </div>
+            <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px">오른쪽 그리드 또는 주간 시간표에서 선택한 규칙을 수정하거나 새 규칙을 추가합니다.</p>
+            <input id="schedIdIn" type="hidden">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div style="grid-column: 1 / -1">
+                <label for="schedNameIn">일정 이름</label>
+                <input id="schedNameIn" type="text" placeholder="예: 평일 좋은 아침">
+              </div>
+              <div style="grid-column: 1 / -1">
+                <label for="schedTypeIn">편성 종류 (우선순위 자동 부여)</label>
+                <select id="schedTypeIn">
+                  <option value="WEEKLY">요일별 반복 편성 (우선순위 3)</option>
+                  <option value="DATE">특정 날짜 지정 편성 (우선순위 2)</option>
+                  <option value="ANNIVERSARY">매년 생일·기념일 편성 (우선순위 2)</option>
+                </select>
+              </div>
+              <div style="grid-column: 1 / -1">
+                <label for="schedSceneIn">재생할 장면(Scene)</label>
+                <select id="schedSceneIn"></select>
+              </div>
+              <div id="schedDateWrap" class="hidden" style="grid-column: 1 / -1">
+                <label for="schedDateIn">날짜 (YYYY-MM-DD 또는 MM-DD)</label>
+                <input id="schedDateIn" type="text" placeholder="예: 2026-12-25 또는 05-08">
+              </div>
+              <div>
+                <label for="schedStartIn">시작 시간 (HH:MM)</label>
+                <input id="schedStartIn" type="time" value="06:00">
+              </div>
+              <div>
+                <label for="schedEndIn">종료 시간 (자정 넘김 가능)</label>
+                <input id="schedEndIn" type="time" value="09:00">
+              </div>
+            </div>
 
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <h2 id="schedEditorHeading" style="margin:0">편성 규칙 편집</h2>
-            <button id="deleteSchedBtn" class="danger" type="button">규칙 삭제</button>
-          </div>
-          <input id="schedIdIn" type="hidden">
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:8px">
-            <div>
-              <label for="schedNameIn">일정 이름</label>
-              <input id="schedNameIn" type="text" placeholder="예: 평일 좋은 아침">
+            <div id="schedDaysWrap" style="margin-top:12px">
+              <label>적용 요일 선택</label>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+                <button type="button" class="secondary day-preset" data-mask="127" style="min-height:32px;padding:4px 10px;font-size:12px">매일</button>
+                <button type="button" class="secondary day-preset" data-mask="62" style="min-height:32px;padding:4px 10px;font-size:12px">평일(월~금)</button>
+                <button type="button" class="secondary day-preset" data-mask="65" style="min-height:32px;padding:4px 10px;font-size:12px">주말(토·일)</button>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px">
+                <label class="checkbox-row"><input type="checkbox" class="day-chk" value="1"> 일</label>
+                <label class="checkbox-row"><input type="checkbox" class="day-chk" value="2" checked> 월</label>
+                <label class="checkbox-row"><input type="checkbox" class="day-chk" value="4" checked> 화</label>
+                <label class="checkbox-row"><input type="checkbox" class="day-chk" value="8" checked> 수</label>
+                <label class="checkbox-row"><input type="checkbox" class="day-chk" value="16" checked> 목</label>
+                <label class="checkbox-row"><input type="checkbox" class="day-chk" value="32" checked> 금</label>
+                <label class="checkbox-row"><input type="checkbox" class="day-chk" value="64"> 토</label>
+              </div>
             </div>
-            <div>
-              <label for="schedTypeIn">편성 종류 (우선순위 자동 부여)</label>
-              <select id="schedTypeIn">
-                <option value="WEEKLY">요일별 반복 편성 (우선순위 3)</option>
-                <option value="DATE">특정 날짜 지정 편성 (우선순위 2)</option>
-                <option value="ANNIVERSARY">매년 생일·기념일 편성 (우선순위 2)</option>
-              </select>
-            </div>
-            <div>
-              <label for="schedSceneIn">재생할 장면(Scene)</label>
-              <select id="schedSceneIn"></select>
-            </div>
-            <div id="schedDateWrap" class="hidden">
-              <label for="schedDateIn">날짜 (YYYY-MM-DD 또는 MM-DD)</label>
-              <input id="schedDateIn" type="text" placeholder="예: 2026-12-25 또는 05-08">
-            </div>
-            <div>
-              <label for="schedStartIn">시작 시간 (HH:MM)</label>
-              <input id="schedStartIn" type="time" value="06:00">
-            </div>
-            <div>
-              <label for="schedEndIn">종료 시간 (자정 넘김 가능)</label>
-              <input id="schedEndIn" type="time" value="09:00">
+
+            <label class="checkbox-row">
+              <input id="schedEnabledIn" type="checkbox" checked> 이 편성 규칙 활성화
+            </label>
+            <div style="display:flex;gap:8px;margin-top:14px">
+              <button id="saveSchedBtn" type="button" style="flex:1">편성 규칙 저장</button>
+              <button id="copySchedBtn" class="secondary" type="button">복제</button>
             </div>
           </div>
 
-          <div id="schedDaysWrap" style="margin-top:12px">
-            <label>적용 요일 선택</label>
-            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
-              <button type="button" class="secondary day-preset" data-mask="127">매일</button>
-              <button type="button" class="secondary day-preset" data-mask="62">평일(월~금)</button>
-              <button type="button" class="secondary day-preset" data-mask="65">주말(토·일)</button>
-              <label class="checkbox-row"><input type="checkbox" class="day-chk" value="1"> 일</label>
-              <label class="checkbox-row"><input type="checkbox" class="day-chk" value="2" checked> 월</label>
-              <label class="checkbox-row"><input type="checkbox" class="day-chk" value="4" checked> 화</label>
-              <label class="checkbox-row"><input type="checkbox" class="day-chk" value="8" checked> 수</label>
-              <label class="checkbox-row"><input type="checkbox" class="day-chk" value="16" checked> 목</label>
-              <label class="checkbox-row"><input type="checkbox" class="day-chk" value="32" checked> 금</label>
-              <label class="checkbox-row"><input type="checkbox" class="day-chk" value="64"> 토</label>
+          <!-- RIGHT: Schedule Rules Grid Table + Weekly Timetable Grid -->
+          <div>
+            <div class="card">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <h2 style="margin:0">편성 규칙 그리드 목록</h2>
+                <small style="color:var(--muted)">행 클릭 시 왼쪽 상세 편집 창에 불러옵니다.</small>
+              </div>
+              <div class="text-grid-wrap" style="max-height:280px">
+                <table class="text-grid-table">
+                  <thead>
+                    <tr>
+                      <th style="width:44px">#</th>
+                      <th style="width:150px">일정 이름</th>
+                      <th style="width:95px">종류 · 순위</th>
+                      <th>요일 · 날짜</th>
+                      <th style="width:115px">시간대</th>
+                      <th style="width:130px">재생 장면</th>
+                      <th style="width:64px">상태</th>
+                      <th style="width:54px">삭제</th>
+                    </tr>
+                  </thead>
+                  <tbody id="scheduleGridBody"></tbody>
+                </table>
+              </div>
             </div>
-          </div>
 
-          <label class="checkbox-row">
-            <input id="schedEnabledIn" type="checkbox" checked> 이 편성 규칙 활성화
-          </label>
-          <div style="display:flex;gap:8px;margin-top:14px">
-            <button id="saveSchedBtn" type="button" style="flex:1">편성 규칙 초안 저장</button>
-            <button id="copySchedBtn" class="secondary" type="button">이 시간표 복제</button>
+            <div class="card">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+                <h2 style="margin:0">주간 시간표 한눈에 보기 (기본 장면 우선 · 특정 시간대 편성)</h2>
+                <span class="pill-badge" id="weeklyDefaultSceneBadge">★ 미지정 시간대: 기본 장면 상시 재생</span>
+              </div>
+              <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px">
+                편성 규칙이 지정되지 않은 모든 시간대에는 <b>‘기본 장면’</b>이 우선 재생되며, 아래에 등록된 특정 시간대에만 해당 장면으로 전환됩니다.
+              </p>
+              <div id="weeklyCalendarGrid" class="week-grid"></div>
+            </div>
           </div>
         </div>
       </section>
@@ -940,6 +1152,34 @@ label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); 
   </div>
 </div>
 
+<div id="categoryModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="categoryModalTitle">
+  <div class="modal-card" style="max-width:460px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h2 id="categoryModalTitle" style="margin:0;font-size:19px">글귀 카테고리 관리</h2>
+      <button id="closeCategoryModalBtn" class="secondary" type="button" style="min-height:32px;padding:4px 10px;font-size:12.5px">닫기 ✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin:0 0 12px">카테고리를 자유롭게 추가하거나 삭제할 수 있습니다. 삭제된 카테고리의 글귀나 엑셀 붙여넣기 시 카테고리가 비어 있는 글귀는 자동으로 <b>‘기타’</b>로 분류됩니다.</p>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <input id="newCategoryNameIn" type="text" placeholder="새 카테고리 이름 입력" style="margin:0;flex:1">
+      <button id="addCategoryBtn" type="button" style="min-height:40px;padding:8px 14px;white-space:nowrap">+ 추가</button>
+    </div>
+    <div id="categoryModalList" style="max-height:280px;overflow-y:auto;border:1px solid var(--outline);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:6px;background:var(--bg)"></div>
+  </div>
+</div>
+
+<div id="uploadLock" class="upload-lock hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="uploadLockTitle">
+  <div class="upload-lock-card">
+    <h2 id="uploadLockTitle" style="margin:0 0 6px">사진을 앨범에 추가하는 중</h2>
+    <p id="uploadLockStatus" role="status" aria-live="polite" style="margin:0;color:var(--muted)">업로드를 준비하고 있습니다.</p>
+    <progress id="uploadLockProgress" max="100" value="0"></progress>
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+      <small id="uploadLockPercent" style="color:var(--muted)">0%</small>
+      <button id="uploadLockCancelBtn" class="danger" type="button">업로드 취소</button>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin:12px 0 0">업로드 중에는 다른 메뉴로 이동할 수 없습니다. 취소해도 이미 완료된 사진은 유지됩니다.</p>
+  </div>
+</div>
+
 <div id="toastBar" class="toast-bar hidden" role="status" aria-live="polite"></div>
 
 <script>
@@ -958,6 +1198,11 @@ let previewOrientation = 'landscape';
 let draftDirty = false;
 let activeXhr = null;
 let failedUploads = [];
+let uploadBatchActive = false;
+let uploadCancelRequested = false;
+let uploadLockReturnFocus = null;
+let uploadControlStates = null;
+let currentUploadProgress = 0;
 
 // Parse #pair=CODE from QR URL if present
 if (location.hash.includes('pair=')) {
@@ -972,6 +1217,36 @@ function toast(msg) {
   el.classList.remove('hidden');
   clearTimeout(el._timer);
   el._timer = setTimeout(() => el.classList.add('hidden'), 3500);
+}
+
+function setUploadLock(locked) {
+  const overlay = $('uploadLock');
+  const shell = $('studioShell');
+  if (!overlay || !shell) return;
+  if (locked) {
+    uploadLockReturnFocus = document.activeElement;
+    overlay.classList.remove('hidden');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    shell.inert = true;
+    uploadControlStates = Array.from(
+      document.querySelectorAll('.nav-btn, #refreshAllBtn, #publishBtn')
+    ).map(el => [el, el.disabled]);
+    uploadControlStates.forEach(([el]) => {
+      el.disabled = true;
+    });
+    requestAnimationFrame(() => $('uploadLockCancelBtn').focus());
+  } else {
+    overlay.classList.add('hidden');
+    overlay.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    shell.inert = false;
+    (uploadControlStates || []).forEach(([el, wasDisabled]) => { el.disabled = wasDisabled; });
+    uploadControlStates = null;
+    if (uploadLockReturnFocus && typeof uploadLockReturnFocus.focus === 'function')
+      uploadLockReturnFocus.focus();
+    uploadLockReturnFocus = null;
+  }
 }
 
 function markDirty(dirty = true) {
@@ -1144,9 +1419,21 @@ $('applyTempSceneBtn').onclick = async () => {
 };
 
 // --- 2. ALBUMS ---
+const ALBUM_SORT_LABELS = {
+  CUSTOM: '직접 정렬',
+  UPLOAD_DESC: '업로드 최신순',
+  TAKEN_DESC: '촬영일순',
+  NAME_ASC: '파일명순',
+  FAVOURITE_FIRST: '즐겨찾기 우선'
+};
+
+function isAllPhotosAlbumId(id) {
+  return id === 'album_default';
+}
+
 function renderAlbumsTab() {
-  const list = $('albumListBox');
-  list.innerHTML = '';
+  const tbody = $('albumGridBody');
+  tbody.innerHTML = '';
   if (!state.albums.find(a => a.id === currentAlbumId) && state.albums.length > 0) {
     currentAlbumId = state.albums[0].id;
   }
@@ -1155,27 +1442,55 @@ function renderAlbumsTab() {
   const expSel = $('exportAlbumSelect');
   expSel.innerHTML = '<option value="">전체 백업 (모든 사진·앨범·글귀·장면·시간표)</option>';
 
-  state.albums.forEach(al => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'secondary';
-    btn.style.justifyContent = 'space-between';
-    if (al.id === currentAlbumId) {
-      btn.style.borderColor = 'var(--primary)';
-      btn.style.fontWeight = '700';
+  state.albums.forEach((al, idx) => {
+    const isDefault = !!al.isDefault || al.id === 'album_default';
+    if (isDefault) {
+      al.name = '모든 사진';
+      al.description = '누니담에 보관된 모든 사진을 자동으로 모아 보여줍니다.';
     }
-    btn.innerHTML = `<span>${al.name}</span><small>${al.photoCount || (al.items ? al.items.length : 0)}장</small>`;
-    btn.onclick = () => {
+    const photoCount =
+      isDefault
+        ? state.photos.length
+        : (al.photoCount != null ? al.photoCount : (al.items ? al.items.length : 0));
+    const tr = document.createElement('tr');
+    if (al.id === currentAlbumId) tr.classList.add('selected');
+
+    tr.innerHTML = `
+      <td>${idx + 1}</td>
+      <td><strong>${escapeHtml(al.name || '')}</strong> ${isDefault ? '<span class="pill-badge" style="font-size:10px;padding:1px 6px">기본</span>' : ''}</td>
+      <td class="cell-body">${escapeHtml(al.description || '-')}</td>
+      <td>${photoCount}장</td>
+      <td>${escapeHtml(ALBUM_SORT_LABELS[al.sortOrder] || al.sortOrder || '직접 정렬')}</td>
+      <td>${al.seconds || 30}초</td>
+      <td>${al.shuffle !== false ? '켜짐' : '꺼짐'}</td>
+      <td>${isDefault ? '-' : '<button type="button" class="secondary del-album-row-btn" style="padding:3px 8px;font-size:11px;color:var(--danger)">✕</button>'}</td>
+    `;
+    tr.onclick = (e) => {
+      if (e.target.closest('.del-album-row-btn')) return;
       currentAlbumId = al.id;
       selectedPhotoIds.clear();
       renderAlbumsTab();
     };
-    list.appendChild(btn);
+    const delBtn = tr.querySelector('.del-album-row-btn');
+    if (delBtn) {
+      delBtn.onclick = async (e) => {
+        e.stopPropagation();
+        if (!confirm(`'${al.name}' 앨범을 삭제할까요? (보관된 사진 파일은 삭제되지 않습니다)`)) return;
+        await post('/api/albums/delete', { id: al.id });
+        if (currentAlbumId === al.id) currentAlbumId = 'album_default';
+        markDirty(true);
+        await loadAll();
+        toast('앨범을 삭제했습니다.');
+      };
+    }
+    tbody.appendChild(tr);
 
-    const opt = document.createElement('option');
-    opt.value = al.id;
-    opt.textContent = al.name;
-    targetSel.appendChild(opt);
+    if (!isDefault) {
+      const opt = document.createElement('option');
+      opt.value = al.id;
+      opt.textContent = al.name;
+      targetSel.appendChild(opt);
+    }
 
     const eopt = document.createElement('option');
     eopt.value = al.id;
@@ -1185,18 +1500,66 @@ function renderAlbumsTab() {
 
   const cur = state.albums.find(a => a.id === currentAlbumId);
   if (!cur) return;
-  $('currentAlbumTitle').textContent = `${cur.name} (${(cur.items || []).length}장)`;
+  const isCurDefault = !!cur.isDefault || cur.id === 'album_default';
+  const items =
+    isCurDefault
+      ? state.photos.map((p, position) => ({ photoId: p.id, position }))
+      : (cur.items || []);
+  if ($('albumIdIn')) $('albumIdIn').value = cur.id;
+  $('currentAlbumTitle').textContent = `${cur.name} (${items.length}장)`;
+  if ($('albumDefaultBadge')) {
+    $('albumDefaultBadge').textContent = isCurDefault ? '전체 사진 · 기본 보기' : '사용자 앨범';
+    $('albumDefaultBadge').className = 'row-badge saved';
+  }
+  if ($('rightAlbumPhotosHeading')) {
+    $('rightAlbumPhotosHeading').textContent = `${cur.name} 사진 그리드 (${items.length}장)`;
+  }
   $('albumNameIn').value = cur.name;
+  $('albumNameIn').disabled = isCurDefault;
+  $('albumNameIn').title = isCurDefault ? '기본 앨범 이름은 ‘모든 사진’으로 고정되어 있습니다.' : '';
   $('albumDescIn').value = cur.description || '';
   $('albumSortIn').value = cur.sortOrder || 'CUSTOM';
   $('albumSecIn').value = cur.seconds || 30;
   $('albumShuffleIn').checked = cur.shuffle !== false;
-  $('deleteAlbumBtn').disabled = !!cur.isDefault || cur.id === 'album_default';
+  $('saveAlbumMetaBtn').textContent = '앨범 설정 저장';
+  $('albumDescIn').disabled = isCurDefault;
+  $('albumSortIn').disabled = isCurDefault;
+  $('albumSecIn').disabled = isCurDefault;
+  $('albumShuffleIn').disabled = isCurDefault;
+  $('saveAlbumMetaBtn').disabled = isCurDefault;
+  $('saveAlbumMetaBtn').title =
+    isCurDefault ? '‘모든 사진’ 기본 보기의 설정은 변경할 수 없습니다.' : '';
+  $('cloneAlbumBtn').disabled = false;
+  $('deleteAlbumBtn').disabled = isCurDefault;
+  const hasTargetAlbum = targetSel.options.length > 0;
+  if (!hasTargetAlbum) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = '먼저 새 앨범을 만들어 주세요';
+    opt.disabled = true;
+    opt.selected = true;
+    targetSel.appendChild(opt);
+  }
+  targetSel.disabled = !hasTargetAlbum;
+  $('copyPhotosToAlbumBtn').disabled = !hasTargetAlbum;
+  $('movePhotosToAlbumBtn').disabled = !hasTargetAlbum || isCurDefault;
+  $('removeFromAlbumBtn').disabled = isCurDefault;
+  $('selectAllPhotosBtn').textContent = isCurDefault ? '모든 사진 선택/해제' : '전체 선택/해제';
+  if ($('albumUploadGuidance')) {
+    $('albumUploadGuidance').textContent =
+      isCurDefault
+        ? '‘모든 사진’은 보관함의 모든 사진을 자동으로 보여주는 기본 보기입니다. 사진 파일을 추가하려면 먼저 오른쪽에서 다른 앨범을 선택하거나 새 앨범을 만드세요.'
+        : `사진은 ‘${cur.name}’ 앨범에 추가됩니다. 새 사진은 ‘모든 사진’에도 자동으로 나타납니다.`;
+  }
+  $('dropzone').classList.toggle('album-upload-disabled', isCurDefault);
+  $('uploadInput').disabled = isCurDefault;
+  $('dropzone').setAttribute('aria-disabled', isCurDefault ? 'true' : 'false');
+  $('dropzone').title =
+    isCurDefault ? '먼저 다른 앨범을 선택하거나 새 앨범을 만들어 주세요.' : '';
 
   const grid = $('albumPhotosGrid');
   grid.innerHTML = '';
   const photoMap = new Map(state.photos.map(p => [p.id, p]));
-  const items = cur.items || [];
   items.forEach((it, idx) => {
     const p = photoMap.get(it.photoId);
     if (!p) return;
@@ -1217,31 +1580,78 @@ function renderAlbumsTab() {
   });
 }
 
-$('newAlbumBtn').onclick = async () => {
-  const name = prompt('새 앨범 이름을 입력하세요:', '새 추억 앨범');
-  if (!name) return;
-  const res = await post('/api/albums/save', { name, description: '', seconds: 30, shuffle: true });
+function startNewAlbumEditor() {
+  if ($('albumIdIn')) $('albumIdIn').value = '';
+  $('currentAlbumTitle').textContent = '새 앨범 추가';
+  if ($('albumDefaultBadge')) {
+    $('albumDefaultBadge').textContent = '신규 작성 중';
+    $('albumDefaultBadge').className = 'row-badge dirty';
+  }
+  $('albumNameIn').value = '';
+  $('albumNameIn').disabled = false;
+  $('albumDescIn').value = '';
+  $('albumDescIn').disabled = false;
+  $('albumSortIn').value = 'CUSTOM';
+  $('albumSortIn').disabled = false;
+  $('albumSecIn').value = 30;
+  $('albumSecIn').disabled = false;
+  $('albumShuffleIn').checked = true;
+  $('albumShuffleIn').disabled = false;
+  $('saveAlbumMetaBtn').textContent = '+ 새 앨범 저장';
+  $('saveAlbumMetaBtn').disabled = false;
+  $('cloneAlbumBtn').disabled = true;
+  $('deleteAlbumBtn').disabled = true;
+  document.querySelectorAll('#albumGridBody tr.selected').forEach(el => el.classList.remove('selected'));
+  $('albumNameIn').focus();
+}
+
+async function createAlbum(name) {
+  const albumName = (name || '').trim();
+  if (!albumName) throw new Error('새 앨범 이름을 입력해 주세요.');
+  const res = await post('/api/albums/save', {
+    name: albumName,
+    description: '',
+    sortOrder: 'CUSTOM',
+    seconds: 30,
+    shuffle: true
+  });
   currentAlbumId = res.id;
+  selectedPhotoIds.clear();
   markDirty(true);
   await loadAll();
-  toast('새 앨범을 생성했습니다.');
+  toast(`‘${albumName}’ 앨범을 만들었습니다. 이 앨범을 선택한 상태에서 사진을 추가하세요.`);
+}
+
+$('newAlbumBtn').onclick = async () => {
+  const name = prompt('새 앨범 이름을 입력하세요:', '');
+  if (!name || !name.trim()) return;
+  try { await createAlbum(name); }
+  catch (e) { toast(e.message); }
 };
+if ($('leftNewAlbumBtn')) $('leftNewAlbumBtn').onclick = startNewAlbumEditor;
 
 $('saveAlbumMetaBtn').onclick = async () => {
-  const cur = state.albums.find(a => a.id === currentAlbumId);
-  if (!cur) return;
-  await post('/api/albums/save', {
-    id: cur.id,
-    name: $('albumNameIn').value,
-    description: $('albumDescIn').value,
-    coverPhotoId: cur.coverPhotoId,
+  const editId = $('albumIdIn') ? $('albumIdIn').value.trim() : currentAlbumId;
+  const name = $('albumNameIn').value.trim();
+  if (!name) {
+    toast('앨범 이름을 입력해 주세요.');
+    $('albumNameIn').focus();
+    return;
+  }
+  const cur = editId ? state.albums.find(a => a.id === editId) : null;
+  const res = await post('/api/albums/save', {
+    id: cur ? cur.id : '',
+    name,
+    description: $('albumDescIn').value.trim(),
+    coverPhotoId: cur ? cur.coverPhotoId : '',
     sortOrder: $('albumSortIn').value,
-    seconds: Number($('albumSecIn').value),
+    seconds: Number($('albumSecIn').value) || 30,
     shuffle: $('albumShuffleIn').checked
   });
+  currentAlbumId = res.id || currentAlbumId;
   markDirty(true);
   await loadAll();
-  toast('앨범 설정을 초안에 저장했습니다.');
+  toast(cur ? '앨범 설정을 저장했습니다.' : `‘${name}’ 새 앨범을 추가했습니다.`);
 };
 
 $('cloneAlbumBtn').onclick = async () => {
@@ -1253,7 +1663,7 @@ $('cloneAlbumBtn').onclick = async () => {
 };
 
 $('deleteAlbumBtn').onclick = async () => {
-  if (!confirm('이 앨범을 삭제할까요? (원본 사진 파일은 기본 보관함에 안전하게 유지됩니다)')) return;
+  if (!confirm('이 앨범을 삭제할까요? (사진 파일은 ‘모든 사진’에 계속 보관됩니다)')) return;
   await post('/api/albums/delete', { id: currentAlbumId });
   currentAlbumId = 'album_default';
   markDirty(true);
@@ -1263,9 +1673,12 @@ $('deleteAlbumBtn').onclick = async () => {
 
 $('selectAllPhotosBtn').onclick = () => {
   const cur = state.albums.find(a => a.id === currentAlbumId);
-  if (!cur || !cur.items) return;
-  if (selectedPhotoIds.size === cur.items.length) selectedPhotoIds.clear();
-  else cur.items.forEach(i => selectedPhotoIds.add(i.photoId));
+  if (!cur) return;
+  const items = isAllPhotosAlbumId(cur.id)
+    ? state.photos.map(p => ({ photoId: p.id }))
+    : (cur.items || []);
+  if (selectedPhotoIds.size === items.length) selectedPhotoIds.clear();
+  else items.forEach(i => selectedPhotoIds.add(i.photoId));
   renderAlbumsTab();
 };
 
@@ -1281,6 +1694,7 @@ $('setCoverPhotoBtn').onclick = async () => {
 
 $('copyPhotosToAlbumBtn').onclick = async () => {
   if (!selectedPhotoIds.size) { toast('사진을 먼저 선택하세요.'); return; }
+  if (!$('targetAlbumSelect').value) { toast('사진을 담을 사용자 앨범을 먼저 선택하거나 만들어 주세요.'); return; }
   await post('/api/albums/items', {
     action: 'copy',
     albumId: $('targetAlbumSelect').value,
@@ -1293,6 +1707,10 @@ $('copyPhotosToAlbumBtn').onclick = async () => {
 
 $('movePhotosToAlbumBtn').onclick = async () => {
   if (!selectedPhotoIds.size) { toast('사진을 먼저 선택하세요.'); return; }
+  if (isAllPhotosAlbumId(currentAlbumId) || !$('targetAlbumSelect').value) {
+    toast('‘모든 사진’에서는 이동할 수 없습니다. 다른 앨범을 선택하거나 만들어 주세요.');
+    return;
+  }
   await post('/api/albums/items', {
     action: 'move',
     albumId: currentAlbumId,
@@ -1307,6 +1725,10 @@ $('movePhotosToAlbumBtn').onclick = async () => {
 
 $('removeFromAlbumBtn').onclick = async () => {
   if (!selectedPhotoIds.size) return;
+  if (isAllPhotosAlbumId(currentAlbumId)) {
+    toast('‘모든 사진’은 전체 사진을 보여주는 기본 보기이므로 사진을 제외할 수 없습니다.');
+    return;
+  }
   await post('/api/albums/items', {
     action: 'remove',
     albumId: currentAlbumId,
@@ -1334,61 +1756,127 @@ dz.ondragleave = () => dz.classList.remove('dragover');
 dz.ondrop = e => {
   e.preventDefault();
   dz.classList.remove('dragover');
+  if (uploadBatchActive) return;
+  if (isAllPhotosAlbumId(currentAlbumId)) {
+    toast('‘모든 사진’은 사진을 직접 담는 앨범이 아닙니다. 다른 앨범을 선택하거나 새 앨범을 만들어 주세요.');
+    return;
+  }
   if (e.dataTransfer.files && e.dataTransfer.files.length) {
     runUploadBatch(Array.from(e.dataTransfer.files));
   }
 };
 $('uploadInput').onchange = e => {
+  if (uploadBatchActive) {
+    e.target.value = '';
+    return;
+  }
+  if (isAllPhotosAlbumId(currentAlbumId)) {
+    e.target.value = '';
+    toast('‘모든 사진’은 사진을 직접 담는 앨범이 아닙니다. 다른 앨범을 선택하거나 새 앨범을 만들어 주세요.');
+    return;
+  }
   if (e.target.files.length) runUploadBatch(Array.from(e.target.files));
 };
-$('cancelUploadBtn').onclick = () => {
-  if (activeXhr) activeXhr.abort();
-};
+$('cancelUploadBtn').onclick = cancelUploadBatch;
+$('uploadLockCancelBtn').onclick = cancelUploadBatch;
 $('retryUploadBtn').onclick = () => {
   if (failedUploads.length) runUploadBatch([...failedUploads]);
 };
 
+function updateUploadProgress(value, statusText) {
+  currentUploadProgress = Math.max(0, Math.min(100, Math.round(value)));
+  $('uploadProgressBar').value = currentUploadProgress;
+  $('uploadLockProgress').value = currentUploadProgress;
+  $('uploadLockPercent').textContent = `${currentUploadProgress}%`;
+  if (statusText) $('uploadLockStatus').textContent = statusText;
+}
+
+function cancelUploadBatch() {
+  if (!uploadBatchActive) return;
+  uploadCancelRequested = true;
+  $('uploadLockStatus').textContent = '현재 사진 전송을 취소하고 정리하는 중…';
+  if (activeXhr) activeXhr.abort();
+}
+
 async function runUploadBatch(files) {
+  if (uploadBatchActive || !files || !files.length) return;
+  if (isAllPhotosAlbumId(currentAlbumId)) {
+    toast('사진을 추가할 앨범을 선택해 주세요. ‘모든 사진’은 보관함 전체를 자동으로 보여주는 보기입니다.');
+    return;
+  }
+  uploadBatchActive = true;
+  uploadCancelRequested = false;
+  currentUploadProgress = 0;
   $('uploadStatusWrap').classList.remove('hidden');
   $('retryUploadBtn').classList.add('hidden');
   const log = $('uploadDetailLog');
   log.innerHTML = '';
   failedUploads = [];
   let ok = 0, dup = 0, cancelled = false;
+  $('uploadHeaderText').textContent = `업로드 준비 중 · ${files.length}장`;
+  updateUploadProgress(0, `‘${state.albums.find(a => a.id === currentAlbumId)?.name || '선택한 앨범'}’ 앨범에 ${files.length}장을 순서대로 업로드합니다.`);
+  setUploadLock(true);
 
-  for (let i = 0; i < files.length; i++) {
-    const f = files[i];
-    $('uploadHeaderText').textContent = `${i + 1} / ${files.length} 업로드 중: ${f.name}`;
-    try {
-      const res = await uploadSingleFile(f, pct => {
-        const totalPct = Math.round(((i + pct / 100) / files.length) * 100);
-        $('uploadProgressBar').value = totalPct;
-      });
-      ok++;
-      if (res.duplicate) dup++;
-      const line = document.createElement('div');
-      line.textContent = `✓ ${f.name} (${res.duplicate ? '중복 사진 재참조' : '저장 완료'})`;
-      log.appendChild(line);
-    } catch (err) {
-      if (err.message === 'ABORTED') {
+  try {
+    for (let i = 0; i < files.length; i++) {
+      if (uploadCancelRequested) {
         cancelled = true;
         break;
       }
-      failedUploads.push(f);
-      const line = document.createElement('div');
-      line.style.color = 'var(--danger)';
-      line.textContent = `✗ ${f.name}: ${err.message}`;
-      log.appendChild(line);
+      const f = files[i];
+      $('uploadHeaderText').textContent = `${i + 1} / ${files.length} 업로드 중: ${f.name}`;
+      updateUploadProgress(
+        (i / files.length) * 100,
+        `${i + 1} / ${files.length} · ${f.name}`);
+      try {
+        const res = await uploadSingleFile(f, pct => {
+          updateUploadProgress(
+            ((i + pct / 100) / files.length) * 100,
+            `${i + 1} / ${files.length} · ${f.name} (${pct}%)`);
+        });
+        if (res.duplicate) {
+          dup++;
+          const line = document.createElement('div');
+          line.textContent = `↷ ${f.name}: 동일한 사진이 있어 건너뛰었습니다.`;
+          log.appendChild(line);
+        } else {
+          ok++;
+          const line = document.createElement('div');
+          line.textContent = `✓ ${f.name}: 업로드 완료`;
+          log.appendChild(line);
+        }
+      } catch (err) {
+        if (err.message === 'ABORTED') {
+          cancelled = true;
+          break;
+        }
+        failedUploads.push(f);
+        const line = document.createElement('div');
+        line.style.color = 'var(--danger)';
+        line.textContent = `✗ ${f.name}: ${err.message}`;
+        log.appendChild(line);
+      }
+      if (!cancelled) updateUploadProgress(((i + 1) / files.length) * 100);
     }
+    $('uploadInput').value = '';
+    $('uploadHeaderText').textContent = cancelled
+      ? `업로드 취소됨 · 저장 ${ok}장 · 중복 건너뜀 ${dup}장 · 실패 ${failedUploads.length}장`
+      : `완료 · 저장 ${ok}장 · 중복 건너뜀 ${dup}장 · 실패 ${failedUploads.length}장`;
+    updateUploadProgress(
+      cancelled ? currentUploadProgress : 100,
+      cancelled
+        ? '업로드가 취소되었습니다. 이미 완료된 사진은 유지됩니다.'
+        : '모든 사진 처리를 마쳤습니다.');
+    $('retryUploadBtn').classList.toggle('hidden', failedUploads.length === 0);
+    await loadAll();
+  } catch (err) {
+    toast(`업로드 결과를 새로고침하지 못했습니다: ${err.message || err}`);
+  } finally {
+    activeXhr = null;
+    uploadBatchActive = false;
+    uploadCancelRequested = false;
+    setUploadLock(false);
   }
-  activeXhr = null;
-  $('uploadInput').value = '';
-  $('uploadProgressBar').value = 100;
-  $('uploadHeaderText').textContent = cancelled
-    ? `업로드 취소됨 (${ok}장 완료)`
-    : `업로드 완료: 성공 ${ok}장 (중복 방지 ${dup}장) · 실패 ${failedUploads.length}장`;
-  $('retryUploadBtn').classList.toggle('hidden', failedUploads.length === 0);
-  await loadAll();
 }
 
 function uploadSingleFile(file, onPct) {
@@ -1421,169 +1909,800 @@ function uploadSingleFile(file, onPct) {
   });
 }
 
-// --- 3. TEXTS & COLLECTIONS ---
-function renderTextsTab() {
-  const colBox = $('collectionListBox');
-  colBox.innerHTML = '';
-  state.textCollections.forEach(c => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'secondary';
-    b.style.justifyContent = 'space-between';
-    if (c.id === currentColId) b.style.borderColor = 'var(--primary)';
-    b.innerHTML = `<span>${c.name}</span><small>${c.categoryFilter || '전체'}</small>`;
-    b.onclick = () => {
-      currentColId = c.id;
-      $('colIdIn').value = c.id;
-      $('colNameIn').value = c.name;
-      $('colCatsIn').value = c.categoryFilter || '';
-      $('colKindIn').value = c.kindFilter || 'ALL';
-      renderTextsTab();
-    };
-    colBox.appendChild(b);
+// --- 3. TEXTS LIBRARY (Left Detail Editor + Right Grid + Immediate Save on Paste/CSV/Edit) ---
+const DEFAULT_TEXT_CATS = ['인생문장', '영문 글귀', '시 한 구절', '성경 말씀', 'Bilbe Verse'];
+let currentTextCategory = '';
+let textGridRows = [];
+let textGridDirty = false;
+let newRowSeq = 1;
+let isSyncingDetailForm = false;
+
+function getManagedCategories() {
+  if (Array.isArray(state.textCategories) && state.textCategories.length > 0) {
+    return state.textCategories;
+  }
+  return DEFAULT_TEXT_CATS.slice();
+}
+
+function initTextGridFromState(force = false) {
+  if (textGridDirty && !force) return;
+  textGridRows = (state.texts || []).map(t => ({
+    id: t.id,
+    category: (t.category || '').trim() || '기타',
+    title: t.title || '',
+    body: t.body || '',
+    author: t.author || '',
+    source: t.source || '',
+    displaySeconds: t.displaySeconds || 15,
+    enabled: t.enabled !== false,
+    _status: 'saved'
+  }));
+  textGridDirty = false;
+  if (textGridRows.length > 0 && !textGridRows.some(r => r.id === currentTextId)) {
+    currentTextId = textGridRows[0].id;
+  } else if (!textGridRows.length) {
+    currentTextId = '';
+  }
+}
+
+function getAllTextCategories() {
+  const counts = new Map();
+  getManagedCategories().forEach(c => {
+    if (c && c !== '기타') counts.set(c, 0);
   });
+  const sourceList = textGridRows.length ? textGridRows : (state.texts || []);
+  sourceList.forEach(t => {
+    const c = (t.category || '').trim() || '기타';
+    if (c !== '기타') counts.set(c, (counts.get(c) || 0) + 1);
+  });
+  // Always keep '기타' at the end as the fallback category
+  const etcCount = sourceList.filter(t => !((t.category || '').trim()) || (t.category || '').trim() === '기타').length;
+  counts.set('기타', etcCount);
+  return Array.from(counts.entries()).map(([name, count]) => ({ name, count }));
+}
+
+function syncCategorySelectOptions() {
+  const sel = $('textCategoryIn');
+  if (!sel) return;
+  const prevVal = sel.value;
+  sel.innerHTML = '';
+  const allCats = getAllTextCategories();
+  allCats.forEach(cat => {
+    const opt = document.createElement('option');
+    opt.value = cat.name;
+    opt.textContent = cat.name;
+    sel.appendChild(opt);
+  });
+  if (prevVal && allCats.some(c => c.name === prevVal)) {
+    sel.value = prevVal;
+  }
+}
+
+let categoryModalReturnFocus = null;
+
+function openCategoryModal() {
+  const modal = $('categoryModal');
+  if (!modal) return;
+  categoryModalReturnFocus = document.activeElement;
+  renderCategoryModalList();
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => $('newCategoryNameIn').focus());
+}
+
+function closeCategoryModal() {
+  const modal = $('categoryModal');
+  if (!modal || modal.classList.contains('hidden')) return;
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = '';
+  if (categoryModalReturnFocus && typeof categoryModalReturnFocus.focus === 'function')
+    categoryModalReturnFocus.focus();
+  categoryModalReturnFocus = null;
+}
+
+function renderCategoryModalList() {
+  const box = $('categoryModalList');
+  if (!box) return;
+  box.innerHTML = '';
+  const allCats = getAllTextCategories();
+  allCats.forEach(cat => {
+    const isEtc = cat.name === '기타';
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.justifyContent = 'space-between';
+    row.style.alignItems = 'center';
+    row.style.padding = '8px 10px';
+    row.style.background = 'var(--surface)';
+    row.style.border = '1px solid var(--outline)';
+    row.style.borderRadius = '8px';
+    row.innerHTML = `
+      <div>
+        <strong style="font-size:14px">${escapeHtml(cat.name)}</strong>
+        <span style="font-size:12px;color:var(--muted);margin-left:6px">(${cat.count}편)${isEtc ? ' · 미분류 기본값' : ''}</span>
+      </div>
+      <div style="display:flex;gap:6px">
+        ${isEtc ? '' : '<button type="button" class="secondary cat-rename-btn" style="min-height:28px;padding:3px 8px;font-size:11.5px">이름 변경</button><button type="button" class="danger cat-del-btn" style="min-height:28px;padding:3px 8px;font-size:11.5px">삭제</button>'}
+      </div>
+    `;
+    const renameBtn = row.querySelector('.cat-rename-btn');
+    if (renameBtn) {
+      renameBtn.onclick = async () => {
+        const nextName = prompt(`‘${cat.name}’ 카테고리의 새 이름을 입력하세요:`, cat.name);
+        if (!nextName || !nextName.trim() || nextName.trim() === cat.name) return;
+        try {
+          await post('/api/texts/categories', { action: 'rename', oldName: cat.name, newName: nextName.trim() });
+          if (currentTextCategory === cat.name) currentTextCategory = nextName.trim();
+          await loadAll();
+          initTextGridFromState(true);
+          renderTextsTab(true);
+          renderCategoryModalList();
+          toast(`카테고리 이름을 ‘${nextName.trim()}’(으)로 변경했습니다.`);
+        } catch (err) { toast(err.message); }
+      };
+    }
+    const delBtn = row.querySelector('.cat-del-btn');
+    if (delBtn) {
+      delBtn.onclick = async () => {
+        const msg = cat.count > 0
+          ? `‘${cat.name}’ 카테고리를 삭제할까요?\n(이 카테고리에 속한 글귀 ${cat.count}편은 ‘기타’로 이동됩니다.)`
+          : `‘${cat.name}’ 카테고리를 삭제할까요?`;
+        if (!confirm(msg)) return;
+        try {
+          await post('/api/texts/categories', { action: 'delete', name: cat.name });
+          if (currentTextCategory === cat.name) currentTextCategory = '';
+          await loadAll();
+          initTextGridFromState(true);
+          renderTextsTab(true);
+          renderCategoryModalList();
+          toast(`‘${cat.name}’ 카테고리를 삭제했습니다.`);
+        } catch (err) { toast(err.message); }
+      };
+    }
+    box.appendChild(row);
+  });
+}
+
+$('openCategoryModalBtn').onclick = openCategoryModal;
+$('closeCategoryModalBtn').onclick = closeCategoryModal;
+$('categoryModal').addEventListener('click', e => {
+  if (e.target === $('categoryModal')) closeCategoryModal();
+});
+document.addEventListener('keydown', e => {
+  const modal = $('categoryModal');
+  if (!modal || modal.classList.contains('hidden')) return;
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    closeCategoryModal();
+    return;
+  }
+  if (e.key !== 'Tab') return;
+  const focusable = Array.from(
+    modal.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')
+  ).filter(el => el.offsetParent !== null);
+  if (!focusable.length) return;
+  const first = focusable[0], last = focusable[focusable.length - 1];
+  if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault();
+    first.focus();
+  }
+});
+
+$('addCategoryBtn').onclick = async () => {
+  const name = ($('newCategoryNameIn').value || '').trim();
+  if (!name) {
+    toast('추가할 카테고리 이름을 입력해 주세요.');
+    $('newCategoryNameIn').focus();
+    return;
+  }
+  try {
+    await post('/api/texts/categories', { action: 'add', name });
+    $('newCategoryNameIn').value = '';
+    await loadAll();
+    renderTextsTab(true);
+    renderCategoryModalList();
+    $('textCategoryIn').value = name;
+    onLeftDetailFormEdited();
+    toast(`‘${name}’ 카테고리를 추가했습니다.`);
+  } catch (err) {
+    toast(err.message);
+  }
+};
+
+$('newCategoryNameIn').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    $('addCategoryBtn').click();
+  }
+});
+
+function setTextGridDirty(dirty) {
+  textGridDirty = dirty;
+  const badge = $('textGridDirtyBadge');
+  if (!badge) return;
+  if (dirty) {
+    badge.textContent = '편집 중 · 왼쪽 ‘글귀 저장’을 눌러주세요';
+    badge.classList.add('dirty');
+  } else {
+    badge.textContent = '저장 완료됨';
+    badge.classList.remove('dirty');
+  }
+}
+
+function renderTextsTab(skipInit = false, skipFormSync = false) {
+  if (!skipInit) initTextGridFromState(false);
+  setTextGridDirty(textGridDirty);
+  syncCategorySelectOptions();
+
+  // Sync Category Filter Select
+  const catSel = $('textCatFilter');
+  const prevCat = currentTextCategory;
+  catSel.innerHTML = `<option value="">전체 카테고리 (${textGridRows.length}편)</option>`;
+  getAllTextCategories().forEach(cat => {
+    const opt = document.createElement('option');
+    opt.value = cat.name;
+    opt.textContent = `${cat.name} (${cat.count}편)`;
+    catSel.appendChild(opt);
+  });
+  catSel.value = prevCat;
 
   const q = ($('textSearchIn').value || '').toLowerCase();
-  const catF = $('textCatFilter').value;
-  const kindF = $('textKindFilter').value;
-  const list = $('textItemsList');
-  list.innerHTML = '';
+  const tbody = $('textGridBody');
+  tbody.innerHTML = '';
 
-  state.texts.filter(t => {
-    if (catF && t.category !== catF) return false;
-    if (kindF && t.kind !== kindF) return false;
-    if (q && !(t.title.toLowerCase().includes(q) || t.body.toLowerCase().includes(q) || t.author.toLowerCase().includes(q) || t.tags.toLowerCase().includes(q))) return false;
+  const filtered = textGridRows.filter(t => {
+    if (currentTextCategory && (t.category || '기타') !== currentTextCategory) return false;
+    if (q && !((t.title || '').toLowerCase().includes(q) || (t.body || '').toLowerCase().includes(q) || (t.author || '').toLowerCase().includes(q) || (t.category || '').toLowerCase().includes(q))) return false;
     return true;
-  }).forEach(t => {
-    const item = document.createElement('div');
-    item.style.border = '1px solid var(--outline)';
-    item.style.borderRadius = '12px';
-    item.style.padding = '12px';
-    item.style.cursor = 'pointer';
-    if (t.id === currentTextId) item.style.borderColor = 'var(--primary)';
-    item.innerHTML = `
-      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--primary);font-weight:600">
-        <span>[${t.kind}] ${t.category} · ${t.title || '무제'}</span>
-        <span>${t.enabled ? '사용 중' : '숨김'} · ${t.displaySeconds}초</span>
-      </div>
-      <div style="margin-top:6px;white-space:pre-line;font-family:Georgia,serif;font-size:14.5px">${t.body}</div>
-      ${t.author ? `<div style="margin-top:4px;font-size:12.5px;color:var(--muted)">— ${t.author} ${t.source ? `(${t.source})` : ''}</div>` : ''}
-    `;
-    item.onclick = () => populateTextEditor(t);
-    list.appendChild(item);
   });
+
+  $('textGridCountLabel').textContent = `(전체 ${textGridRows.length}편 중 ${filtered.length}편 표시)`;
+
+  if (!filtered.length) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="8" style="text-align:center;padding:28px;color:var(--muted)">표시할 글귀가 없습니다. 엑셀에서 복사해 붙여넣거나(Ctrl+V), CSV 파일을 불러오거나, 왼쪽에서 새 글귀를 작성해 저장해 보세요.</td>`;
+    tbody.appendChild(tr);
+  } else {
+    filtered.forEach((row, idx) => {
+      const tr = document.createElement('tr');
+      if (row.id === currentTextId) tr.className = 'selected';
+      const previewBody = (row.body || '').replace(/\r?\n/g, ' ↵ ');
+      tr.innerHTML = `
+        <td style="color:var(--muted);font-size:12px">${idx + 1}</td>
+        <td style="font-weight:600;color:var(--primary)">${escapeHtml(row.category || '기타')}</td>
+        <td>${escapeHtml(row.title || '-')}</td>
+        <td style="max-width:360px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:Georgia,serif">${escapeHtml(previewBody)}</td>
+        <td style="color:var(--muted)">${escapeHtml(row.author || '-')}</td>
+        <td>${row.displaySeconds || 15}초</td>
+        <td><input type="checkbox" class="grid-enable-chk" ${row.enabled !== false ? 'checked' : ''} style="width:16px;height:16px;margin:0"></td>
+        <td><button type="button" class="secondary grid-del-btn" style="min-height:28px;padding:2px 8px;font-size:12px;color:var(--danger)">✕</button></td>
+      `;
+      tr.onclick = e => {
+        if (e.target.classList.contains('grid-enable-chk') || e.target.classList.contains('grid-del-btn')) return;
+        selectGridRow(row.id);
+      };
+      tr.querySelector('.grid-enable-chk').onchange = async e => {
+        row.enabled = e.target.checked;
+        if (row.id === currentTextId) $('textEnabledIn').checked = row.enabled;
+        await saveTextGridToServer(row.enabled ? '글귀 사용을 켰습니다.' : '글귀 사용을 껐습니다.');
+      };
+      tr.querySelector('.grid-del-btn').onclick = async () => {
+        await removeGridRow(row.id);
+      };
+      tbody.appendChild(tr);
+    });
+  }
+
+  const activeRow = textGridRows.find(r => r.id === currentTextId) || null;
+  if (!skipFormSync) {
+    syncDetailFormFromRow(activeRow);
+  } else {
+    updateDetailFormBadgeOnly(activeRow);
+  }
 }
 
-function populateTextEditor(t) {
-  currentTextId = t ? t.id : '';
-  $('textIdIn').value = t ? t.id : '';
-  $('textTitleIn').value = t ? t.title : '';
-  $('textKindIn').value = t ? t.kind : 'QUOTE';
-  $('textCategoryIn').value = t ? t.category : '아침의 명언';
-  $('textAuthorIn').value = t ? t.author : '';
-  $('textSourceIn').value = t ? t.source : '';
-  $('textTagsIn').value = t ? t.tags : '';
-  $('textBodyIn').value = t ? t.body : '';
-  $('textSecIn').value = t ? t.displaySeconds : 15;
-  $('textLicenseIn').value = t ? t.licenseNote : '';
-  $('textEnabledIn').checked = t ? t.enabled !== false : true;
-  renderTextsTab();
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
-$('textSearchIn').oninput = renderTextsTab;
-$('textCatFilter').onchange = renderTextsTab;
-$('textKindFilter').onchange = renderTextsTab;
-$('newTextBtn').onclick = () => populateTextEditor(null);
-$('newCollectionBtn').onclick = () => {
-  currentColId = '';
-  $('colIdIn').value = '';
-  $('colNameIn').value = '';
-  $('colCatsIn').value = '';
-  $('colKindIn').value = 'ALL';
-};
+function selectGridRow(rowId) {
+  currentTextId = rowId;
+  renderTextsTab(true, false);
+}
 
-$('saveColBtn').onclick = async () => {
-  await post('/api/text-collections/save', {
-    id: $('colIdIn').value,
-    name: $('colNameIn').value || '새 글귀 모음',
-    categoryFilter: $('colCatsIn').value,
-    kindFilter: $('colKindIn').value
-  });
-  markDirty(true);
-  await loadAll();
-  toast('글귀 모음을 저장했습니다.');
-};
+function updateDetailFormBadgeOnly(row) {
+  const badge = $('textEditorRowBadge');
+  if (row) {
+    $('textEditorHeading').textContent = '선택한 글귀 상세 · 편집';
+    const stLabel = row._status === 'new' ? '새 글귀 작성 중' : row._status === 'modified' ? '수정 중' : '선택됨';
+    const stClass = row._status === 'new' ? 'new' : row._status === 'modified' ? 'modified' : 'saved';
+    badge.className = 'row-badge ' + stClass;
+    badge.textContent = stLabel;
+  } else {
+    $('textEditorHeading').textContent = '새 글귀 작성';
+    badge.className = 'row-badge new';
+    badge.textContent = '새 글귀';
+  }
+}
 
-$('deleteColBtn').onclick = async () => {
-  const id = $('colIdIn').value;
-  if (!id) return;
-  await post('/api/text-collections/delete', { id });
-  currentColId = '';
-  markDirty(true);
-  await loadAll();
-  toast('글귀 모음을 삭제했습니다.');
-};
+function syncDetailFormFromRow(row) {
+  isSyncingDetailForm = true;
+  updateDetailFormBadgeOnly(row);
+  syncCategorySelectOptions();
+  const defaultCat = getManagedCategories()[0] || '인생문장';
+  if (row) {
+    $('textIdIn').value = row.id;
+    $('textCategoryIn').value = (row.category || '').trim() || '기타';
+    $('textTitleIn').value = row.title || '';
+    $('textAuthorIn').value = row.author || '';
+    $('textSourceIn').value = row.source || '';
+    $('textBodyIn').value = row.body || '';
+    $('textSecIn').value = row.displaySeconds || 15;
+    $('textEnabledIn').checked = row.enabled !== false;
+  } else {
+    $('textIdIn').value = '';
+    $('textCategoryIn').value = currentTextCategory || defaultCat;
+    $('textTitleIn').value = '';
+    $('textAuthorIn').value = '';
+    $('textSourceIn').value = '';
+    $('textBodyIn').value = '';
+    $('textSecIn').value = 15;
+    $('textEnabledIn').checked = true;
+  }
+  isSyncingDetailForm = false;
+}
 
-$('saveTextBtn').onclick = async () => {
-  try {
-    const res = await post('/api/texts/save', {
-      id: $('textIdIn').value,
+function onLeftDetailFormEdited() {
+  if (isSyncingDetailForm) return;
+  let row = textGridRows.find(r => r.id === currentTextId);
+  if (!row) {
+    row = {
+      id: 'new_' + Date.now() + '_' + (newRowSeq++),
+      category: ($('textCategoryIn').value || '').trim() || '기타',
       title: $('textTitleIn').value,
-      kind: $('textKindIn').value,
-      category: $('textCategoryIn').value,
       author: $('textAuthorIn').value,
       source: $('textSourceIn').value,
-      tags: $('textTagsIn').value,
       body: $('textBodyIn').value,
-      displaySeconds: Number($('textSecIn').value),
-      licenseNote: $('textLicenseIn').value,
-      enabled: $('textEnabledIn').checked
-    });
-    currentTextId = res.id;
+      displaySeconds: Number($('textSecIn').value) || 15,
+      enabled: $('textEnabledIn').checked,
+      _status: 'new'
+    };
+    textGridRows.unshift(row);
+    currentTextId = row.id;
+    $('textIdIn').value = row.id;
+  } else {
+    row.category = ($('textCategoryIn').value || '').trim() || '기타';
+    row.title = $('textTitleIn').value;
+    row.author = $('textAuthorIn').value;
+    row.source = $('textSourceIn').value;
+    row.body = $('textBodyIn').value;
+    row.displaySeconds = Number($('textSecIn').value) || 15;
+    row.enabled = $('textEnabledIn').checked;
+    if (row._status === 'saved') row._status = 'modified';
+  }
+  setTextGridDirty(true);
+  renderTextsTab(true, true);
+}
+
+['textTitleIn', 'textAuthorIn', 'textSourceIn', 'textBodyIn', 'textSecIn'].forEach(id => {
+  $(id).oninput = onLeftDetailFormEdited;
+});
+$('textCategoryIn').onchange = onLeftDetailFormEdited;
+$('textEnabledIn').onchange = onLeftDetailFormEdited;
+
+$('textCatFilter').onchange = () => {
+  currentTextCategory = $('textCatFilter').value;
+  renderTextsTab(true);
+};
+$('textSearchIn').oninput = () => renderTextsTab(true);
+
+$('addNewRowBtn').onclick = () => {
+  currentTextId = '';
+  syncDetailFormFromRow(null);
+  document.querySelectorAll('#textGridBody tr.selected').forEach(el => el.classList.remove('selected'));
+  $('textBodyIn').focus();
+};
+
+$('cloneRowBtn').onclick = async () => {
+  const cur = textGridRows.find(r => r.id === currentTextId);
+  if (!cur) return;
+  const copy = {
+    ...cur,
+    id: 'new_' + Date.now() + '_' + (newRowSeq++),
+    title: cur.title ? cur.title + ' (복사본)' : '',
+    _status: 'new'
+  };
+  const idx = textGridRows.indexOf(cur);
+  textGridRows.splice(idx + 1, 0, copy);
+  currentTextId = copy.id;
+  await saveTextGridToServer('선택한 글귀를 복제하여 저장했습니다.');
+};
+
+async function removeGridRow(rowId) {
+  const idx = textGridRows.findIndex(r => r.id === rowId);
+  if (idx < 0) return;
+  textGridRows.splice(idx, 1);
+  if (currentTextId === rowId) {
+    const next = textGridRows[Math.min(idx, textGridRows.length - 1)];
+    currentTextId = next ? next.id : '';
+  }
+  await saveTextGridToServer('글귀를 삭제했습니다.');
+}
+
+$('deleteRowBtn').onclick = async () => {
+  if (!currentTextId) return;
+  await removeGridRow(currentTextId);
+};
+
+$('restoreDefaultTextsBtn').onclick = async () => {
+  if (!confirm('기본 샘플 글귀(nunidam_sample.csv, 250편)를 복원할까요?\n(사용자가 새로 추가한 글귀는 유지되고, 기본 샘플 항목들이 초기 상태로 복원됩니다.)')) return;
+  try {
+    const res = await post('/api/texts/restore-defaults', { replaceAll: false });
+    textGridDirty = false;
     markDirty(true);
     await loadAll();
-    toast('글귀를 저장했습니다.');
-  } catch (e) { toast(e.message); }
+    initTextGridFromState(true);
+    renderTextsTab(true);
+    toast(`기본 샘플 글귀 ${res.count}편을 복원했습니다.`);
+  } catch (e) {
+    toast(e.message);
+  }
 };
 
-$('cloneTextBtn').onclick = async () => {
-  $('textIdIn').value = '';
-  $('textTitleIn').value = ($('textTitleIn').value || '글귀') + ' (복사본)';
-  await $('saveTextBtn').onclick();
+$('clearAllGridRowsBtn').onclick = async () => {
+  if (!textGridRows.length) return;
+  if (!confirm('그리드의 모든 글귀를 삭제할까요?')) return;
+  textGridRows = [];
+  currentTextId = '';
+  await saveTextGridToServer('모든 글귀를 비웠습니다.');
 };
 
-$('deleteTextBtn').onclick = async () => {
-  const id = $('textIdIn').value;
-  if (!id) return;
-  await post('/api/texts/delete', { id });
-  populateTextEditor(null);
-  markDirty(true);
-  await loadAll();
-  toast('글귀를 삭제했습니다.');
+$('revertTextGridBtn').onclick = () => {
+  initTextGridFromState(true);
+  renderTextsTab(true);
+  toast('저장 전 원래 목록으로 되돌렸습니다.');
 };
+
+async function saveTextGridToServer(customToastMsg) {
+  try {
+    const validRows = textGridRows
+      .filter(r => (r.body || '').trim().length > 0)
+      .map(r => ({
+        ...r,
+        category: (r.category || '').trim() || '기타',
+        displaySeconds: Number(r.displaySeconds) || 15
+      }));
+    const res = await post('/api/texts/bulk', {
+      syncGrid: true,
+      items: validRows
+    });
+    textGridDirty = false;
+    markDirty(true);
+    await loadAll();
+    initTextGridFromState(true);
+    renderTextsTab(true);
+    toast(customToastMsg || `글귀를 저장했습니다 (총 ${res.added}편).`);
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
+$('saveDetailTextBtn').onclick = async () => {
+  if (!($('textBodyIn').value || '').trim()) {
+    toast('글귀 본문을 입력해 주세요.');
+    $('textBodyIn').focus();
+    return;
+  }
+  onLeftDetailFormEdited();
+  await saveTextGridToServer('글귀를 저장했습니다.');
+};
+$('saveTextGridBtn').onclick = () => saveTextGridToServer();
+$('saveTextGridBottomBtn').onclick = () => saveTextGridToServer();
+
+// --- Excel / CSV / TSV Paste & Upload into Grid (Immediate Save) ---
+$('togglePasteBoxBtn').onclick = () => {
+  $('multiPasteWrap').classList.toggle('hidden');
+};
+
+async function appendParsedItemsToGrid(items, sourceLabel) {
+  if (!items || !items.length) {
+    toast('그리드에 추가할 수 있는 글귀 행을 찾지 못했습니다.');
+    return;
+  }
+  let firstNewId = '';
+  items.forEach(it => {
+    const id = 'new_' + Date.now() + '_' + (newRowSeq++);
+    if (!firstNewId) firstNewId = id;
+    textGridRows.push({
+      id,
+      category: (it.category || '').trim() || '기타',
+      title: it.title || '',
+      body: it.body || '',
+      author: it.author || '',
+      source: it.source || '',
+      displaySeconds: it.displaySeconds || 15,
+      enabled: true,
+      _status: 'new'
+    });
+  });
+  if (firstNewId) currentTextId = firstNewId;
+  await saveTextGridToServer(`${sourceLabel}: ${items.length}건을 그리드에 추가하고 즉시 저장했습니다.`);
+}
+
+$('quickPasteInput').addEventListener('paste', async e => {
+  const pasted = (e.clipboardData || window.clipboardData).getData('text');
+  if (!pasted) return;
+  e.preventDefault();
+  $('quickPasteInput').value = '';
+  const items = parseSpreadsheetRowsToItems(pasted);
+  await appendParsedItemsToGrid(items, '엑셀 붙여넣기');
+});
+
+$('textGridWrap').addEventListener('paste', async e => {
+  const pasted = (e.clipboardData || window.clipboardData).getData('text');
+  if (!pasted) return;
+  e.preventDefault();
+  const items = parseSpreadsheetRowsToItems(pasted);
+  await appendParsedItemsToGrid(items, '엑셀 붙여넣기');
+});
+
+$('applyPasteToGridBtn').onclick = async () => {
+  const raw = ($('bulkTextPasteArea').value || '').trim();
+  if (!raw) {
+    toast('엑셀에서 복사한 내용을 먼저 붙여넣어 주세요.');
+    return;
+  }
+  const items = parseSpreadsheetRowsToItems(raw);
+  $('bulkTextPasteArea').value = '';
+  $('multiPasteWrap').classList.add('hidden');
+  await appendParsedItemsToGrid(items, '엑셀 붙여넣기');
+};
+
+$('bulkTextCsvFile').onchange = async e => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  try {
+    const raw = await readCsvFileAutoEncoding(file);
+    const items = parseSpreadsheetRowsToItems(raw);
+    await appendParsedItemsToGrid(items, `CSV 파일(${file.name})`);
+  } catch (err) {
+    toast(err.message);
+  }
+  e.target.value = '';
+};
+
+function csvEscape(val) {
+  const s = String(val == null ? '' : val);
+  if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+function downloadCsvFile(filename, rows) {
+  const bom = '\uFEFF';
+  const content = bom + rows.map(r => r.map(csvEscape).join(',')).join('\r\n');
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+$('downloadTextTemplateBtn').onclick = () => {
+  downloadCsvFile('nunidam_texts_template.csv', [
+    ['카테고리', '본문', '작가', '제목', '출처', '표시시간'],
+    ['인생문장', '서두르지 않아도 괜찮습니다. 천천히 걷는 사람만이 길가의 들꽃을 기억합니다.', '누니담', '천천히 가는 길', '', '15'],
+    ['영문 글귀', 'Happiness is not something ready made. It comes from the quiet moments we share.', 'NuniDam', 'Every Moment', '', '15'],
+    ['시 한 구절', '봄에는 여린 초록이 창을 두드리고\n여름에는 푸른 그늘이 마루에 내려앉습니다.', '누니담 문학 노트', '사계절의 창', '', '20'],
+    ['성경 말씀', '항상 기뻐하라 쉬지 말고 기도하라 범사에 감사하라.', '데살로니가전서 5:16-18', '평안의 말씀', '성경', '15'],
+    ['Bilbe Verse', 'Rejoice always, pray continually, give thanks in all circumstances.', '1 Thessalonians 5:16-18', 'Light & Peace', 'Bible', '15'],
+    ['', '카테고리를 비워두면 자동으로 기타로 분류됩니다.', '누니담', '', '', '15']
+  ]);
+};
+
+$('exportTextsCsvBtn').onclick = () => {
+  const rows = [['카테고리', '본문', '작가', '제목', '출처', '표시시간']];
+  textGridRows.forEach(t => {
+    rows.push([t.category || '', t.body || '', t.author || '', t.title || '', t.source || '', String(t.displaySeconds || 15)]);
+  });
+  downloadCsvFile('nunidam_texts_export.csv', rows);
+};
+
+function parseDelimitedGrid(rawText, delimiter) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  for (let i = 0; i < rawText.length; i++) {
+    const ch = rawText[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (rawText[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === delimiter) {
+      row.push(field.trim());
+      field = '';
+    } else if (ch === '\r' || ch === '\n') {
+      if (ch === '\r' && rawText[i + 1] === '\n') i++;
+      row.push(field.trim());
+      if (row.some(c => c.length > 0)) rows.push(row);
+      row = [];
+      field = '';
+    } else {
+      field += ch;
+    }
+  }
+  row.push(field.trim());
+  if (row.some(c => c.length > 0)) rows.push(row);
+  return rows;
+}
+
+function parseSpreadsheetRowsToItems(rawText) {
+  const cleaned = rawText.replace(/^\uFEFF/, '').trim();
+  if (!cleaned) return [];
+  const firstLine = cleaned.split(/\r?\n/)[0] || '';
+  const delimiter = firstLine.includes('\t') ? '\t' : ',';
+  const rows = parseDelimitedGrid(cleaned, delimiter);
+  if (!rows.length) return [];
+
+  let colMap = { category: 0, body: 1, author: 2, title: 3, source: 4, displaySeconds: 5 };
+  let startIdx = 0;
+  const h = rows[0].map(x => x.replace(/\s+/g, '').toLowerCase());
+  const isHeader = h.some(x =>
+    x === '카테고리' || x === '분류' || x === '본문' || x === '내용' || x === '글귀' || x === '문구' || x === 'category' || x === 'body'
+  );
+  if (isHeader) {
+    startIdx = 1;
+    colMap = { category: -1, body: -1, author: -1, title: -1, source: -1, displaySeconds: -1 };
+    h.forEach((col, idx) => {
+      if (col.includes('카테고리') || col.includes('분류') || col === 'category') colMap.category = idx;
+      else if (col.includes('본문') || col.includes('내용') || col.includes('글귀') || col.includes('문구') || col === 'body' || col === 'text') colMap.body = idx;
+      else if (col.includes('작가') || col.includes('저자') || col.includes('글쓴이') || col.includes('작성자') || col === 'author') colMap.author = idx;
+      else if (col.includes('제목') || col === 'title') colMap.title = idx;
+      else if (col.includes('출처') || col.includes('메모') || col === 'source') colMap.source = idx;
+      else if (col.includes('시간') || col.includes('초') || col === 'seconds') colMap.displaySeconds = idx;
+    });
+    if (colMap.body === -1) colMap.body = h.length > 1 ? 1 : 0;
+  }
+
+  const fallbackCat = '기타';
+  const out = [];
+  for (let i = startIdx; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r || !r.length) continue;
+    if (!isHeader && r.length === 1) {
+      if (r[0]) out.push({ category: fallbackCat, body: r[0], author: '', title: '', source: '', displaySeconds: 15 });
+      continue;
+    }
+    const body = (colMap.body >= 0 && r[colMap.body]) ? r[colMap.body] : '';
+    if (!body) continue;
+    const rawCat = (colMap.category >= 0 && r[colMap.category]) ? r[colMap.category].trim() : '';
+    const category = rawCat || fallbackCat;
+    const author = (colMap.author >= 0 && r[colMap.author]) ? r[colMap.author] : '';
+    const title = (colMap.title >= 0 && r[colMap.title]) ? r[colMap.title] : '';
+    const source = (colMap.source >= 0 && r[colMap.source]) ? r[colMap.source] : '';
+    const secRaw = (colMap.displaySeconds >= 0 && r[colMap.displaySeconds]) ? parseInt(r[colMap.displaySeconds], 10) : 15;
+    out.push({
+      category,
+      body,
+      author,
+      title,
+      source,
+      displaySeconds: Number.isFinite(secRaw) && secRaw >= 5 ? secRaw : 15
+    });
+  }
+  return out;
+}
+
+async function readCsvFileAutoEncoding(file) {
+  const buf = await file.arrayBuffer();
+  const utf8Text = new TextDecoder('utf-8', { fatal: false }).decode(buf);
+  if (utf8Text.includes('\uFFFD')) {
+    try {
+      return new TextDecoder('euc-kr').decode(buf);
+    } catch {
+      return utf8Text;
+    }
+  }
+  return utf8Text;
+}
 
 // --- 4. SCENES ---
+const SCENE_LAYOUT_LABELS = {
+  MAGAZINE: '잡지형 (사진+시계+글귀)',
+  PHOTO: '전면 사진형 (사진 꽉 참)',
+  GALLERY: '갤러리 매트 (여백 감상)',
+  SPLIT: '좌우/상하 분할 카드형',
+  TEXT_ONLY: '명언·시 전용 엽서 화면'
+};
+const SCENE_TEXT_MODE_LABELS = {
+  OVERLAY: '사진 위 반투명 오버레이',
+  SPLIT: '사진 옆/아래 분할 패널',
+  DEDICATED: '독립 글귀 전용 슬라이드',
+  NONE: '글귀 표시 안 함 (사진만)'
+};
+
 function renderScenesTab() {
-  const box = $('sceneListBox');
-  box.innerHTML = '';
+  const tbody = $('sceneGridBody');
+  tbody.innerHTML = '';
   if (!state.scenes.find(s => s.id === currentSceneId) && state.scenes.length > 0) {
     currentSceneId = state.scenes[0].id;
   }
-  state.scenes.forEach(s => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'secondary';
-    b.style.justifyContent = 'space-between';
-    if (s.id === currentSceneId) {
-      b.style.borderColor = 'var(--primary)';
-      b.style.fontWeight = '700';
-    }
-    b.innerHTML = `<span>${s.name} ${s.isDefault ? '★' : ''}</span><small>${s.layout} · ${s.seconds}초</small>`;
-    b.onclick = () => {
+  const albumNameMap = new Map(state.albums.map(a => [a.id, a.name]));
+
+  state.scenes.forEach((s, idx) => {
+    const tr = document.createElement('tr');
+    if (s.id === currentSceneId) tr.classList.add('selected');
+
+    const albumSummary = (s.albumIds && s.albumIds.length > 0)
+      ? s.albumIds.map(id => albumNameMap.get(id) || id).join(', ')
+      : '모든 사진';
+    const catList = [];
+    (s.textCollectionIds || []).forEach(idOrCat => {
+      const legacyCol = (state.textCollections || []).find(tc => tc.id === idOrCat);
+      if (legacyCol && legacyCol.categoryFilter) {
+        catList.push(legacyCol.categoryFilter);
+      } else if (idOrCat && idOrCat !== 'col_all' && idOrCat !== 'ALL') {
+        catList.push(idOrCat.replace(/^cat:/, '').trim());
+      }
+    });
+    const catSummary = catList.length > 0 ? catList.join(', ') : '전체 글귀';
+
+    const isDef = s.id === 'scene_default' || !!s.isDefault;
+    tr.innerHTML = `
+      <td>${idx + 1}</td>
+      <td><strong>${escapeHtml(s.name || '')}</strong><div style="font-size:11px;color:var(--muted)">${escapeHtml(s.description || '')}</div></td>
+      <td>${escapeHtml(SCENE_LAYOUT_LABELS[s.layout] || s.layout || '잡지형')}</td>
+      <td>${escapeHtml(SCENE_TEXT_MODE_LABELS[s.textDisplayMode] || s.textDisplayMode || '오버레이')}</td>
+      <td>${escapeHtml(s.theme || 'MILK')} · ${s.brightness || 75}%</td>
+      <td>${s.seconds || 20}초</td>
+      <td class="cell-body">앨범: ${escapeHtml(albumSummary)} / 글귀: ${escapeHtml(catSummary)}</td>
+      <td>${isDef ? '<span class="pill-badge" style="font-size:10.5px;padding:1px 6px">★ 기본</span>' : '-'}</td>
+      <td>${isDef ? '<span class="row-badge saved" title="기본 장면은 삭제할 수 없습니다">고정</span>' : '<button type="button" class="secondary del-scene-row-btn" style="padding:3px 8px;font-size:11px;color:var(--danger)">✕</button>'}</td>
+    `;
+    tr.onclick = (e) => {
+      if (e.target.closest('.del-scene-row-btn')) return;
       currentSceneId = s.id;
       populateSceneEditor(s);
+      renderScenesTab();
     };
-    box.appendChild(b);
+    const delBtn = tr.querySelector('.del-scene-row-btn');
+    if (delBtn) {
+      delBtn.onclick = async (e) => {
+        e.stopPropagation();
+        if (!confirm(`'${s.name}' 장면을 삭제할까요?`)) return;
+        try {
+          await post('/api/scenes/delete', { id: s.id });
+          if (currentSceneId === s.id) currentSceneId = '';
+          markDirty(true);
+          await loadAll();
+          toast('장면을 삭제했습니다.');
+        } catch (err) { toast(err.message); }
+      };
+    }
+    tbody.appendChild(tr);
   });
 
   const cur = state.scenes.find(s => s.id === currentSceneId);
@@ -1597,6 +2716,7 @@ function renderScenesTab() {
 function populateSceneEditor(s) {
   if (!s) return;
   currentSceneId = s.id;
+  const isDef = s.id === 'scene_default' || !!s.isDefault;
   $('sceneIdIn').value = s.id;
   $('sceneNameIn').value = s.name;
   $('sceneDescIn').value = s.description || '';
@@ -1612,29 +2732,79 @@ function populateSceneEditor(s) {
   $('sceneDateIn').checked = s.showCaptureDate !== false;
   $('sceneShuffleIn').checked = s.shufflePhotos !== false;
   $('sceneNightDimIn').checked = !!s.nightDim;
-  $('sceneDefaultIn').checked = !!s.isDefault;
+  $('sceneDefaultIn').checked = isDef;
+  $('sceneDefaultIn').disabled = s.id === 'scene_default';
+  $('deleteSceneBtn').disabled = isDef;
+  $('deleteSceneBtn').title = isDef ? '기본 장면은 삭제할 수 없습니다.' : '';
+  if ($('sceneDefaultNotice')) {
+    $('sceneDefaultNotice').classList.toggle('hidden', !isDef);
+  }
 
   const alBox = $('sceneAlbumsCheckList');
   alBox.innerHTML = '';
   const linkedAlbums = new Set(s.albumIds || []);
+  const hasNamedAlbum = Array.from(linkedAlbums).some(id => id !== 'album_default');
+  const selectedAllPhotos = linkedAlbums.has('album_default') && !hasNamedAlbum;
   state.albums.forEach(al => {
     const lbl = document.createElement('label');
     lbl.className = 'checkbox-row';
-    lbl.innerHTML = `<input type="checkbox" class="sc-album-chk" value="${al.id}" ${linkedAlbums.has(al.id) ? 'checked' : ''}> ${al.name}`;
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'sc-album-chk';
+    checkbox.value = al.id;
+    checkbox.checked =
+      al.id === 'album_default'
+        ? selectedAllPhotos
+        : (!selectedAllPhotos && linkedAlbums.has(al.id));
+    checkbox.addEventListener('change', () => syncSceneAlbumChoices(checkbox));
+    lbl.appendChild(checkbox);
+    lbl.appendChild(document.createTextNode(
+      al.id === 'album_default' ? '모든 사진 · 보관함 전체' : (al.name || '')
+    ));
     alBox.appendChild(lbl);
   });
+  syncSceneAlbumChoices();
 
   const colBox = $('sceneColsCheckList');
   colBox.innerHTML = '';
-  const linkedCols = new Set(s.textCollectionIds || []);
-  state.textCollections.forEach(c => {
+  const selectedCats = new Set();
+  (s.textCollectionIds || []).forEach(idOrCat => {
+    const legacyCol = (state.textCollections || []).find(tc => tc.id === idOrCat);
+    if (legacyCol && legacyCol.categoryFilter) {
+      legacyCol.categoryFilter.split(',').forEach(x => { if (x.trim()) selectedCats.add(x.trim()); });
+    } else if (idOrCat && idOrCat !== 'col_all' && idOrCat !== 'ALL') {
+      selectedCats.add(idOrCat.replace(/^cat:/, '').trim());
+    }
+  });
+  getAllTextCategories().forEach(cat => {
     const lbl = document.createElement('label');
     lbl.className = 'checkbox-row';
-    lbl.innerHTML = `<input type="checkbox" class="sc-col-chk" value="${c.id}" ${linkedCols.has(c.id) ? 'checked' : ''}> ${c.name}`;
+    lbl.innerHTML = `<input type="checkbox" class="sc-col-chk" value="${cat.name}" ${selectedCats.has(cat.name) ? 'checked' : ''}> ${cat.name} <small style="color:var(--muted)">(${cat.count}편)</small>`;
     colBox.appendChild(lbl);
   });
 
   updateLiveScenePreview();
+}
+
+function syncSceneAlbumChoices(changedCheckbox = null) {
+  const boxes = Array.from(document.querySelectorAll('.sc-album-chk'));
+  const allPhotos = boxes.find(box => box.value === 'album_default');
+  if (!allPhotos) return;
+  const otherBoxes = boxes.filter(box => box !== allPhotos);
+  if (changedCheckbox === allPhotos && allPhotos.checked) {
+    otherBoxes.forEach(box => { box.checked = false; });
+  } else if (changedCheckbox && changedCheckbox !== allPhotos && changedCheckbox.checked) {
+    allPhotos.checked = false;
+  } else if (!changedCheckbox && allPhotos.checked) {
+    otherBoxes.forEach(box => { box.checked = false; });
+  }
+  const allPhotosSelected = allPhotos.checked;
+  allPhotos.disabled = otherBoxes.some(box => box.checked);
+  otherBoxes.forEach(box => { box.disabled = allPhotosSelected; });
+  allPhotos.parentElement.title =
+    allPhotosSelected
+      ? '‘모든 사진’은 기본 보기이며 다른 앨범과 함께 선택할 수 없습니다.'
+      : '선택하면 다른 앨범 선택이 해제됩니다.';
 }
 
 function updateLiveScenePreview() {
@@ -1644,8 +2814,8 @@ function updateLiveScenePreview() {
   const layout = $('sceneLayoutIn').value;
   const textMode = $('sceneTextModeIn').value;
   const showClock = $('sceneClockIn').checked;
-  const bg = theme === 'INK' ? '#18221d' : theme === 'SAGE' ? '#dce4d5' : '#f4f2ec';
-  const ink = theme === 'INK' ? '#edefe8' : '#24332b';
+  const bg = theme === 'INK' ? '#0b1528' : theme === 'SAGE' ? '#e4f0ff' : '#f5f8fd';
+  const ink = theme === 'INK' ? '#edf4ff' : '#0f1e36';
   frame.style.background = bg;
   frame.style.color = ink;
 
@@ -1656,7 +2826,7 @@ function updateLiveScenePreview() {
 
   if (layout === 'TEXT_ONLY' || textMode === 'DEDICATED') {
     frame.innerHTML = `
-      <div style="padding:20px;display:flex;flex-direction:column;justify-content:center;width:100%;border:1px solid rgba(100,110,100,.25);margin:10px;border-radius:10px">
+      <div style="padding:20px;display:flex;flex-direction:column;justify-content:center;width:100%;border:1px solid rgba(2,110,248,.22);margin:10px;border-radius:10px">
         ${showClock ? `<div style="font-size:11px;opacity:.7;margin-bottom:8px">07:30 · 좋은 아침</div>` : ''}
         <div style="font-family:Georgia,serif;font-size:15px;white-space:pre-line">${sampleText}</div>
         <div style="font-size:11.5px;opacity:.75;margin-top:8px">— ${sampleAuthor}</div>
@@ -1664,8 +2834,8 @@ function updateLiveScenePreview() {
     `;
   } else if (layout === 'PHOTO' && textMode !== 'SPLIT') {
     frame.innerHTML = `
-      <div style="position:relative;width:100%;height:100%;background:#365b46;display:flex;align-items:flex-end;padding:16px;color:#fff;${imgUrl ? `background-image:url('${imgUrl}');background-size:cover;background-position:center;` : ''}">
-        <div style="position:absolute;inset:40% 0 0 0;background:linear-gradient(transparent,rgba(0,0,0,.78))"></div>
+      <div style="position:relative;width:100%;height:100%;background:linear-gradient(135deg,#026ef8,#7ad2ff);display:flex;align-items:flex-end;padding:16px;color:#fff;${imgUrl ? `background-image:url('${imgUrl}');background-size:cover;background-position:center;` : ''}">
+        <div style="position:absolute;inset:40% 0 0 0;background:linear-gradient(transparent,rgba(11,21,40,.82))"></div>
         <div style="position:relative;z-index:2;width:100%">
           ${showClock ? `<div style="font-size:22px;font-weight:300">07:30</div>` : ''}
           ${textMode !== 'NONE' ? `<div style="font-family:Georgia,serif;font-size:12.5px;margin-top:4px;white-space:pre-line">${sampleText}</div>` : ''}
@@ -1676,7 +2846,7 @@ function updateLiveScenePreview() {
     const isLand = previewOrientation === 'landscape';
     frame.innerHTML = `
       <div style="display:flex;flex-direction:${isLand ? 'row' : 'column'};width:100%;height:100%;padding:10px;gap:12px">
-        <div style="flex:6;border-radius:8px;background:#365b46;${imgUrl ? `background-image:url('${imgUrl}');background-size:cover;background-position:center;` : ''}"></div>
+        <div style="flex:6;border-radius:8px;background:linear-gradient(135deg,#026ef8,#7ad2ff);${imgUrl ? `background-image:url('${imgUrl}');background-size:cover;background-position:center;` : ''}"></div>
         <div style="flex:4;display:flex;flex-direction:column;justify-content:center;padding:6px">
           ${showClock ? `<div style="font-size:22px;font-weight:300;margin-bottom:6px">07:30</div>` : ''}
           ${textMode !== 'NONE' ? `<div style="font-family:Georgia,serif;font-size:12px;white-space:pre-line">${sampleText}</div><div style="font-size:10.5px;opacity:.7;margin-top:4px">— ${sampleAuthor}</div>` : ''}
@@ -1693,10 +2863,17 @@ $('prevOrientLand').onclick = () => { previewOrientation = 'landscape'; updateLi
 $('prevOrientPort').onclick = () => { previewOrientation = 'portrait'; updateLiveScenePreview(); };
 
 $('newSceneBtn').onclick = () => {
+  currentSceneId = '';
   $('sceneIdIn').value = '';
   $('sceneNameIn').value = '새 장면';
   $('sceneDescIn').value = '';
+  $('sceneDefaultIn').checked = false;
+  $('sceneDefaultIn').disabled = false;
+  $('deleteSceneBtn').disabled = true;
+  if ($('sceneDefaultNotice')) $('sceneDefaultNotice').classList.add('hidden');
+  document.querySelectorAll('#sceneGridBody tr.selected').forEach(el => el.classList.remove('selected'));
   updateLiveScenePreview();
+  $('sceneNameIn').focus();
 };
 
 $('saveSceneBtn').onclick = async () => {
@@ -1756,9 +2933,14 @@ function renderSchedulesTab() {
     sceneMap.set(s.id, s.name);
     const opt = document.createElement('option');
     opt.value = s.id;
-    opt.textContent = s.name;
+    opt.textContent = s.name + (s.id === 'scene_default' || s.isDefault ? ' (★ 기본 장면)' : '');
     scSel.appendChild(opt);
   });
+  const defSceneObj = state.scenes.find(s => s.id === 'scene_default' || s.isDefault);
+  const defSceneName = defSceneObj ? defSceneObj.name : '기본 장면';
+  if ($('weeklyDefaultSceneBadge')) {
+    $('weeklyDefaultSceneBadge').textContent = `★ 미지정 시간대: ${defSceneName} 상시 재생`;
+  }
 
   // Render PC Weekly Grid (4 time bands: 00-06, 06-12, 12-18, 18-24)
   const wgrid = $('weeklyCalendarGrid');
@@ -1779,57 +2961,104 @@ function renderSchedulesTab() {
       cell.className = 'week-cell';
       const bit = 1 << d;
       const prevBit = 1 << ((d + 6) % 7);
+      let coveredMinutes = 0;
       state.schedules.filter(r => r.enabled && r.ruleType === 'WEEKLY').forEach(r => {
         const overnight = r.startMin > r.endMin;
         let hit = false;
         if (!overnight) {
           hit = (r.daysMask & bit) !== 0 && r.startMin < band.end && r.endMin > band.start;
+          if (hit) {
+            coveredMinutes += Math.max(0, Math.min(r.endMin, band.end) - Math.max(r.startMin, band.start));
+          }
         } else {
           const hitToday = (r.daysMask & bit) !== 0 && r.startMin < band.end && 1440 > band.start;
           const hitPrev = (r.daysMask & prevBit) !== 0 && 0 < band.end && r.endMin > band.start;
           hit = hitToday || hitPrev;
+          if (hitToday) {
+            coveredMinutes += Math.max(0, Math.min(1440, band.end) - Math.max(r.startMin, band.start));
+          }
+          if (hitPrev) {
+            coveredMinutes += Math.max(0, Math.min(r.endMin, band.end) - Math.max(0, band.start));
+          }
         }
         if (hit) {
           const pill = document.createElement('div');
           pill.className = 'rule-pill';
-          pill.innerHTML = `<strong>${sceneMap.get(r.sceneId) || '장면'}</strong><br>${minToTime(r.startMin)}~${minToTime(r.endMin)}`;
-          pill.onclick = () => populateSchedEditor(r);
+          pill.innerHTML = `<strong>${escapeHtml(sceneMap.get(r.sceneId) || '장면')}</strong><br>${minToTime(r.startMin)}~${minToTime(r.endMin)}`;
+          pill.onclick = () => {
+            populateSchedEditor(r);
+            renderSchedulesTab();
+          };
           cell.appendChild(pill);
         }
       });
+      if (coveredMinutes < (band.end - band.start)) {
+        const defPill = document.createElement('div');
+        defPill.style.cssText = 'font-size:11px;color:var(--muted);padding:4px 6px;border-radius:6px;background:var(--bg);border:1px dashed var(--outline);margin-top:2px';
+        defPill.innerHTML = `★ <b>${escapeHtml(defSceneName)}</b><br><span style="font-size:10px">${coveredMinutes === 0 ? '전 시간 기본 재생' : '나머지 시간 기본 재생'}</span>`;
+        cell.appendChild(defPill);
+      }
       wgrid.appendChild(cell);
     }
   });
 
-  // Render list / mobile cards
-  const mcards = $('mobileScheduleCards');
-  mcards.innerHTML = '';
-  state.schedules.forEach(r => {
-    const row = document.createElement('div');
-    row.style.border = '1px solid var(--outline)';
-    row.style.borderRadius = '12px';
-    row.style.padding = '10px 14px';
-    row.style.display = 'flex';
-    row.style.justifyContent = 'space-between';
-    row.style.alignItems = 'center';
-    row.style.cursor = 'pointer';
-    const dayDesc = r.ruleType === 'WEEKLY'
-      ? DAYS_KOR.filter((_, i) => (r.daysMask & (1 << i)) !== 0).join('·')
-      : r.specificDate || r.ruleType;
-    row.innerHTML = `
-      <div>
-        <strong>${r.name}</strong> <span style="font-size:12px;color:var(--primary)">[${dayDesc} ${minToTime(r.startMin)}~${minToTime(r.endMin)}]</span>
-        <div style="font-size:12.5px;color:var(--muted)">재생 장면: ${sceneMap.get(r.sceneId) || '기본 장면'} · 우선순위 ${r.priority}</div>
-      </div>
-      <span style="font-size:12px">${r.enabled ? '켜짐' : '꺼짐'}</span>
-    `;
-    row.onclick = () => populateSchedEditor(r);
-    mcards.appendChild(row);
-  });
-
-  if (!currentSchedId && state.schedules.length > 0) {
+  // Render schedule grid table
+  const tbody = $('scheduleGridBody');
+  tbody.innerHTML = '';
+  if (state.schedules.length === 0) {
+    currentSchedId = '';
+    $('schedIdIn').value = '';
+    $('schedNameIn').value = '';
+    if ($('deleteSchedBtn')) $('deleteSchedBtn').disabled = true;
+    const emptyTr = document.createElement('tr');
+    emptyTr.innerHTML = `<td colspan="8" style="text-align:center;padding:18px;color:var(--primary);font-weight:600">등록된 특정 시간대 일정이 없습니다. 모든 요일 · 전 시간대에 ‘★ ${escapeHtml(defSceneName)}’이 상시 재생됩니다.</td>`;
+    tbody.appendChild(emptyTr);
+    return;
+  }
+  if ($('deleteSchedBtn')) $('deleteSchedBtn').disabled = false;
+  if (!state.schedules.find(r => r.id === currentSchedId)) {
     populateSchedEditor(state.schedules[0]);
   }
+  const RULE_TYPE_LABELS = {
+    WEEKLY: '주간 반복',
+    DATE: '특정 날짜',
+    ANNIVERSARY: '기념일'
+  };
+  state.schedules.forEach((r, idx) => {
+    const tr = document.createElement('tr');
+    if (r.id === currentSchedId) tr.classList.add('selected');
+    const dayDesc = r.ruleType === 'WEEKLY'
+      ? DAYS_KOR.filter((_, i) => (r.daysMask & (1 << i)) !== 0).join('·')
+      : (r.specificDate || r.ruleType);
+    tr.innerHTML = `
+      <td>${idx + 1}</td>
+      <td><strong>${escapeHtml(r.name || '')}</strong></td>
+      <td>${escapeHtml(RULE_TYPE_LABELS[r.ruleType] || r.ruleType || '주간 반복')} <small style="color:var(--muted)">(순위 ${r.priority})</small></td>
+      <td>${escapeHtml(dayDesc)}</td>
+      <td>${minToTime(r.startMin)}~${minToTime(r.endMin)}</td>
+      <td>${escapeHtml(sceneMap.get(r.sceneId) || '기본 장면')}</td>
+      <td>${r.enabled !== false ? '<span class="pill-badge" style="font-size:10.5px;padding:1px 6px">켜짐</span>' : '<span style="color:var(--muted);font-size:11px">꺼짐</span>'}</td>
+      <td><button type="button" class="secondary del-sched-row-btn" style="padding:3px 8px;font-size:11px;color:var(--danger)">✕</button></td>
+    `;
+    tr.onclick = (e) => {
+      if (e.target.closest('.del-sched-row-btn')) return;
+      populateSchedEditor(r);
+      renderSchedulesTab();
+    };
+    const delBtn = tr.querySelector('.del-sched-row-btn');
+    if (delBtn) {
+      delBtn.onclick = async (e) => {
+        e.stopPropagation();
+        if (!confirm(`'${r.name}' 편성 규칙을 삭제할까요?`)) return;
+        await post('/api/schedules/delete', { id: r.id });
+        if (currentSchedId === r.id) currentSchedId = '';
+        markDirty(true);
+        await loadAll();
+        toast('편성 규칙을 삭제했습니다.');
+      };
+    }
+    tbody.appendChild(tr);
+  });
 }
 
 function populateSchedEditor(r) {
@@ -1871,6 +3100,8 @@ $('newScheduleBtn').onclick = () => {
   $('schedNameIn').value = '새 시간표 규칙';
   $('schedStartIn').value = '08:00';
   $('schedEndIn').value = '12:00';
+  document.querySelectorAll('#scheduleGridBody tr.selected').forEach(el => el.classList.remove('selected'));
+  $('schedNameIn').focus();
 };
 
 $('saveSchedBtn').onclick = async () => {
@@ -2006,6 +3237,19 @@ $('uploadRestoreBtn').onclick = async () => {
 };
 
 loadAll().catch(() => showAuthModal());
+
+async function handleExitStudio() {
+  const exitTablet = confirm('누니담 스튜디오를 종료합니다.\n\n[확인] 태블릿의 누니담 앱까지 완전히 종료\n[취소] 태블릿 액자는 켜 두고 현재 스튜디오 연결만 종료');
+  try {
+    await post('/api/device/exit', { exitTabletApp: exitTablet });
+  } catch (e) {}
+  sessionStorage.removeItem('nunidam_token');
+  token = '';
+  try { window.close(); } catch (e) {}
+  await showAuthModal();
+  toast(exitTablet ? '태블릿의 누니담 앱을 종료했습니다.' : '스튜디오 연결을 종료했습니다.');
+}
+if ($('sidebarExitBtn')) $('sidebarExitBtn').onclick = handleExitStudio;
 </script>
 </body>
 </html>

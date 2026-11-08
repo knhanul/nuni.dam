@@ -24,10 +24,18 @@ public interface StudioDao {
   @Query("SELECT * FROM album_items ORDER BY albumId, position ASC")
   List<AlbumItem> allAlbumItems();
 
-  @Query("SELECT COUNT(*) FROM album_items a JOIN photos p ON a.photoId=p.id WHERE a.albumId=:albumId AND p.trashedAt=0")
+  @Query(
+      "SELECT COUNT(DISTINCT p.id) FROM photos p LEFT JOIN album_items a"
+          + " ON a.photoId=p.id AND a.albumId=:albumId WHERE p.trashedAt=0"
+          + " AND (:albumId='album_default' OR a.albumId=:albumId)")
   int albumPhotoCount(String albumId);
 
-  @Query("SELECT p.* FROM photos p JOIN album_items a ON p.id=a.photoId WHERE a.albumId=:albumId AND p.trashedAt=0 ORDER BY a.position ASC, a.addedAt ASC")
+  @Query(
+      "SELECT p.* FROM photos p LEFT JOIN album_items a"
+          + " ON a.photoId=p.id AND a.albumId=:albumId WHERE p.trashedAt=0"
+          + " AND (:albumId='album_default' OR a.albumId=:albumId)"
+          + " ORDER BY CASE WHEN :albumId='album_default' THEN p.importedAt END DESC,"
+          + " a.position ASC, a.addedAt ASC")
   List<Photo> albumPhotos(String albumId);
 
   @Insert(onConflict = OnConflictStrategy.REPLACE)

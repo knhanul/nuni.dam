@@ -99,6 +99,12 @@ public final class PhotoStore {
   }
 
   public Photo importStream(InputStream in, String name, boolean owned) throws Exception {
+    return importStreamResult(in, name, owned, true).photo;
+  }
+
+  public ImportResult importStreamResult(
+      InputStream in, String name, boolean owned, boolean restoreExistingDuplicate)
+      throws Exception {
     synchronized (lock) {
       if (new StatFs(dir.getPath()).getAvailableBytes() < Core.RESERVE + Core.MAX_INPUT)
         throw new IOException("기기 저장공간이 부족합니다.");
@@ -107,14 +113,25 @@ public final class PhotoStore {
         try (FileOutputStream out = new FileOutputStream(incoming)) {
           Core.copy(in, out, Core.MAX_INPUT);
         }
-        return process(incoming, name, owned);
+        return process(incoming, name, owned, restoreExistingDuplicate);
       } finally {
         incoming.delete();
       }
     }
   }
 
-  private Photo process(File input, String name, boolean owned) throws Exception {
+  public static final class ImportResult {
+    public final Photo photo;
+    public final boolean duplicate;
+
+    ImportResult(Photo p, boolean d) {
+      photo = p;
+      duplicate = d;
+    }
+  }
+
+  private ImportResult process(
+      File input, String name, boolean owned, boolean restoreExistingDuplicate) throws Exception {
     MessageDigest digest = MessageDigest.getInstance("SHA-256");
     try (InputStream in = new FileInputStream(input)) {
       byte[] b = new byte[16384];
@@ -126,13 +143,13 @@ public final class PhotoStore {
     String id = hex.toString();
     Photo old = dao().get(id);
     if (old != null && file(id).isFile()) {
-      if (owned) {
+      if (restoreExistingDuplicate && owned) {
         old.owned = true;
         old.trashedAt = 0;
         dao().update(old);
         changed();
       }
-      return old;
+      return new ImportResult(old, true);
     }
     BitmapFactory.Options o = new BitmapFactory.Options();
     o.inJustDecodeBounds = true;
@@ -244,7 +261,7 @@ public final class PhotoStore {
       if (old == null) dao().insert(p);
       else dao().update(p);
       changed();
-      return p;
+      return new ImportResult(p, false);
     } catch (OutOfMemoryError error) {
       throw new IOException("메모리가 부족합니다. 저사양 모드를 켜고 다시 가져오세요.", error);
     } finally {

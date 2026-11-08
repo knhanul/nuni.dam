@@ -11,19 +11,20 @@ import android.view.*;
 import android.widget.*;
 
 public final class Ui {
-  // Design tokens (Section 5.2)
-  public static final int BG = 0xfff4f2ec,
+  // Design tokens (Nuni Brand Blue Palette derived from assets/nuni_*.svg)
+  public static final int BG = 0xfff5f8fd,
       SURFACE = 0xffffffff,
-      SURFACE_SUBTLE = 0xffe8ede5,
-      INK = 0xff24332b,
-      MUTED = 0xff626d65,
-      PRIMARY = 0xff365b46,
+      SURFACE_SUBTLE = 0xffe8f2ff,
+      INK = 0xff0f1e36,
+      MUTED = 0xff556987,
+      PRIMARY = 0xff026ef8,
       ON_PRIMARY = 0xffffffff,
-      OUTLINE = 0xffcdd4c9,
-      DANGER = 0xffa64932,
-      DARK_BG = 0xff18221d,
-      DARK_TEXT = 0xffedefe8,
-      DARK_SECONDARY = 0xffb5bfb4;
+      OUTLINE = 0xffd2e1f5,
+      DANGER = 0xffd9383a,
+      DANGER_BG = 0xffffeef0,
+      DARK_BG = 0xff0b1528,
+      DARK_TEXT = 0xffedf4ff,
+      DARK_SECONDARY = 0xff9bb0d1;
 
   // Backwards-compatible aliases
   public static final int GREEN = PRIMARY,
@@ -182,7 +183,7 @@ public final class Ui {
     b.setBackground(
         ripple(
             primary ? bg(PRIMARY, dp(c, 12)) : strokeBg(SURFACE_SUBTLE, OUTLINE, dp(c, 1), dp(c, 12)),
-            primary ? 0x33ffffff : 0x22365b46));
+            primary ? 0x33ffffff : 0x22026ef8));
     b.setPadding(dp(c, 16), dp(c, 10), dp(c, 16), dp(c, 10));
     return b;
   }
@@ -227,7 +228,7 @@ public final class Ui {
     b.setBackground(
         ripple(
             primary ? bg(PRIMARY, dp(c, 12)) : strokeBg(SURFACE_SUBTLE, OUTLINE, dp(c, 1), dp(c, 12)),
-            primary ? 0x33ffffff : 0x22365b46));
+            primary ? 0x33ffffff : 0x22026ef8));
     LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
     b.setMinHeight(dp(c, primary ? 56 : 52));
     p.topMargin = dp(c, 8);
@@ -241,7 +242,7 @@ public final class Ui {
     LinearLayout r = row(c);
     r.setMinimumHeight(dp(c, 56));
     r.setPadding(dp(c, 12), dp(c, 12), dp(c, 12), dp(c, 12));
-    r.setBackground(ripple(bg(Color.TRANSPARENT, dp(c, 12)), 0x1f365b46));
+    r.setBackground(ripple(bg(Color.TRANSPARENT, dp(c, 12)), 0x1f026ef8));
     r.setClickable(true);
     r.setFocusable(true);
     r.setContentDescription(summary == null || summary.isEmpty() ? title : title + ", " + summary);
@@ -275,7 +276,7 @@ public final class Ui {
     Button b = base(c, text, false, action);
     b.setTextSize(13f);
     b.setTextColor(color);
-    b.setBackground(ripple(bg(0x00000000, dp(c, 12)), 0x22365b46));
+    b.setBackground(ripple(bg(0x00000000, dp(c, 12)), 0x22026ef8));
     b.setPadding(dp(c, 6), dp(c, 8), dp(c, 6), dp(c, 8));
     b.setCompoundDrawablePadding(dp(c, 4));
     tileIcon(b, icon, color);
@@ -315,16 +316,44 @@ public final class Ui {
 
   public static TextView header(Context a, LinearLayout root, String title, String sub) {
     LinearLayout brandRow = row(a);
-    ImageView logo = new ImageView(a);
-    logo.setImageResource(R.drawable.ic_nuni);
-    logo.setBackground(bg(SURFACE_SUBTLE, dp(a, 8)));
-    logo.setClipToOutline(true);
-    logo.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-    brandRow.addView(logo, new LinearLayout.LayoutParams(dp(a, 28), dp(a, 28)));
-    TextView brand = text(a, "nuni dam", 14, PRIMARY);
-    brand.setLetterSpacing(.14f);
-    brand.setPadding(dp(a, 10), 0, 0, 0);
-    brandRow.addView(brand);
+    ImageView iconLogo = new ImageView(a);
+    iconLogo.setImageResource(R.drawable.ic_nuni);
+    iconLogo.setBackground(strokeBg(SURFACE, OUTLINE, dp(a, 1), dp(a, 8)));
+    iconLogo.setClipToOutline(true);
+    iconLogo.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+    brandRow.addView(iconLogo, new LinearLayout.LayoutParams(dp(a, 28), dp(a, 28)));
+
+    ImageView koLogo = new ImageView(a);
+    koLogo.setImageResource(R.drawable.nunidam_kr_logo);
+    koLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+    koLogo.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+    LinearLayout.LayoutParams klp = new LinearLayout.LayoutParams(dp(a, 84), dp(a, 28));
+    klp.setMarginStart(dp(a, 8));
+    brandRow.addView(koLogo, klp);
+
+    View spacer = new View(a);
+    brandRow.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1));
+
+    Button exitBtn = base(a, "종료", false, () -> exitApp(a));
+    exitBtn.setTextSize(13f);
+    exitBtn.setTypeface(Typeface.DEFAULT_BOLD);
+    exitBtn.setTextColor(DANGER);
+    exitBtn.setMinHeight(dp(a, 36));
+    exitBtn.setMinimumHeight(dp(a, 36));
+    exitBtn.setMinWidth(dp(a, 68));
+    exitBtn.setMinimumWidth(dp(a, 68));
+    exitBtn.setPadding(dp(a, 12), dp(a, 6), dp(a, 12), dp(a, 6));
+    SpannableString es = new SpannableString("  종료");
+    es.setSpan(
+        new CenteredImageSpan(icon(a, R.drawable.ic_exit, DANGER, 15)),
+        0,
+        1,
+        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+    exitBtn.setText(es);
+    exitBtn.setBackground(
+        ripple(strokeBg(DANGER_BG, DANGER, dp(a, 1), dp(a, 10)), 0x22d9383a));
+    brandRow.addView(exitBtn, new LinearLayout.LayoutParams(-2, dp(a, 36)));
+
     root.addView(brandRow);
     gap(root, 12);
     TextView heading = title(a, title, 26);
@@ -367,6 +396,33 @@ public final class Ui {
 
   public static void open(Context c, Class<? extends Activity> cls) {
     c.startActivity(new Intent(c, cls));
+  }
+
+  public static void exitApp(Context c) {
+    if (!(c instanceof Activity)) return;
+    Activity act = (Activity) c;
+    if (!alive(act)) return;
+    new AlertDialog.Builder(act)
+        .setTitle("누니담을 종료할까요?")
+        .setMessage("앱을 완전히 종료하고 기기 홈 화면으로 돌아갑니다.")
+        .setPositiveButton(
+            "종료",
+            (d, w) -> {
+              try {
+                NuniApp.of(act).stopStudioServer();
+              } catch (Exception ignored) {
+              }
+              act.finishAffinity();
+              Intent home = new Intent(Intent.ACTION_MAIN);
+              home.addCategory(Intent.CATEGORY_HOME);
+              home.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+              try {
+                act.startActivity(home);
+              } catch (Exception ignored) {
+              }
+            })
+        .setNegativeButton("취소", null)
+        .show();
   }
 
   public static void immersive(Activity a) {

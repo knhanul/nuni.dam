@@ -107,6 +107,7 @@ public final class FrameView extends View {
   private String dimmedStatus = "";
   private Photo photo;
   private Bitmap image;
+  private Bitmap brandKrLogo;
   private double[] faces = new double[0];
   private String phrase = "", error = "";
   private long began;
@@ -117,6 +118,10 @@ public final class FrameView extends View {
     prefs = NuniApp.of(c).prefs;
     setContentDescription("누니담 사진 액자");
     setFocusable(true);
+    try {
+      brandKrLogo = BitmapFactory.decodeResource(c.getResources(), R.drawable.nunidam_kr_logo);
+    } catch (Throwable ignored) {
+    }
   }
 
   public void setPreviewMode(boolean preview) {
@@ -216,7 +221,7 @@ public final class FrameView extends View {
     float fs = Math.max(0.85f, Math.min(1.6f, cfg.fontScale / 100f));
     boolean dark = "INK".equals(cfg.theme);
     boolean sage = "SAGE".equals(cfg.theme);
-    int background = dark ? Ui.DARK_BG : sage ? 0xffdce4d5 : Ui.BG,
+    int background = dark ? Ui.DARK_BG : sage ? 0xffe4f0ff : Ui.BG,
         ink = dark ? Ui.DARK_TEXT : Ui.INK,
         muted = dark ? Ui.DARK_SECONDARY : Ui.MUTED;
     updateClock();
@@ -228,7 +233,18 @@ public final class FrameView extends View {
             || ("DEDICATED".equals(cfg.textDisplayMode) && !phrase.isEmpty())
             || ("TEXT_ONLY".equals(cfg.mode) && !phrase.isEmpty());
     if (!hasContent) {
-      text(c, "nuni dam", w * .09f, h * .38f, 68 * s, ink, true);
+      if (brandKrLogo != null && !brandKrLogo.isRecycled()) {
+        float krH = 74f * s;
+        float krW = krH * 3f;
+        float x0 = w * .09f;
+        float y0 = h * .28f;
+        p.reset();
+        p.setFilterBitmap(true);
+        target.set(x0, y0, x0 + krW, y0 + krH);
+        c.drawBitmap(brandKrLogo, null, target, p);
+      } else {
+        text(c, "누니담", w * .09f, h * .38f, 68 * s, ink, true);
+      }
       wrap(
           c,
           "사진을 담으면, 이곳에 우리의 풍경이 펼쳐집니다.",
@@ -313,7 +329,7 @@ public final class FrameView extends View {
     if (samplePreview) {
       float bw = 180 * s, bh = 28 * s;
       target.set(16 * s, 16 * s, 16 * s + bw, 16 * s + bh);
-      p.setColor(0xb824332b);
+      p.setColor(0xb80b1528);
       c.drawRoundRect(target, 8 * s, 8 * s, p);
       text(c, "예시 화면 미리보기", 28 * s, 35 * s, 13 * s, Color.WHITE, false);
     }
@@ -348,13 +364,13 @@ public final class FrameView extends View {
               dst.top,
               dst.right,
               dst.bottom,
-              0xff365b46,
-              0xff74907d,
+              0xff026ef8,
+              0xff7ad2ff,
               Shader.TileMode.CLAMP);
       p.setShader(g);
       c.drawRect(dst, p);
       p.setShader(null);
-      p.setColor(0x33ffffff);
+      p.setColor(0x44ffffff);
       c.drawCircle(dst.left + dst.width() * .74f, dst.top + dst.height() * .28f, dst.height() * .14f, p);
       Path hills = new Path();
       hills.moveTo(dst.left, dst.bottom);
@@ -371,7 +387,7 @@ public final class FrameView extends View {
           dst.top + dst.height() * .64f);
       hills.lineTo(dst.right, dst.bottom);
       hills.close();
-      p.setColor(0x4418221d);
+      p.setColor(0x440b1528);
       c.drawPath(hills, p);
       c.restore();
       return;
@@ -380,7 +396,7 @@ public final class FrameView extends View {
   }
 
   private void drawPhoto(Canvas c, RectF dst, Config cfg) {
-    p.setColor(0xff18221d);
+    p.setColor(0xff0b1528);
     c.drawRect(dst, p);
     if (image == null) return;
     double
@@ -591,7 +607,7 @@ public final class FrameView extends View {
     }
     StaticLayout l = layout(pageText, width, fontSize, bodyColor, maxLines);
     float topY = curBottom - l.getHeight();
-    p.setColor(0xccdfe7dc);
+    p.setColor(0xcc7ad2ff);
     c.drawRect(left - 12 * s, topY + 3 * s, left - 9 * s, curBottom - 2 * s, p);
     c.save();
     c.translate(left, topY);

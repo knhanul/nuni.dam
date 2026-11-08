@@ -146,6 +146,25 @@ public final class StudioServer extends NanoHTTPD {
       return secureHeaders(r, false);
     }
 
+    // Serve static Nuni brand logo assets (/favicon.ico, /assets/nuni*)
+    if (method == Method.GET && (uri.equals("/favicon.ico") || uri.startsWith("/assets/nuni"))) {
+      String assetName = uri.equals("/favicon.ico") ? "nuni_icon.ico" : uri.substring("/assets/".length());
+      if (assetName.matches("nuni[a-z_]*\\.(svg|png|ico)")) {
+        try (InputStream in = a.getAssets().open(assetName)) {
+          byte[] bytes = Core.read(in, 256 * 1024);
+          String mime =
+              assetName.endsWith(".svg")
+                  ? "image/svg+xml"
+                  : assetName.endsWith(".png") ? "image/png" : "image/x-icon";
+          Response r =
+              newFixedLengthResponse(
+                  Response.Status.OK, mime, new ByteArrayInputStream(bytes), bytes.length);
+          return secureHeaders(r, true);
+        } catch (Exception ignored) {
+        }
+      }
+    }
+
     // Public auth handshake check
     if (uri.equals("/api/auth/info") && method == Method.GET) {
       try {
@@ -384,24 +403,29 @@ public final class StudioServer extends NanoHTTPD {
       }
       String name = s.getParms().get("name");
       String albumId = s.getParms().get("albumId");
-      boolean existedBefore = false;
-      int countBefore = a.db.photos().count();
-      Photo p =
-          a.store.importStream(new Core.ExactStream(s.getInputStream(), len), name, true);
-      int countAfter = a.db.photos().count();
-      existedBefore = (countAfter == countBefore);
+      if (Album.isAllPhotos(albumId)) {
+        return error(
+            Response.Status.BAD_REQUEST,
+            "‘모든 사진’은 자동으로 전체 사진을 모아 보여주는 앨범입니다. 다른 앨범을 선택하거나 새 앨범을 만든 뒤 사진을 추가해 주세요.");
+      }
+      if (albumId != null && !albumId.isEmpty() && sdao.album(albumId) == null) {
+        return error(Response.Status.NOT_FOUND, "선택한 앨범을 찾을 수 없습니다. 앨범 목록을 새로고침해 주세요.");
+      }
+      PhotoStore.ImportResult imported =
+          a.store.importStreamResult(
+              new Core.ExactStream(s.getInputStream(), len), name, true, false);
+      Photo p = imported.photo;
 
-      // Always add to default album if not present, and also to target albumId if specified
+      // Duplicate files are skipped entirely; only new photos are assigned to the selected album.
       long now = System.currentTimeMillis();
-      addPhotoToAlbumIfAbsent(sdao, "album_default", p.id, now);
-      if (albumId != null && !albumId.isEmpty() && !albumId.equals("album_default")) {
+      if (!imported.duplicate && albumId != null && !albumId.isEmpty()) {
         addPhotoToAlbumIfAbsent(sdao, albumId, p.id, now);
       }
       return json(
           new JSONObject()
               .put("ok", true)
               .put("id", p.id)
-              .put("duplicate", existedBefore)
+              .put("duplicate", imported.duplicate)
               .put("photo", photoToJson(p)));
     }
 
@@ -457,9 +481,22 @@ public final class StudioServer extends NanoHTTPD {
       Album existing = id.isEmpty() ? null : sdao.album(id);
       Album al = existing != null ? existing : new Album();
       if (al.id.isEmpty()) al.id = "album_" + now + "_" + new SecureRandom().nextInt(1000);
-      al.name = b.optString("name", "새 앨범").trim();
+      boolean allPhotos = Album.isAllPhotos(al.id);
+      al.name =
+          allPhotos
+              ? Album.ALL_PHOTOS_NAME
+              : b.optString("name", "새 앨범").trim();
       if (al.name.isEmpty()) al.name = "새 앨범";
+      if (!allPhotos && Album.ALL_PHOTOS_NAME.equals(al.name)) {
+        return error(
+            Response.Status.BAD_REQUEST,
+            "‘모든 사진’은 이름이 고정된 기본 보기입니다. 다른 이름으로 앨범을 만들어 주세요.");
+      }
       al.description = b.optString("description", "").trim();
+      if (allPhotos) {
+        al.description = "누니담에 보관된 모든 사진을 자동으로 모아 보여줍니다.";
+        al.isDefault = true;
+      }
       al.coverPhotoId = b.optString("coverPhotoId", al.coverPhotoId);
       al.sortOrder = b.optString("sortOrder", "CUSTOM");
       al.seconds = Math.max(5, Math.min(3600, b.optInt("seconds", 30)));
@@ -468,7 +505,7 @@ public final class StudioServer extends NanoHTTPD {
       al.updatedAt = now;
       sdao.saveAlbum(al);
 
-      if (b.has("photoIds")) {
+      if (b.has("photoIds") && !allPhotos) {
         JSONArray pids = b.getJSONArray("photoIds");
         sdao.clearAlbumItems(al.id);
         for (int i = 0; i < pids.length(); i++) {
@@ -504,11 +541,12 @@ public final class StudioServer extends NanoHTTPD {
       copy.createdAt = now;
       copy.updatedAt = now;
       sdao.saveAlbum(copy);
-      for (AlbumItem it : sdao.albumItems(src.id)) {
+      List<Photo> sourcePhotos = sdao.albumPhotos(src.id);
+      for (int i = 0; i < sourcePhotos.size(); i++) {
         AlbumItem cit = new AlbumItem();
         cit.albumId = copy.id;
-        cit.photoId = it.photoId;
-        cit.position = it.position;
+        cit.photoId = sourcePhotos.get(i).id;
+        cit.position = i;
         cit.addedAt = now;
         sdao.saveAlbumItem(cit);
       }
@@ -532,6 +570,18 @@ public final class StudioServer extends NanoHTTPD {
       String action = b.getString("action"); // add, remove, move, reorder
       String albumId = b.getString("albumId");
       String targetAlbumId = b.optString("targetAlbumId", "");
+      if (Album.isAllPhotos(albumId)
+          || (("copy".equals(action) || "add".equals(action) || "move".equals(action))
+              && Album.isAllPhotos("move".equals(action) ? targetAlbumId : albumId))) {
+        return error(
+            Response.Status.BAD_REQUEST,
+            "‘모든 사진’은 사진을 직접 담거나 제외할 수 없습니다. 사진을 넣을 다른 앨범을 선택하거나 새 앨범을 만들어 주세요.");
+      }
+      if (("copy".equals(action) || "add".equals(action) || "move".equals(action))
+          && !targetAlbumId.isEmpty()
+          && sdao.album(targetAlbumId) == null) {
+        return error(Response.Status.NOT_FOUND, "대상 앨범을 찾을 수 없습니다.");
+      }
       JSONArray ids = b.optJSONArray("photoIds");
       long now = System.currentTimeMillis();
       if ("reorder".equals(action) && ids != null) {
@@ -560,7 +610,56 @@ public final class StudioServer extends NanoHTTPD {
       return json(new JSONObject().put("ok", true));
     }
 
-    // 4. Texts & TextCollections CRUD
+    // 4. Texts & Categories CRUD
+    if (uri.equals("/api/texts/categories") && method == Method.POST) {
+      JSONObject b = readJsonBody(s, 16384);
+      String action = b.optString("action", "add");
+      List<String> cats = new ArrayList<>(a.prefs.textCategories());
+      if ("add".equals(action)) {
+        String name = b.optString("name", "").trim();
+        if (name.isEmpty()) throw new IllegalArgumentException("추가할 카테고리 이름을 입력해 주세요.");
+        if (!"기타".equals(name) && !cats.contains(name)) {
+          cats.add(name);
+          a.prefs.setTextCategories(cats);
+        }
+      } else if ("delete".equals(action)) {
+        String name = b.optString("name", "").trim();
+        if ("기타".equals(name)) throw new IllegalArgumentException("‘기타’ 분류는 기본 미분류 항목이므로 삭제할 수 없습니다.");
+        cats.remove(name);
+        a.prefs.setTextCategories(cats);
+        for (TextItem t : sdao.textItems()) {
+          if (name.equals(t.category)) {
+            t.category = "기타";
+            t.updatedAt = System.currentTimeMillis();
+            sdao.saveTextItem(t);
+          }
+        }
+      } else if ("rename".equals(action)) {
+        String oldName = b.optString("oldName", "").trim();
+        String newName = b.optString("newName", "").trim();
+        if (oldName.isEmpty() || newName.isEmpty()) {
+          throw new IllegalArgumentException("변경할 카테고리 이름을 입력해 주세요.");
+        }
+        int idx = cats.indexOf(oldName);
+        if (idx >= 0) {
+          cats.set(idx, newName);
+        } else if (!"기타".equals(newName) && !cats.contains(newName)) {
+          cats.add(newName);
+        }
+        a.prefs.setTextCategories(cats);
+        for (TextItem t : sdao.textItems()) {
+          if (oldName.equals(t.category)) {
+            t.category = newName;
+            t.updatedAt = System.currentTimeMillis();
+            sdao.saveTextItem(t);
+          }
+        }
+      }
+      JSONArray arr = new JSONArray();
+      for (String c : a.prefs.textCategories()) arr.put(c);
+      return json(new JSONObject().put("ok", true).put("textCategories", arr));
+    }
+
     if (uri.equals("/api/texts/save") && method == Method.POST) {
       JSONObject b = readJsonBody(s, 32768);
       long now = System.currentTimeMillis();
@@ -573,8 +672,12 @@ public final class StudioServer extends NanoHTTPD {
       if (t.body.isEmpty()) throw new IllegalArgumentException("글귀 본문을 입력해 주세요.");
       t.author = b.optString("author", "").trim();
       t.source = b.optString("source", "").trim();
-      t.kind = b.optString("kind", "QUOTE");
-      t.category = b.optString("category", "아침의 명언").trim();
+      String defaultKind = t.body.split("\n").length >= 4 ? "POEM" : "QUOTE";
+      t.kind = b.optString("kind", defaultKind);
+      if (t.kind.isEmpty()) t.kind = defaultKind;
+      t.category = b.optString("category", "기타").trim();
+      if (t.category.isEmpty()) t.category = "기타";
+      a.prefs.ensureTextCategory(t.category);
       t.tags = b.optString("tags", "").trim();
       t.licenseNote = b.optString("licenseNote", "").trim();
       t.displaySeconds = Math.max(5, Math.min(600, b.optInt("displaySeconds", 15)));
@@ -583,13 +686,138 @@ public final class StudioServer extends NanoHTTPD {
       if (existing == null) t.createdAt = now;
       t.updatedAt = now;
       sdao.saveTextItem(t);
+      a.store.changed();
       return json(new JSONObject().put("ok", true).put("id", t.id));
     }
 
     if (uri.equals("/api/texts/delete") && method == Method.POST) {
       JSONObject b = readJsonBody(s, 8192);
       sdao.deleteTextItem(b.getString("id"));
+      a.store.changed();
       return json(new JSONObject().put("ok", true));
+    }
+
+    if (uri.equals("/api/texts/restore-defaults") && method == Method.POST) {
+      JSONObject b = readJsonBody(s, 8192);
+      boolean replaceAll = b.optBoolean("replaceAll", false);
+      int count = a.studio.seedSampleTextsFromCsv(replaceAll);
+      a.store.changed();
+      return json(new JSONObject().put("ok", true).put("count", count));
+    }
+
+    if (uri.equals("/api/texts/bulk") && method == Method.POST) {
+      JSONObject b = readJsonBody(s, 2 * 1024 * 1024);
+      boolean syncGrid = b.optBoolean("syncGrid", false);
+      boolean replaceAll = b.optBoolean("replaceAll", false);
+      JSONArray items = b.optJSONArray("items");
+      if (items == null) {
+        throw new IllegalArgumentException("가져올 글귀 데이터가 없습니다.");
+      }
+      long now = System.currentTimeMillis();
+      final int[] counts = new int[3]; // [0]=saved, [1]=skipped, [2]=deleted
+      a.db.runInTransaction(
+          () -> {
+            if (syncGrid) {
+              Map<String, TextItem> existingMap = new HashMap<>();
+              for (TextItem old : sdao.textItems()) {
+                existingMap.put(old.id, old);
+              }
+              Set<String> keptIds = new HashSet<>();
+              SecureRandom rng = new SecureRandom();
+              for (int i = 0; i < items.length(); i++) {
+                JSONObject row = items.optJSONObject(i);
+                if (row == null) continue;
+                String body = row.optString("body", "").trim();
+                if (body.isEmpty()) continue;
+                String rawId = row.optString("id", "").trim();
+                TextItem prev =
+                    (!rawId.isEmpty() && !rawId.startsWith("new_")) ? existingMap.get(rawId) : null;
+                TextItem t = prev != null ? prev : new TextItem();
+                if (prev == null) {
+                  t.id = "text_" + (now + i) + "_" + rng.nextInt(10000);
+                  t.createdAt = now + i;
+                }
+                keptIds.add(t.id);
+                String category = row.optString("category", "기타").trim();
+                if (category.isEmpty()) category = "기타";
+                a.prefs.ensureTextCategory(category);
+                t.category = category;
+                t.title = row.optString("title", "").trim();
+                t.body = body;
+                t.author = row.optString("author", "").trim();
+                t.source = row.optString("source", "").trim();
+                String defaultKind =
+                    (category.contains("시") || body.split("\n").length >= 4) ? "POEM" : "QUOTE";
+                t.kind = row.optString("kind", defaultKind);
+                if (t.kind.isEmpty()) t.kind = defaultKind;
+                t.displaySeconds = Math.max(5, Math.min(600, row.optInt("displaySeconds", 15)));
+                t.sortOrder = i + 1;
+                t.enabled = row.optBoolean("enabled", true);
+                t.updatedAt = now + i;
+                sdao.saveTextItem(t);
+                counts[0]++;
+              }
+              for (TextItem old : existingMap.values()) {
+                if (!keptIds.contains(old.id)) {
+                  sdao.deleteTextItem(old.id);
+                  counts[2]++;
+                }
+              }
+              return;
+            }
+
+            Set<String> existingBodies = new HashSet<>();
+            if (replaceAll) {
+              for (TextItem old : sdao.textItems()) {
+                sdao.deleteTextItem(old.id);
+              }
+            } else {
+              for (TextItem old : sdao.textItems()) {
+                existingBodies.add((old.category + "|" + old.body.trim()).toLowerCase(Locale.ROOT));
+              }
+            }
+            int baseOrder = sdao.textItems().size();
+            SecureRandom rng = new SecureRandom();
+            for (int i = 0; i < items.length(); i++) {
+              JSONObject row = items.optJSONObject(i);
+              if (row == null) continue;
+              String body = row.optString("body", "").trim();
+              if (body.isEmpty()) continue;
+              String category = row.optString("category", "기타").trim();
+              if (category.isEmpty()) category = "기타";
+              a.prefs.ensureTextCategory(category);
+              String dedupKey = (category + "|" + body).toLowerCase(Locale.ROOT);
+              if (!existingBodies.add(dedupKey)) {
+                counts[1]++;
+                continue;
+              }
+              TextItem t = new TextItem();
+              t.id = "text_" + (now + i) + "_" + rng.nextInt(10000);
+              t.category = category;
+              t.title = row.optString("title", "").trim();
+              t.body = body;
+              t.author = row.optString("author", "").trim();
+              t.source = row.optString("source", "").trim();
+              String defaultKind =
+                  (category.contains("시") || body.split("\n").length >= 4) ? "POEM" : "QUOTE";
+              t.kind = row.optString("kind", defaultKind);
+              if (t.kind.isEmpty()) t.kind = defaultKind;
+              t.displaySeconds = Math.max(5, Math.min(600, row.optInt("displaySeconds", 15)));
+              t.sortOrder = baseOrder + counts[0] + 1;
+              t.enabled = row.optBoolean("enabled", true);
+              t.createdAt = now + i;
+              t.updatedAt = now + i;
+              sdao.saveTextItem(t);
+              counts[0]++;
+            }
+          });
+      a.store.changed();
+      return json(
+          new JSONObject()
+              .put("ok", true)
+              .put("added", counts[0])
+              .put("skipped", counts[1])
+              .put("deleted", counts[2]));
     }
 
     if (uri.equals("/api/text-collections/save") && method == Method.POST) {
@@ -647,7 +875,7 @@ public final class StudioServer extends NanoHTTPD {
       sc.showCaptureDate = b.optBoolean("showCaptureDate", true);
       sc.shufflePhotos = b.optBoolean("shufflePhotos", true);
       sc.nightDim = b.optBoolean("nightDim", false);
-      boolean makeDefault = b.optBoolean("isDefault", sc.isDefault);
+      boolean makeDefault = "scene_default".equals(sc.id) || b.optBoolean("isDefault", sc.isDefault);
       if (makeDefault) {
         sdao.clearDefaultScenes();
         sc.isDefault = true;
@@ -655,14 +883,25 @@ public final class StudioServer extends NanoHTTPD {
       if (existing == null) sc.createdAt = now;
       sc.updatedAt = now;
       sdao.saveScene(sc);
+      if (sdao.defaultScene() == null) {
+        Scene def = sdao.scene("scene_default");
+        if (def != null) {
+          def.isDefault = true;
+          sdao.saveScene(def);
+        }
+      }
 
       if (b.has("albumIds")) {
         sdao.clearSceneAlbums(sc.id);
         JSONArray arr = b.getJSONArray("albumIds");
-        for (int i = 0; i < arr.length(); i++) {
+        List<String> requestedAlbums = new ArrayList<>();
+        for (int i = 0; i < arr.length(); i++) requestedAlbums.add(arr.optString(i, ""));
+        List<String> selectedAlbums =
+            Core.exclusiveAlbumSelection(requestedAlbums, Album.ALL_PHOTOS_ID);
+        for (String albumId : selectedAlbums) {
           SceneAlbum sa = new SceneAlbum();
           sa.sceneId = sc.id;
-          sa.albumId = arr.getString(i);
+          sa.albumId = albumId;
           sa.weight = 1;
           if (sdao.album(sa.albumId) != null) sdao.saveSceneAlbum(sa);
         }
@@ -671,10 +910,13 @@ public final class StudioServer extends NanoHTTPD {
         sdao.clearSceneTextCollections(sc.id);
         JSONArray arr = b.getJSONArray("textCollectionIds");
         for (int i = 0; i < arr.length(); i++) {
+          String cid = arr.optString(i, "").trim();
+          if (cid.isEmpty()) continue;
+          a.studio.ensureTextCollectionExists(cid);
           SceneTextCollection stc = new SceneTextCollection();
           stc.sceneId = sc.id;
-          stc.collectionId = arr.getString(i);
-          if (sdao.textCollection(stc.collectionId) != null) sdao.saveSceneTextCollection(stc);
+          stc.collectionId = cid;
+          if (sdao.textCollection(cid) != null) sdao.saveSceneTextCollection(stc);
         }
       }
       return json(new JSONObject().put("ok", true).put("id", sc.id));
@@ -683,6 +925,10 @@ public final class StudioServer extends NanoHTTPD {
     if (uri.equals("/api/scenes/delete") && method == Method.POST) {
       JSONObject b = readJsonBody(s, 8192);
       String id = b.getString("id");
+      Scene targetScene = sdao.scene(id);
+      if ("scene_default".equals(id) || (targetScene != null && targetScene.isDefault)) {
+        return error(Response.Status.BAD_REQUEST, "기본 장면은 삭제할 수 없습니다.");
+      }
       if (sdao.scenes().size() <= 1) {
         return error(Response.Status.BAD_REQUEST, "최소 1개의 장면은 유지되어야 합니다.");
       }
@@ -844,6 +1090,31 @@ public final class StudioServer extends NanoHTTPD {
           a.studio.importNunidamPackage(
               new Core.ExactStream(s.getInputStream(), len), keepExisting);
       return json(res);
+    }
+
+    if (uri.equals("/api/device/exit") && method == Method.POST) {
+      JSONObject b = readJsonBody(s, 4096);
+      boolean exitTabletApp = b.optBoolean("exitTabletApp", false);
+      if (currentSession != null) {
+        sdao.revokeSession(currentSession.sessionId);
+      }
+      if (exitTabletApp) {
+        a.main.postDelayed(
+            () -> {
+              try {
+                android.content.Intent home =
+                    new android.content.Intent(android.content.Intent.ACTION_MAIN);
+                home.addCategory(android.content.Intent.CATEGORY_HOME);
+                home.setFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+                a.startActivity(home);
+              } catch (Exception ignored) {
+              }
+              a.stopStudioServer();
+              System.exit(0);
+            },
+            350);
+      }
+      return json(new JSONObject().put("ok", true));
     }
 
     return error(Response.Status.NOT_FOUND, "지원하지 않는 API 경로입니다: " + uri);

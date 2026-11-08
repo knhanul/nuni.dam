@@ -69,11 +69,14 @@ public final class LibraryActivity extends Activity implements PhotoStore.Listen
     private final NuniApp a;
     private final Runnable onAddDevice;
     private String filter = "ALL"; // ALL, FAV, TRASH
+    private String selectedAlbumId = Album.ALL_PHOTOS_ID;
+    private String selectedAlbumName = Album.ALL_PHOTOS_NAME;
     private boolean selectionMode;
     private final Set<String> selectedIds = new HashSet<>();
     private String detailPhotoId;
     private List<Photo> rows = new ArrayList<>();
     private TextView headerTitle, selectionInfo, emptyView;
+    private Button albumFilterBtn;
     private LinearLayout batchBar, detailContainer;
     private GridView grid;
     private GridAdapter adapter;
@@ -142,6 +145,29 @@ public final class LibraryActivity extends Activity implements PhotoStore.Listen
       sp.setMarginStart(Ui.dp(host, 8));
       filterRow.addView(selectToggle, sp);
       parent.addView(filterRow);
+      Ui.gap(parent, 6);
+
+      LinearLayout albumRow = Ui.row(host);
+      albumFilterBtn =
+          Ui.button(
+              host,
+              "앨범: 모든 사진",
+              false,
+              this::showAlbumFilterDialog);
+      albumFilterBtn.setTextSize(13.5f);
+      LinearLayout.LayoutParams afp = new LinearLayout.LayoutParams(0, Ui.dp(host, 42), 1);
+      afp.setMarginEnd(Ui.dp(host, 6));
+      albumRow.addView(albumFilterBtn, afp);
+      Button createAlbumBtn =
+          Ui.button(
+              host,
+              "새 앨범",
+              false,
+              R.drawable.ic_plus,
+              () -> showCreateAlbumDialog(null));
+      createAlbumBtn.setTextSize(13.5f);
+      albumRow.addView(createAlbumBtn, new LinearLayout.LayoutParams(-2, Ui.dp(host, 42)));
+      parent.addView(albumRow);
 
       batchBar = Ui.row(host);
       batchBar.setPadding(Ui.dp(host, 12), Ui.dp(host, 8), Ui.dp(host, 12), Ui.dp(host, 8));
@@ -293,6 +319,19 @@ public final class LibraryActivity extends Activity implements PhotoStore.Listen
                 });
         batchBar.addView(purgeBtn, new LinearLayout.LayoutParams(-2, Ui.dp(host, 44)));
       } else {
+        Button albumBtn =
+            Ui.button(
+                host,
+                "앨범 담기(" + n + ")",
+                false,
+                R.drawable.ic_plus,
+                () -> {
+                  if (selectedIds.isEmpty()) return;
+                  showAssignAlbumDialog(new HashSet<>(selectedIds));
+                });
+        LinearLayout.LayoutParams abp = new LinearLayout.LayoutParams(-2, Ui.dp(host, 44));
+        abp.setMarginEnd(Ui.dp(host, 6));
+        batchBar.addView(albumBtn, abp);
         Button favBtn =
             Ui.button(
                 host,
@@ -332,16 +371,190 @@ public final class LibraryActivity extends Activity implements PhotoStore.Listen
       }
     }
 
+    private void showAlbumFilterDialog() {
+      a.io.execute(
+          () -> {
+            a.studio.ensureSeeded();
+            StudioDao sdao = a.db.studio();
+            List<Album> albums = sdao.albums();
+            List<String> labels = new ArrayList<>();
+            List<String> ids = new ArrayList<>();
+            List<String> names = new ArrayList<>();
+            for (Album al : albums) {
+              int c = sdao.albumPhotoCount(al.id);
+              labels.add(
+                  (Album.isAllPhotos(al.id) ? Album.ALL_PHOTOS_NAME : al.name)
+                      + " ("
+                      + c
+                      + "장)"
+                      + (Album.isAllPhotos(al.id) ? " · 전체 보기" : ""));
+              ids.add(al.id);
+              names.add(Album.isAllPhotos(al.id) ? Album.ALL_PHOTOS_NAME : al.name);
+            }
+            a.main.post(
+                () -> {
+                  if (!Ui.alive(host)) return;
+                  new AlertDialog.Builder(host)
+                      .setTitle("앨범별로 사진 보기")
+                      .setItems(
+                          labels.toArray(new String[0]),
+                          (d, idx) -> {
+                            selectedAlbumId = ids.get(idx);
+                            selectedAlbumName = names.get(idx);
+                            if (albumFilterBtn != null) {
+                              albumFilterBtn.setText("앨범: " + selectedAlbumName);
+                            }
+                            refresh();
+                          })
+                      .setNeutralButton("＋ 새 앨범 만들기", (d, w) -> showCreateAlbumDialog(null))
+                      .setNegativeButton("닫기", null)
+                      .show();
+                });
+          });
+    }
+
+    private void showCreateAlbumDialog(Runnable afterCreated) {
+      LinearLayout box = Ui.column(host);
+      box.setPadding(Ui.dp(host, 20), Ui.dp(host, 12), Ui.dp(host, 20), Ui.dp(host, 4));
+      EditText nameInput = Ui.input(host, "예: 가족 여행, 손주 사진, 봄날 풍경", "");
+      nameInput.setSingleLine();
+      box.addView(nameInput);
+      new AlertDialog.Builder(host)
+          .setTitle("새 앨범 만들기")
+          .setView(box)
+          .setPositiveButton(
+              "만들기",
+              (d, w) -> {
+                String name = nameInput.getText().toString().trim();
+                if (name.isEmpty()) {
+                  Ui.toast(host, "앨범 이름을 입력해 주세요.");
+                  return;
+                }
+                if (Album.ALL_PHOTOS_NAME.equals(name)) {
+                  Ui.toast(host, "‘모든 사진’은 이름이 고정된 기본 보기입니다. 다른 이름을 입력해 주세요.");
+                  return;
+                }
+                a.io.execute(
+                    () -> {
+                      a.studio.ensureSeeded();
+                      long now = System.currentTimeMillis();
+                      Album al = new Album();
+                      al.id =
+                          "album_" + (now % 100000000L) + "_" + (int) (Math.random() * 9000 + 1000);
+                      al.name = name.length() > 60 ? name.substring(0, 60) : name;
+                      al.createdAt = now;
+                      al.updatedAt = now;
+                      a.db.studio().saveAlbum(al);
+                      selectedAlbumId = al.id;
+                      selectedAlbumName = al.name;
+                      a.main.post(
+                          () -> {
+                            if (albumFilterBtn != null)
+                              albumFilterBtn.setText("앨범: " + selectedAlbumName);
+                            Ui.toast(host, "‘" + al.name + "’ 앨범을 만들었습니다.");
+                            refresh();
+                            if (afterCreated != null) afterCreated.run();
+                          });
+                    });
+              })
+          .setNegativeButton("취소", null)
+          .show();
+    }
+
+    private void showAssignAlbumDialog(Set<String> photoIds) {
+      a.io.execute(
+          () -> {
+            a.studio.ensureSeeded();
+            StudioDao sdao = a.db.studio();
+            List<Album> albums = new ArrayList<>();
+            for (Album al : sdao.albums()) {
+              if (!Album.isAllPhotos(al.id)) albums.add(al);
+            }
+            String[] labels = new String[albums.size()];
+            for (int i = 0; i < albums.size(); i++) {
+              Album al = albums.get(i);
+              labels[i] = al.name + " (" + sdao.albumPhotoCount(al.id) + "장)";
+            }
+            a.main.post(
+                () -> {
+                  if (!Ui.alive(host)) return;
+                  if (albums.isEmpty()) {
+                    new AlertDialog.Builder(host)
+                        .setTitle("먼저 사진 앨범을 만들어 주세요")
+                        .setMessage(
+                            "‘모든 사진’은 보관함 전체를 자동으로 보여주는 기본 보기이며 사진을 직접 담을 수 없습니다. 새 앨범을 만든 뒤 선택한 사진을 담아 주세요.")
+                        .setPositiveButton(
+                            "새 앨범 만들기",
+                            (d, w) ->
+                                showCreateAlbumDialog(
+                                    () -> showAssignAlbumDialog(photoIds)))
+                        .setNegativeButton("취소", null)
+                        .show();
+                    return;
+                  }
+                  new AlertDialog.Builder(host)
+                      .setTitle("선택한 " + photoIds.size() + "장을 어느 앨범에 담을까요?")
+                      .setItems(
+                          labels,
+                          (d, idx) -> {
+                            Album target = albums.get(idx);
+                            selectedIds.clear();
+                            updateBatchBar();
+                            a.io.execute(
+                                () -> {
+                                  long now = System.currentTimeMillis();
+                                  int pos = sdao.albumPhotoCount(target.id);
+                                  for (String pid : photoIds) {
+                                    AlbumItem item = new AlbumItem();
+                                    item.albumId = target.id;
+                                    item.photoId = pid;
+                                    item.position = pos++;
+                                    item.addedAt = now;
+                                    sdao.saveAlbumItem(item);
+                                    if (target.coverPhotoId == null
+                                        || target.coverPhotoId.isEmpty()) {
+                                      target.coverPhotoId = pid;
+                                      target.updatedAt = now;
+                                      sdao.saveAlbum(target);
+                                    }
+                                  }
+                                  a.store.changed();
+                                  a.main.post(
+                                      () ->
+                                          Ui.toast(
+                                              host,
+                                              "‘"
+                                                  + target.name
+                                                  + "’ 앨범에 "
+                                                  + photoIds.size()
+                                                  + "장을 담았습니다. ‘모든 사진’에도 자동으로 포함됩니다."));
+                                });
+                          })
+                      .setNeutralButton(
+                          "＋ 새 앨범 만들어 담기",
+                          (d, w) -> showCreateAlbumDialog(() -> showAssignAlbumDialog(photoIds)))
+                      .setNegativeButton("취소", null)
+                      .show();
+                });
+          });
+    }
+
     public void refresh() {
       if (!Ui.alive(host)) return;
       String reqFilter = filter;
+      String reqAlbum = selectedAlbumId;
       a.io.execute(
           () -> {
+            a.studio.ensureSeeded();
             List<Photo> list;
             if ("TRASH".equals(reqFilter)) {
               list = a.db.photos().trash();
             } else {
-              list = a.db.photos().active();
+              if (reqAlbum != null && !"ALL".equals(reqAlbum)) {
+                list = a.db.studio().albumPhotos(reqAlbum);
+              } else {
+                list = a.db.photos().active();
+              }
               if ("FAV".equals(reqFilter)) {
                 Iterator<Photo> it = list.iterator();
                 while (it.hasNext()) if (!it.next().favourite) it.remove();
@@ -349,19 +562,36 @@ public final class LibraryActivity extends Activity implements PhotoStore.Listen
             }
             a.main.post(
                 () -> {
-                  if (!Ui.alive(host) || !reqFilter.equals(filter)) return;
+                  if (!Ui.alive(host)
+                      || !reqFilter.equals(filter)
+                      || !reqAlbum.equals(selectedAlbumId)) return;
                   rows = list;
                   String label =
                       "TRASH".equals(filter)
                           ? "휴지통"
-                          : "FAV".equals(filter) ? "즐겨찾기 사진" : "사진 보관함";
+                          : "FAV".equals(filter)
+                              ? "즐겨찾기 사진"
+                              : (Album.isAllPhotos(selectedAlbumId)
+                                  || "ALL".equals(selectedAlbumId)
+                                  ? "모든 사진"
+                                  : selectedAlbumName);
                   headerTitle.setText(label + " · " + rows.size() + "장");
                   if ("FAV".equals(filter) && rows.isEmpty()) {
                     emptyView.setText("즐겨찾기한 사진이 없습니다. 사진을 눌러 즐겨찾기를 켜거나 전체 필터로 전환하세요.");
                   } else if ("TRASH".equals(filter) && rows.isEmpty()) {
                     emptyView.setText("휴지통이 비어 있습니다.");
+                  } else if (!Album.isAllPhotos(selectedAlbumId)
+                      && !"ALL".equals(selectedAlbumId)
+                      && rows.isEmpty()) {
+                    emptyView.setText(
+                        "‘"
+                            + selectedAlbumName
+                            + "’ 앨범이 비어 있습니다. 사진을 선택한 뒤 ‘앨범에 담기’로 추가하거나 QR 전송에서 이 앨범을 선택해 주세요.");
+                  } else if (rows.isEmpty()) {
+                    emptyView.setText(
+                        "보관된 사진이 없습니다. 사진을 선택하거나 QR로 보낸 뒤, 새 앨범을 만들어 사진을 정리할 수 있습니다.");
                   } else {
-                    emptyView.setText("아직 담긴 사진이 없습니다. ‘사진 추가’나 ‘QR 전송’으로 첫 사진을 담아보세요.");
+                    emptyView.setText("");
                   }
                   adapter.notifyDataSetChanged();
                   if (detailContainer != null) {
@@ -508,6 +738,12 @@ public final class LibraryActivity extends Activity implements PhotoStore.Listen
       fav.setChecked(p.favourite);
       box.addView(fav);
       Ui.gap(box, 8);
+      Ui.add(
+          box,
+          "앨범에 담기",
+          false,
+          R.drawable.ic_plus,
+          () -> showAssignAlbumDialog(Collections.singleton(p.id)));
       String focusStatus =
           p.focusX >= 0 && p.focusY >= 0 ? "현재 구도: 직접 지정됨" : "현재 구도: 얼굴 보호 자동 구도 / 전체 보기";
       box.addView(Ui.text(host, focusStatus, 13, Ui.MUTED));

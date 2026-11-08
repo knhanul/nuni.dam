@@ -1,1 +1,1 @@
-e5400689e2a5edf370f1817d2c615699e9bcf6ab317b5c10d2e6d761465c1a84  nunidam-0.1.0-debug.apk
+d0ddf9726837fa6a0ea00c69bcd0df0b2d975a2b454d1b3a601024bdcd35af65  nunidam-0.1.0-debug.apk

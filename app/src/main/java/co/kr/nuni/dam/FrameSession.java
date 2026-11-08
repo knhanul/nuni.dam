@@ -180,15 +180,22 @@ public final class FrameSession implements PhotoStore.Listener {
           Scene resolvedScene = null;
           List<Photo> list;
           List<TextItem> tItems = new ArrayList<>();
-          if (a.studio != null && a.prefs.studioScheduleEnabled()) {
-            Core.ScheduleEvaluation eval =
-                a.studio.evaluateCurrentSchedule(System.currentTimeMillis());
-            resolvedScene = a.studio.dao().scene(eval.activeSceneId);
-            if (resolvedScene != null) {
-              list = a.studio.resolvePhotosForScene(resolvedScene.id);
-              tItems = a.studio.resolveTextsForScene(resolvedScene.id);
+          if (a.studio != null) {
+            a.studio.ensureSeeded();
+            if (a.prefs.studioScheduleEnabled()) {
+              Core.ScheduleEvaluation eval =
+                  a.studio.evaluateCurrentSchedule(System.currentTimeMillis());
+              resolvedScene = a.studio.dao().scene(eval.activeSceneId);
+              if (resolvedScene != null) {
+                list = a.studio.resolvePhotosForScene(resolvedScene.id);
+                tItems = a.studio.resolveTextsForScene(resolvedScene.id);
+              } else {
+                list = a.db.photos().active();
+                tItems = a.studio.dao().enabledTextItems();
+              }
             } else {
               list = a.db.photos().active();
+              tItems = a.studio.dao().enabledTextItems();
             }
           } else {
             list = a.db.photos().active();
@@ -300,6 +307,31 @@ public final class FrameSession implements PhotoStore.Listener {
     String kind = a.prefs.quoteKind();
     if ("NONE".equals(kind)) return "";
     if (!a.prefs.phrase().isEmpty()) return a.prefs.phrase();
+    if (!sceneTexts.isEmpty()) {
+      List<TextItem> filteredTexts = new ArrayList<>();
+      for (TextItem ti : sceneTexts) {
+        String k = "POEM".equals(ti.kind) || ti.body.indexOf('\n') >= 0 ? "POEM" : "QUOTE";
+        if ("ALL".equals(kind) || kind.equals(k)) filteredTexts.add(ti);
+      }
+      if (!filteredTexts.isEmpty()) {
+        int idx =
+            Core.pickQuoteIndex(
+                filteredTexts.size(),
+                a.prefs.quoteCycle(),
+                quoteStep,
+                System.currentTimeMillis(),
+                Calendar.getInstance().get(Calendar.DAY_OF_YEAR));
+        if (idx >= 0 && idx < filteredTexts.size()) {
+          TextItem ti = filteredTexts.get(idx);
+          String authorStr = ti.author;
+          if (!ti.title.isEmpty() && !ti.author.contains(ti.title)) {
+            authorStr = ti.author.isEmpty() ? ti.title : (ti.author + " · " + ti.title);
+          }
+          String k = "POEM".equals(ti.kind) || ti.body.indexOf('\n') >= 0 ? "POEM" : "QUOTE";
+          return new Core.QuoteEntry(k, ti.body, authorStr).encode();
+        }
+      }
+    }
     List<Quote> filtered = new ArrayList<>();
     for (Quote q : quotes)
       if (Core.matchesQuoteKind(Core.parseQuote(q.text), kind)) filtered.add(q);

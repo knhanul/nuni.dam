@@ -41,9 +41,9 @@ public final class StudioRepository {
       // 1. Seed default albums if empty
       if (sdao.albums().isEmpty()) {
         Album def = new Album();
-        def.id = "album_default";
-        def.name = "모든 추억 (기본)";
-        def.description = "누니담에 담긴 기본 사진 앨범입니다.";
+        def.id = Album.ALL_PHOTOS_ID;
+        def.name = Album.ALL_PHOTOS_NAME;
+        def.description = "누니담에 보관된 모든 사진을 자동으로 모아 보여줍니다.";
         def.sortOrder = "CUSTOM";
         def.seconds = 30;
         def.shuffle = true;
@@ -82,261 +82,192 @@ public final class StudioRepository {
         nature.updatedAt = now + 3;
         sdao.saveAlbum(nature);
 
-        // Link existing active photos to default album
-        List<Photo> existing = db.photos().active();
-        for (int i = 0; i < existing.size(); i++) {
-          Photo p = existing.get(i);
-          AlbumItem item = new AlbumItem();
-          item.albumId = def.id;
-          item.photoId = p.id;
-          item.position = i;
-          item.addedAt = now;
-          sdao.saveAlbumItem(item);
-          if (i == 0) {
-            def.coverPhotoId = p.id;
-            sdao.saveAlbum(def);
-          }
-        }
       }
 
-      // 2. Seed original copyright-safe TextItems if empty (Section 5.4: 직접 작성한 예시 문구만 사용)
-      if (sdao.textItems().isEmpty()) {
-        seedText(
-            "text_1",
-            "오늘의 햇살",
-            "창가에 머무는 아침 햇살처럼\n당신의 오늘 하루도 따뜻하고 환하게 빛나기를 바랍니다.",
-            "누니담",
-            "누니담 오리지널",
-            "QUOTE",
-            "아침의 명언",
-            "아침,긍정,응원",
-            15,
-            1);
-        seedText(
-            "text_2",
-            "작은 기쁨의 자리",
-            "행복은 멀리 있는 특별한 사건이 아니라,\n지금 우리가 마주 보며 미소 짓는 이 자리에 조용히 피어납니다.",
-            "누니담",
-            "누니담 오리지널",
-            "QUOTE",
-            "행복",
-            "행복,일상,미소",
-            15,
-            2);
-        seedText(
-            "text_3",
-            "함께 걷는 계절",
-            "같은 계절을 나란히 걸어가는 사람이 있다는 것만으로도\n우리의 삶은 충분히 다정하고 든든합니다.",
-            "누니담",
-            "누니담 오리지널",
-            "QUOTE",
-            "사랑",
-            "사랑,동행,마음",
-            15,
-            3);
-        seedText(
-            "text_4",
-            "저녁의 안부",
-            "오늘 하루도 참 애썼습니다.\n분주했던 마음을 잠시 내려놓고 포근한 저녁의 쉼을 맞이하세요.",
-            "누니담",
-            "누니담 오리지널",
-            "QUOTE",
-            "위로",
-            "저녁,위로,휴식",
-            20,
-            4);
-        seedText(
-            "text_5",
-            "천천히 가는 길",
-            "서두르지 않아도 괜찮습니다.\n천천히 걷는 사람만이 길가에 피어난 작은 들꽃의 이름을 기억합니다.",
-            "누니담",
-            "누니담 오리지널",
-            "QUOTE",
-            "인생",
-            "인생,여유,산책",
-            18,
-            5);
-        seedText(
-            "text_6",
-            "사계절의 창",
-            "봄에는 여린 초록이 창을 두드리고\n여름에는 푸른 그늘이 마루에 내려앉습니다.\n\n가을의 맑은 바람이 골목을 지나가면\n겨울의 하얀 눈꽃이 조용히 이야기를 덮어 줍니다.\n\n어느 계절에 서 있든\n우리의 시간은 언제나 아름다운 풍경입니다.",
-            "누니담 문학 노트",
-            "누니담 창작시",
-            "POEM",
-            "계절의 시",
-            "계절,시,풍경",
-            25,
-            6);
-        seedText(
-            "text_7",
-            "우리의 식탁",
-            "따뜻한 밥 한 끼를 나누며 주고받는 소소한 이야기들이\n세상 어떤 보석보다 오래도록 우리를 지켜 줍니다.",
-            "누니담",
-            "누니담 오리지널",
-            "QUOTE",
-            "가족",
-            "가족,온기,식탁",
-            15,
-            7);
-        seedText(
-            "text_8",
-            "기억의 사진첩",
-            "사진 한 장을 넘길 때마다\n그날의 바람 냄새와 함께 웃던 목소리가 다시 살아납니다.",
-            "누니담",
-            "누니담 오리지널",
-            "SHORT",
-            "직접 작성한 글",
-            "추억,사진,기록",
-            15,
-            8);
-        seedText(
-            "text_9",
-            "소중한 날의 축하",
-            "함께여서 더 특별한 오늘,\n우리 가족의 건강과 웃음이 늘 함께하기를 진심으로 축하합니다.",
-            "누니담",
-            "누니담 오리지널",
-            "ANNIVERSARY",
-            "가족",
-            "기념일,생일,축하",
-            20,
-            9);
+      // Keep the virtual all-photos album present and immutable across upgrades.
+      Album allPhotos = sdao.album(Album.ALL_PHOTOS_ID);
+      if (allPhotos == null) {
+        allPhotos = new Album();
+        allPhotos.id = Album.ALL_PHOTOS_ID;
+        allPhotos.createdAt = now;
+      }
+      if (!Album.ALL_PHOTOS_NAME.equals(allPhotos.name)
+          || !allPhotos.isDefault
+          || !"누니담에 보관된 모든 사진을 자동으로 모아 보여줍니다."
+              .equals(allPhotos.description)) {
+        allPhotos.name = Album.ALL_PHOTOS_NAME;
+        allPhotos.description = "누니담에 보관된 모든 사진을 자동으로 모아 보여줍니다.";
+        allPhotos.isDefault = true;
+        allPhotos.updatedAt = now;
+        sdao.saveAlbum(allPhotos);
+      }
+
+      // 2. Seed initial default texts from nunidam_sample.csv on first run
+      if (!prefs.raw.getBoolean("seedSampleCsvV1", false)) {
+        for (int i = 1; i <= 9; i++) {
+          sdao.deleteTextItem("text_" + i);
+        }
+        for (int i = 1; i <= 5; i++) {
+          sdao.deleteTextItem("text_s" + i);
+        }
+        prefs.setTextCategories(Arrays.asList(Prefs.DEFAULT_TEXT_CATEGORIES));
+        seedSampleTextsFromCsv(false);
+        prefs.raw.edit().putBoolean("seedSimpleV3", true).putBoolean("seedSampleCsvV1", true).apply();
       }
 
       // 3. Seed TextCollections if empty
       if (sdao.textCollections().isEmpty()) {
-        TextCollection morningCol = new TextCollection();
-        morningCol.id = "col_morning";
-        morningCol.name = "긍정적인 아침 명언";
-        morningCol.description = "아침을 여는 활기차고 따뜻한 명언 모음";
-        morningCol.categoryFilter = "아침의 명언,행복,인생";
-        morningCol.kindFilter = "ALL";
-        morningCol.shuffle = true;
-        morningCol.avoidRepeat = true;
-        morningCol.frequency = 1;
-        morningCol.createdAt = now;
-        morningCol.updatedAt = now;
-        sdao.saveTextCollection(morningCol);
-
-        TextCollection poemCol = new TextCollection();
-        poemCol.id = "col_poem";
-        poemCol.name = "계절과 저녁의 시";
-        poemCol.description = "감성적인 시와 위로의 문장 모음";
-        poemCol.categoryFilter = "계절의 시,위로,사랑";
-        poemCol.kindFilter = "ALL";
-        poemCol.shuffle = true;
-        poemCol.avoidRepeat = true;
-        poemCol.frequency = 1;
-        poemCol.createdAt = now + 1;
-        poemCol.updatedAt = now + 1;
-        sdao.saveTextCollection(poemCol);
-
         TextCollection allCol = new TextCollection();
         allCol.id = "col_all";
         allCol.name = "전체 글귀 모음";
-        allCol.description = "등록된 모든 명언·시·글귀를 고르게 표시합니다.";
+        allCol.description = "등록된 모든 글귀를 고르게 표시합니다.";
         allCol.categoryFilter = "";
         allCol.kindFilter = "ALL";
         allCol.shuffle = true;
         allCol.avoidRepeat = true;
         allCol.frequency = 1;
-        allCol.createdAt = now + 2;
-        allCol.updatedAt = now + 2;
+        allCol.createdAt = now;
+        allCol.updatedAt = now;
         sdao.saveTextCollection(allCol);
       }
 
-      // 4. Seed default Scenes if empty (Section 6 examples)
-      if (sdao.scenes().isEmpty()) {
-        Scene sMorning = new Scene();
-        sMorning.id = "scene_morning";
-        sMorning.name = "좋은 아침";
-        sMorning.description = "아침 풍경과 긍정적인 명언으로 하루를 시작합니다.";
-        sMorning.layout = "PHOTO";
-        sMorning.transitionEffect = "ZOOM";
-        sMorning.seconds = 15;
-        sMorning.textDisplayMode = "OVERLAY";
-        sMorning.quoteCycle = "PHOTO";
-        sMorning.textEveryN = 1;
-        sMorning.showClock = true;
-        sMorning.showWeather = true;
-        sMorning.showCaptureDate = true;
-        sMorning.theme = "MILK";
-        sMorning.brightness = 80;
-        sMorning.fontScale = 100;
-        sMorning.isDefault = true;
-        sMorning.createdAt = now;
-        sMorning.updatedAt = now;
-        sdao.saveScene(sMorning);
-        linkSceneAlbum(sMorning.id, "album_default");
-        linkSceneAlbum(sMorning.id, "album_morning");
-        linkSceneText(sMorning.id, "col_morning");
+      // 4. Seed default Scene ("기본 장면") & sample scenes, and sparse sample weekly timetable
+      boolean migrateDefaultSceneV2 = !prefs.raw.getBoolean("seedDefaultSceneV2", false);
+      if (sdao.scenes().isEmpty() || sdao.scene("scene_default") == null || migrateDefaultSceneV2) {
+        sdao.clearDefaultScenes();
 
-        Scene sFamily = new Scene();
-        sFamily.id = "scene_family";
-        sFamily.name = "가족의 시간";
-        sFamily.description = "낮 시간 동안 가족 사진을 전체 화면으로 감상합니다.";
-        sFamily.layout = "PHOTO";
-        sFamily.transitionEffect = "ZOOM";
-        sFamily.seconds = 20;
-        sFamily.textDisplayMode = "NONE";
-        sFamily.quoteCycle = "PHOTO";
-        sFamily.showClock = true;
-        sFamily.showCaptureDate = true;
-        sFamily.theme = "MILK";
-        sFamily.brightness = 70;
-        sFamily.createdAt = now + 1;
-        sFamily.updatedAt = now + 1;
-        sdao.saveScene(sFamily);
-        linkSceneAlbum(sFamily.id, "album_default");
-        linkSceneAlbum(sFamily.id, "album_family");
+        Scene sDefault = sdao.scene("scene_default");
+        if (sDefault == null) {
+          sDefault = new Scene();
+          sDefault.id = "scene_default";
+          sDefault.name = "기본 장면";
+          sDefault.description = "시간표가 설정되지 않은 모든 시간대에 상시 재생되는 기본 장면입니다.";
+          sDefault.layout = "MAGAZINE";
+          sDefault.transitionEffect = "ZOOM";
+          sDefault.seconds = 20;
+          sDefault.textDisplayMode = "OVERLAY";
+          sDefault.quoteCycle = "PHOTO";
+          sDefault.textEveryN = 1;
+          sDefault.showClock = true;
+          sDefault.showWeather = true;
+          sDefault.showCaptureDate = true;
+          sDefault.theme = "MILK";
+          sDefault.brightness = 75;
+          sDefault.fontScale = 100;
+          sDefault.isDefault = true;
+          sDefault.createdAt = now - 10;
+          sDefault.updatedAt = now;
+          sdao.saveScene(sDefault);
+          linkSceneAlbum(sDefault.id, "album_default");
+          linkSceneText(sDefault.id, "인생문장");
+          linkSceneText(sDefault.id, "시 한 구절");
+        } else {
+          sDefault.isDefault = true;
+          sDefault.updatedAt = now;
+          sdao.saveScene(sDefault);
+        }
 
-        Scene sEvening = new Scene();
-        sEvening.id = "scene_evening";
-        sEvening.name = "저녁의 쉼";
-        sEvening.description = "자연 풍경과 계절의 시를 감성형 매거진 레이아웃으로 재생합니다.";
-        sEvening.layout = "MAGAZINE";
-        sEvening.transitionEffect = "FADE";
-        sEvening.seconds = 30;
-        sEvening.textDisplayMode = "SPLIT";
-        sEvening.quoteCycle = "PHOTO";
-        sEvening.showClock = true;
-        sEvening.showCaptureDate = true;
-        sEvening.theme = "SAGE";
-        sEvening.brightness = 45;
-        sEvening.createdAt = now + 2;
-        sEvening.updatedAt = now + 2;
-        sdao.saveScene(sEvening);
-        linkSceneAlbum(sEvening.id, "album_default");
-        linkSceneAlbum(sEvening.id, "album_nature");
-        linkSceneText(sEvening.id, "col_poem");
+        if (sdao.scene("scene_morning") == null || migrateDefaultSceneV2) {
+          Scene sMorning = sdao.scene("scene_morning");
+          if (sMorning == null) sMorning = new Scene();
+          sMorning.id = "scene_morning";
+          sMorning.name = "좋은 아침";
+          sMorning.description = "아침 출근·등교 시간대에 활기찬 사진과 명언으로 하루를 시작합니다.";
+          sMorning.layout = "PHOTO";
+          sMorning.transitionEffect = "ZOOM";
+          sMorning.seconds = 15;
+          sMorning.textDisplayMode = "OVERLAY";
+          sMorning.quoteCycle = "PHOTO";
+          sMorning.textEveryN = 1;
+          sMorning.showClock = true;
+          sMorning.showWeather = true;
+          sMorning.showCaptureDate = true;
+          sMorning.theme = "MILK";
+          sMorning.brightness = 80;
+          sMorning.fontScale = 100;
+          sMorning.isDefault = false;
+          sMorning.createdAt = now;
+          sMorning.updatedAt = now;
+          sdao.saveScene(sMorning);
+          if (sdao.sceneAlbums(sMorning.id).isEmpty()) {
+            linkSceneAlbum(sMorning.id, "album_default");
+            linkSceneAlbum(sMorning.id, "album_morning");
+          }
+          if (sdao.sceneTextCollections(sMorning.id).isEmpty()) {
+            linkSceneText(sMorning.id, "인생문장");
+            linkSceneText(sMorning.id, "성경 말씀");
+          }
+        }
 
-        Scene sNight = new Scene();
-        sNight.id = "scene_night";
-        sNight.name = "야간 절전";
-        sNight.description = "밤 시간 동안 화면을 어둡게 낮추어 편안한 수면을 돕습니다.";
-        sNight.layout = "BOARD";
-        sNight.transitionEffect = "NONE";
-        sNight.seconds = 120;
-        sNight.textDisplayMode = "DEDICATED";
-        sNight.quoteCycle = "HOUR";
-        sNight.showClock = true;
-        sNight.showCaptureDate = false;
-        sNight.theme = "INK";
-        sNight.brightness = 10;
-        sNight.nightDim = true;
-        sNight.createdAt = now + 3;
-        sNight.updatedAt = now + 3;
-        sdao.saveScene(sNight);
-        linkSceneAlbum(sNight.id, "album_default");
-        linkSceneText(sNight.id, "col_poem");
+        if (sdao.scene("scene_evening") == null || migrateDefaultSceneV2) {
+          Scene sEvening = sdao.scene("scene_evening");
+          if (sEvening == null) sEvening = new Scene();
+          sEvening.id = "scene_evening";
+          sEvening.name = "저녁의 쉼";
+          sEvening.description = "저녁 휴식 시간대에 자연 풍경과 시를 감성형 매거진 레이아웃으로 재생합니다.";
+          sEvening.layout = "MAGAZINE";
+          sEvening.transitionEffect = "FADE";
+          sEvening.seconds = 30;
+          sEvening.textDisplayMode = "SPLIT";
+          sEvening.quoteCycle = "PHOTO";
+          sEvening.showClock = true;
+          sEvening.showCaptureDate = true;
+          sEvening.theme = "SAGE";
+          sEvening.brightness = 45;
+          sEvening.isDefault = false;
+          sEvening.createdAt = now + 2;
+          sEvening.updatedAt = now + 2;
+          sdao.saveScene(sEvening);
+          if (sdao.sceneAlbums(sEvening.id).isEmpty()) {
+            linkSceneAlbum(sEvening.id, "album_default");
+            linkSceneAlbum(sEvening.id, "album_nature");
+          }
+          if (sdao.sceneTextCollections(sEvening.id).isEmpty()) {
+            linkSceneText(sEvening.id, "시 한 구절");
+          }
+        }
+
+        if (sdao.scene("scene_night") == null || migrateDefaultSceneV2) {
+          Scene sNight = sdao.scene("scene_night");
+          if (sNight == null) sNight = new Scene();
+          sNight.id = "scene_night";
+          sNight.name = "야간 절전";
+          sNight.description = "심야 취침 시간 동안 화면을 어둡게 낮추어 편안한 수면을 돕습니다.";
+          sNight.layout = "BOARD";
+          sNight.transitionEffect = "NONE";
+          sNight.seconds = 120;
+          sNight.textDisplayMode = "DEDICATED";
+          sNight.quoteCycle = "HOUR";
+          sNight.showClock = true;
+          sNight.showCaptureDate = false;
+          sNight.theme = "INK";
+          sNight.brightness = 10;
+          sNight.nightDim = true;
+          sNight.isDefault = false;
+          sNight.createdAt = now + 3;
+          sNight.updatedAt = now + 3;
+          sdao.saveScene(sNight);
+          if (sdao.sceneAlbums(sNight.id).isEmpty()) {
+            linkSceneAlbum(sNight.id, "album_default");
+          }
+          if (sdao.sceneTextCollections(sNight.id).isEmpty()) {
+            linkSceneText(sNight.id, "시 한 구절");
+          }
+        }
       }
 
-      // 5. Seed default ScheduleRules if empty (Section 7.1 example)
-      if (sdao.scheduleRules().isEmpty()) {
-        saveRule("rule_weekday_morning", "평일 아침", "WEEKLY", "", 62, 360, 540, 3, "scene_morning", now);
-        saveRule("rule_weekday_day", "평일 낮 가족 사진", "WEEKLY", "", 62, 540, 1080, 3, "scene_family", now + 1);
-        saveRule("rule_weekday_evening", "평일 저녁의 쉼", "WEEKLY", "", 62, 1080, 1320, 3, "scene_evening", now + 2);
-        saveRule("rule_weekend_day", "주말 추억 감상", "WEEKLY", "", 65, 480, 1320, 3, "scene_morning", now + 3);
-        saveRule("rule_night_sleep", "매일 야간 절전", "WEEKLY", "", 127, 1320, 360, 3, "scene_night", now + 4);
+      // 5. Seed sparse sample ScheduleRules ONCE on initial setup (if user deletes all rules later, keep empty so Default Scene plays 24/7)
+      if (migrateDefaultSceneV2) {
+        sdao.deleteScheduleRule("rule_weekday_day");
+        sdao.deleteScheduleRule("rule_weekday_evening");
+        sdao.deleteScheduleRule("rule_weekend_day");
+        // 평일 아침 07:00~09:00 (2시간)만 '좋은 아침' 장면 재생
+        saveRule("rule_weekday_morning", "평일 아침 (출근·등교)", "WEEKLY", "", 62, 420, 540, 3, "scene_morning", now);
+        // 매일 저녁 19:00~21:00 (2시간)만 '저녁의 쉼' 장면 재생
+        saveRule("rule_evening_rest", "저녁 휴식 시간", "WEEKLY", "", 127, 1140, 1260, 3, "scene_evening", now + 1);
+        // 심야 23:00~06:00에는 '야간 절전' 장면 재생 (그 외 낮 09:00~19:00, 주말 오전 등 모든 미지정 시간대는 '기본 장면' 재생)
+        saveRule("rule_night_sleep", "심야 취침 절전", "WEEKLY", "", 127, 1380, 360, 3, "scene_night", now + 2);
+        prefs.raw.edit().putBoolean("seedDefaultSceneV2", true).apply();
       }
 
       // 6. Ensure ACTIVE & DRAFT PublishedConfiguration exist
@@ -366,48 +297,132 @@ public final class StudioRepository {
     }
   }
 
-  private void seedText(
-      String id,
-      String title,
-      String body,
-      String author,
-      String source,
-      String kind,
-      String category,
-      String tags,
-      int sec,
-      int order) {
-    TextItem t = new TextItem();
-    t.id = id;
-    t.title = title;
-    t.body = body;
-    t.author = author;
-    t.source = source;
-    t.kind = kind;
-    t.category = category;
-    t.tags = tags;
-    t.licenseNote = "누니담 직접 작성 예시 문구 (저작권 안전)";
-    t.displaySeconds = sec;
-    t.sortOrder = order;
-    t.enabled = true;
-    t.createdAt = System.currentTimeMillis();
-    t.updatedAt = t.createdAt;
-    dao().saveTextItem(t);
+  /**
+   * Loads and seeds default text items from assets/nunidam_sample.csv.
+   *
+   * @param replaceAll if true, deletes all existing text items before seeding; if false, upserts
+   *     the default sample rows while keeping any custom user-added items.
+   * @return number of seeded text items
+   */
+  public int seedSampleTextsFromCsv(boolean replaceAll) {
+    synchronized (lock) {
+      StudioDao sdao = dao();
+      try (InputStream in = c.getAssets().open("nunidam_sample.csv")) {
+        String csvText = new String(Core.read(in, 2 * 1024 * 1024), StandardCharsets.UTF_8);
+        final List<String[]> rows = Core.parseCsvRecords(csvText);
+        if (rows.isEmpty()) return 0;
+        final long now = System.currentTimeMillis();
+        final int[] count = new int[1];
+        db.runInTransaction(
+            () -> {
+              if (replaceAll) {
+                for (TextItem old : sdao.textItems()) {
+                  sdao.deleteTextItem(old.id);
+                }
+              }
+              int order = 0;
+              for (int i = 0; i < rows.size(); i++) {
+                String[] cols = rows.get(i);
+                if (cols.length < 2) continue;
+                String col0 = cols[0] == null ? "" : cols[0].trim();
+                String col1 = cols[1] == null ? "" : cols[1].trim();
+                // Skip header row
+                if (i == 0
+                    && ("카테고리".equalsIgnoreCase(col0)
+                        || "category".equalsIgnoreCase(col0)
+                        || "본문".equalsIgnoreCase(col1))) {
+                  continue;
+                }
+                if (col1.isEmpty()) continue;
+                order++;
+                String category = col0.isEmpty() ? "기타" : col0;
+                prefs.ensureTextCategory(category);
+                String author = cols.length > 2 && cols[2] != null ? cols[2].trim() : "";
+                String title = cols.length > 3 && cols[3] != null ? cols[3].trim() : "";
+                String source = cols.length > 4 && cols[4] != null ? cols[4].trim() : "";
+                int sec = 20;
+                if (cols.length > 5 && cols[5] != null) {
+                  try {
+                    sec = Math.max(5, Math.min(600, Integer.parseInt(cols[5].trim())));
+                  } catch (NumberFormatException ignored) {
+                  }
+                }
+                String kind =
+                    ("시 한 구절".equals(category)
+                            || category.contains("시")
+                            || col1.indexOf('\n') >= 0)
+                        ? "POEM"
+                        : "QUOTE";
+                TextItem t = new TextItem();
+                t.id = "text_sample_" + order;
+                t.category = category;
+                t.body = col1;
+                t.author = author;
+                t.title = title;
+                t.source = source;
+                t.kind = kind;
+                t.tags = category;
+                t.licenseNote = source;
+                t.displaySeconds = sec;
+                t.sortOrder = order;
+                t.enabled = true;
+                t.createdAt = now + order;
+                t.updatedAt = now + order;
+                sdao.saveTextItem(t);
+                count[0]++;
+              }
+            });
+        return count[0];
+      } catch (Exception e) {
+        return 0;
+      }
+    }
+  }
+
+  public void ensureTextCollectionExists(String colId) {
+    if (colId == null || colId.trim().isEmpty()) return;
+    StudioDao sdao = dao();
+    if (sdao.textCollection(colId) == null) {
+      long now = System.currentTimeMillis();
+      TextCollection tc = new TextCollection();
+      tc.id = colId;
+      tc.name = colId;
+      tc.description = colId + " 카테고리 모음";
+      tc.categoryFilter = colId.startsWith("cat:") ? colId.substring(4).trim() : colId;
+      tc.kindFilter = "ALL";
+      tc.shuffle = true;
+      tc.avoidRepeat = true;
+      tc.frequency = 1;
+      tc.createdAt = now;
+      tc.updatedAt = now;
+      sdao.saveTextCollection(tc);
+    }
   }
 
   private void linkSceneAlbum(String sceneId, String albumId) {
-    SceneAlbum sa = new SceneAlbum();
-    sa.sceneId = sceneId;
-    sa.albumId = albumId;
-    sa.weight = 1;
-    dao().saveSceneAlbum(sa);
+    try {
+      StudioDao sdao = dao();
+      if (sdao.scene(sceneId) == null || sdao.album(albumId) == null) return;
+      SceneAlbum sa = new SceneAlbum();
+      sa.sceneId = sceneId;
+      sa.albumId = albumId;
+      sa.weight = 1;
+      sdao.saveSceneAlbum(sa);
+    } catch (Exception ignored) {
+    }
   }
 
   private void linkSceneText(String sceneId, String colId) {
-    SceneTextCollection stc = new SceneTextCollection();
-    stc.sceneId = sceneId;
-    stc.collectionId = colId;
-    dao().saveSceneTextCollection(stc);
+    try {
+      ensureTextCollectionExists(colId);
+      StudioDao sdao = dao();
+      if (sdao.scene(sceneId) == null || sdao.textCollection(colId) == null) return;
+      SceneTextCollection stc = new SceneTextCollection();
+      stc.sceneId = sceneId;
+      stc.collectionId = colId;
+      sdao.saveSceneTextCollection(stc);
+    } catch (Exception ignored) {
+    }
   }
 
   private void saveRule(
@@ -457,15 +472,16 @@ public final class StudioRepository {
 
     Core.ScheduleSlot active =
         Core.resolveActiveSlot(slots, nowMs, todayStr, prevStr, dow0, minOfDay);
-    Scene defScene = dao().defaultScene();
+    Scene defScene = dao().scene("scene_default");
+    if (defScene == null) defScene = dao().defaultScene();
     if (defScene == null) {
       List<Scene> allScenes = dao().scenes();
       if (!allScenes.isEmpty()) defScene = allScenes.get(0);
     }
-    String defSceneId = defScene != null ? defScene.id : "scene_morning";
+    String defSceneId = defScene != null ? defScene.id : "scene_default";
     String activeSceneId = active != null ? active.sceneId : defSceneId;
     String activeRuleId = active != null ? active.id : "DEFAULT";
-    String activeRuleName = active != null ? active.name : "기본 장면";
+    String activeRuleName = active != null ? active.name : "기본 장면 (상시 재생)";
     String activeRuleType = active != null ? active.ruleType : "DEFAULT";
 
     // Look ahead up to 24 hours (in 15-min steps) to find the next scene transition
@@ -510,27 +526,40 @@ public final class StudioRepository {
     Scene sc = sdao.scene(sceneId);
     List<SceneAlbum> links = sdao.sceneAlbums(sceneId);
     LinkedHashMap<String, Photo> map = new LinkedHashMap<>();
+    boolean allPhotosSelected = false;
+    boolean namedAlbumSelected = false;
     for (SceneAlbum sa : links) {
-      Album alb = sdao.album(sa.albumId);
-      List<Photo> photos = sdao.albumPhotos(sa.albumId);
-      if (alb != null) {
-        if ("CAPTURED_DESC".equals(alb.sortOrder)) {
-          Collections.sort(photos, (x, y) -> Long.compare(y.capturedAt, x.capturedAt));
-        } else if ("CAPTURED_ASC".equals(alb.sortOrder)) {
-          Collections.sort(photos, (x, y) -> Long.compare(x.capturedAt, y.capturedAt));
-        } else if ("NAME_ASC".equals(alb.sortOrder)) {
-          Collections.sort(photos, (x, y) -> x.name.compareToIgnoreCase(y.name));
-        }
+      if (Album.isAllPhotos(sa.albumId)) {
+        allPhotosSelected = true;
+      } else {
+        namedAlbumSelected = true;
       }
-      for (Photo p : photos) {
-        if (p.trashedAt == 0) map.put(p.id, p);
+    }
+    // For legacy scenes that stored both, retain named selections; the UI now makes the
+    // all-photos choice exclusive with named albums.
+    if (namedAlbumSelected) allPhotosSelected = false;
+    if (allPhotosSelected || links.isEmpty()) {
+      for (Photo p : db.photos().active()) map.put(p.id, p);
+    } else {
+      for (SceneAlbum sa : links) {
+        if (Album.isAllPhotos(sa.albumId)) continue;
+        Album alb = sdao.album(sa.albumId);
+        List<Photo> photos = sdao.albumPhotos(sa.albumId);
+        if (alb != null) {
+          if ("CAPTURED_DESC".equals(alb.sortOrder)) {
+            Collections.sort(photos, (x, y) -> Long.compare(y.capturedAt, x.capturedAt));
+          } else if ("CAPTURED_ASC".equals(alb.sortOrder)) {
+            Collections.sort(photos, (x, y) -> Long.compare(x.capturedAt, y.capturedAt));
+          } else if ("NAME_ASC".equals(alb.sortOrder)) {
+            Collections.sort(photos, (x, y) -> x.name.compareToIgnoreCase(y.name));
+          }
+        }
+        for (Photo p : photos) {
+          if (p.trashedAt == 0) map.put(p.id, p);
+        }
       }
     }
     List<Photo> result = new ArrayList<>(map.values());
-    if (result.isEmpty()) {
-      // Fallback so scheduled scene with empty album still plays smoothly (Section 7.4)
-      result = db.photos().active();
-    }
     if (sc == null || sc.shufflePhotos) {
       Collections.shuffle(result);
     }
@@ -552,8 +581,23 @@ public final class StudioRepository {
     }
     LinkedHashMap<String, TextItem> matched = new LinkedHashMap<>();
     for (SceneTextCollection stc : links) {
+      if ("ALL".equals(stc.collectionId) || "col_all".equals(stc.collectionId)) {
+        for (TextItem item : allEnabled) matched.put(item.id, item);
+        continue;
+      }
       TextCollection col = sdao.textCollection(stc.collectionId);
-      if (col == null) continue;
+      if (col == null) {
+        String catName =
+            stc.collectionId.startsWith("cat:")
+                ? stc.collectionId.substring(4).trim()
+                : stc.collectionId.trim();
+        for (TextItem item : allEnabled) {
+          if (catName.equals(item.category)) {
+            matched.put(item.id, item);
+          }
+        }
+        continue;
+      }
       Set<String> explicitIds = new HashSet<>();
       try {
         JSONArray arr = new JSONArray(col.itemIdsJson);
@@ -609,12 +653,14 @@ public final class StudioRepository {
               .put("createdAt", a.createdAt)
               .put("updatedAt", a.updatedAt);
       JSONArray itemsArr = new JSONArray();
-      for (AlbumItem it : sdao.albumItems(a.id)) {
+      List<Photo> albumPhotos = sdao.albumPhotos(a.id);
+      for (int i = 0; i < albumPhotos.size(); i++) {
+        Photo photo = albumPhotos.get(i);
         itemsArr.put(
             new JSONObject()
-                .put("photoId", it.photoId)
-                .put("position", it.position)
-                .put("addedAt", it.addedAt));
+                .put("photoId", photo.id)
+                .put("position", i)
+                .put("addedAt", photo.importedAt));
       }
       o.put("items", itemsArr);
       o.put("photoCount", sdao.albumPhotoCount(a.id));
@@ -643,6 +689,9 @@ public final class StudioRepository {
               .put("updatedAt", t.updatedAt));
     }
     root.put("texts", textsArr);
+    JSONArray catArr = new JSONArray();
+    for (String cat : prefs.textCategories()) catArr.put(cat);
+    root.put("textCategories", catArr);
 
     // TextCollections
     JSONArray colsArr = new JSONArray();
