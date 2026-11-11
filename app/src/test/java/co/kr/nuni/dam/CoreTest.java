@@ -462,4 +462,48 @@ public class CoreTest {
     assertEquals("Bilbe Verse", lastRow[0].trim());
     assertEquals("Matthew 11:28", lastRow[3].trim());
   }
+
+  @Test
+  public void spreadsheetTsvAndCsvImportExportAndScheduleFormatting() {
+    String tsv =
+        "카테고리\t본문\t작가\t제목\t출처\t표시시간\n"
+            + "인생문장\t천천히 걸어도 괜찮습니다.\t누니담\t산책\t창작\t25\n"
+            + "\t카테고리 없는 문장\t작자미상\t\t\t\n";
+    java.util.List<Core.ImportedTextRow> parsed = Core.parseSpreadsheetTextRows(tsv);
+    assertEquals(2, parsed.size());
+    assertEquals("인생문장", parsed.get(0).category);
+    assertEquals("천천히 걸어도 괜찮습니다.", parsed.get(0).body);
+    assertEquals("누니담", parsed.get(0).author);
+    assertEquals("산책", parsed.get(0).title);
+    assertEquals("창작", parsed.get(0).source);
+    assertEquals(25, parsed.get(0).displaySeconds);
+    assertEquals("기타", parsed.get(1).category);
+    assertEquals(15, parsed.get(1).displaySeconds);
+
+    java.util.List<String[]> exportRows = new java.util.ArrayList<>();
+    exportRows.add(new String[] {"카테고리", "본문", "작가", "제목", "출처", "표시시간"});
+    exportRows.add(new String[] {"시 한 구절", "첫째 줄,\n\"둘째 줄\"", "시인", "제목", "", "20"});
+    String csvOut = Core.formatCsvRecords(exportRows);
+    assertTrue(csvOut.startsWith("\uFEFF"));
+    java.util.List<Core.ImportedTextRow> roundTrip =
+        Core.parseSpreadsheetTextRows(
+            Core.decodeCsvBytes(csvOut.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+    assertEquals(1, roundTrip.size());
+    assertEquals("첫째 줄,\n\"둘째 줄\"", roundTrip.get(0).body);
+    assertEquals(20, roundTrip.get(0).displaySeconds);
+
+    assertEquals("매일", Core.formatDaysMask(127));
+    assertEquals("평일(월~금)", Core.formatDaysMask(62));
+    assertEquals("주말(토·일)", Core.formatDaysMask(65));
+    assertEquals("월·수·금", Core.formatDaysMask(2 | 8 | 32));
+
+    Core.ScheduleSlot overnight =
+        new Core.ScheduleSlot("n1", "심야", "WEEKLY", "", "scene_night", 2, 1380, 360, 3, true, 0L);
+    // Monday 18~24 (1080..1440) covers 23:00~24:00 = 60 min
+    assertEquals(60, Core.weeklyBandCoveredMinutes(overnight, 1, 1080, 1440));
+    // Tuesday 00~06 (0..360) covers 00:00~06:00 from Monday night = 360 min
+    assertEquals(360, Core.weeklyBandCoveredMinutes(overnight, 2, 0, 360));
+    // Monday 00~06 has 0 min because Sunday wasn't in mask
+    assertEquals(0, Core.weeklyBandCoveredMinutes(overnight, 1, 0, 360));
+  }
 }

@@ -54,7 +54,11 @@ public final class FrameActivity extends Activity {
     LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, Ui.dp(this, 1));
     lp.setMargins(Ui.dp(this, 8), Ui.dp(this, 6), Ui.dp(this, 8), Ui.dp(this, 6));
     controls.addView(line, lp);
-    controls.addView(two);
+    HorizontalScrollView twoScroll = new HorizontalScrollView(this);
+    twoScroll.setHorizontalScrollBarEnabled(false);
+    twoScroll.setFillViewport(true);
+    twoScroll.addView(two);
+    controls.addView(twoScroll);
     add(
         one,
         "이전",
@@ -91,8 +95,11 @@ public final class FrameActivity extends Activity {
           session.next();
           showControls();
         });
-    add(two, "사진 관리", R.drawable.ic_gallery, Ui.INK, true, () -> openManage("PHOTOS"));
-    add(two, "꾸미기", R.drawable.ic_sun, Ui.INK, true, () -> openManage("CUSTOMIZE"));
+    add(two, "사진", R.drawable.ic_gallery, Ui.INK, true, () -> openManage("PHOTOS"));
+    add(two, "앨범", R.drawable.ic_folder, Ui.INK, true, () -> openManage("ALBUMS"));
+    add(two, "글귀", R.drawable.ic_quote, Ui.INK, true, () -> openManage("TEXTS"));
+    add(two, "재생장면", R.drawable.ic_scene, Ui.INK, true, () -> openManage("SCENES"));
+    add(two, "편성표", R.drawable.ic_calendar, Ui.INK, true, () -> openManage("SCHEDULES"));
     add(two, "설정", R.drawable.ic_tune, Ui.INK, true, () -> openManage("SETTINGS"));
     add(two, "관리 홈", R.drawable.ic_home, Ui.MUTED, true, this::finish);
     add(two, "앱 종료", R.drawable.ic_exit, Ui.DANGER, true, this::exitApp);
@@ -165,6 +172,8 @@ public final class FrameActivity extends Activity {
   private Button add(
       LinearLayout row, String text, int icon, int color, boolean fill, Runnable r) {
     Button b = Ui.tile(this, text, icon, color, r);
+    b.setMinWidth(Ui.dp(this, 68));
+    b.setMinimumWidth(Ui.dp(this, 68));
     LinearLayout.LayoutParams p =
         new LinearLayout.LayoutParams(fill ? 0 : Ui.dp(this, 104), Ui.dp(this, 62), fill ? 1 : 0);
     int m = Ui.dp(this, 3);

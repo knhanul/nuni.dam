@@ -13,16 +13,15 @@ import android.widget.*;
 import java.util.*;
 
 /**
- * Adaptive 4-destination management shell (Section 4 & Section 6):
+ * Adaptive Studio & Frame management shell:
  * 1) 액자 (FRAME)
  * 2) 사진 (PHOTOS)
- * 3) 꾸미기 (CUSTOMIZE)
- * 4) 설정 (SETTINGS)
- *
- * Window width breakpoints:
- * - < 600dp: Bottom navigation (4 destinations) + single content pane
- * - 600~839dp: Left navigation rail + constrained content pane
- * - >= 840dp: Left navigation rail + 2-pane content (preview/list + detail/options)
+ * 3) 앨범 (ALBUMS)
+ * 4) 글귀 라이브러리 (TEXTS)
+ * 5) 재생 장면 (SCENES)
+ * 6) 주간 편성표 (SCHEDULES)
+ * 7) 설정 (SETTINGS)
+ * (+ 간편 꾸미기 CUSTOMIZE 호환 지원)
  */
 public final class MainActivity extends Activity implements PhotoStore.Listener {
   private NuniApp a;
@@ -32,8 +31,14 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
   private LinearLayout contentPane;
   private final Map<String, Button> navButtons = new HashMap<>();
   private LibraryActivity.Controller libraryController;
+  private AlbumsActivity.Controller albumsController;
+  private QuotesActivity.Controller quotesController;
+  private ScenesActivity.Controller scenesController;
+  private SchedulesActivity.Controller schedulesController;
   private SettingsActivity.Controller settingsController;
   private FrameView.Config draftConfig;
+  private String pendingFocusAlbumId;
+  private String pendingImportAlbumId = "";
 
   public void onCreate(Bundle state) {
     super.onCreate(state);
@@ -70,21 +75,54 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
 
   protected void onResume() {
     super.onResume();
-    renderCurrentTab();
+    refreshOrRenderCurrentTab();
   }
 
   protected void onDestroy() {
     a.store.unlisten(this);
-    if (libraryController != null) libraryController.release();
+    releaseActiveControllers();
     if (progressDialog != null) progressDialog.dismiss();
     super.onDestroy();
   }
 
   public void changed() {
-    runOnUiThread(this::renderCurrentTab);
+    runOnUiThread(this::refreshOrRenderCurrentTab);
+  }
+
+  private void refreshOrRenderCurrentTab() {
+    if (!Ui.alive(this) || contentPane == null) return;
+    if ("PHOTOS".equals(currentTab) && libraryController != null) {
+      libraryController.refresh();
+    } else if ("ALBUMS".equals(currentTab) && albumsController != null) {
+      albumsController.refresh();
+    } else if ("TEXTS".equals(currentTab) && quotesController != null) {
+      quotesController.refresh();
+    } else if ("SCENES".equals(currentTab) && scenesController != null) {
+      scenesController.refresh();
+    } else if ("SCHEDULES".equals(currentTab) && schedulesController != null) {
+      schedulesController.refresh();
+    } else {
+      renderCurrentTab();
+    }
+  }
+
+  private void releaseActiveControllers() {
+    if (libraryController != null) {
+      libraryController.release();
+      libraryController = null;
+    }
+    if (albumsController != null) {
+      albumsController.release();
+      albumsController = null;
+    }
+    quotesController = null;
+    scenesController = null;
+    schedulesController = null;
+    settingsController = null;
   }
 
   private void buildShell() {
+    releaseActiveControllers();
     getWindow().setStatusBarColor(Ui.BG);
     getWindow().setNavigationBarColor(Ui.BG);
     int widthDp = getResources().getConfiguration().screenWidthDp;
@@ -112,31 +150,41 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
       LinearLayout rail = Ui.column(this);
       rail.setBackgroundColor(Ui.SURFACE);
       int rPad = Ui.dp(this, 10);
-      rail.setPadding(rPad, Ui.dp(this, 20), rPad, Ui.dp(this, 20));
+      rail.setPadding(rPad, Ui.dp(this, 16), rPad, Ui.dp(this, 16));
       rail.setGravity(Gravity.CENTER_HORIZONTAL);
       ImageView logo = new ImageView(this);
       logo.setImageResource(R.drawable.ic_nuni);
       logo.setBackground(Ui.bg(Ui.SURFACE_SUBTLE, Ui.dp(this, 10)));
       logo.setClipToOutline(true);
-      rail.addView(logo, new LinearLayout.LayoutParams(Ui.dp(this, 36), Ui.dp(this, 36)));
+      rail.addView(logo, new LinearLayout.LayoutParams(Ui.dp(this, 34), Ui.dp(this, 34)));
       ImageView railKrLogo = new ImageView(this);
       railKrLogo.setImageResource(R.drawable.nunidam_kr_logo);
       railKrLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
-      LinearLayout.LayoutParams rklp = new LinearLayout.LayoutParams(Ui.dp(this, 66), Ui.dp(this, 22));
-      rklp.topMargin = Ui.dp(this, 6);
+      LinearLayout.LayoutParams rklp = new LinearLayout.LayoutParams(Ui.dp(this, 64), Ui.dp(this, 20));
+      rklp.topMargin = Ui.dp(this, 4);
       rail.addView(railKrLogo, rklp);
-      Ui.gap(rail, 14);
-      addNavButton(rail, "FRAME", "액자", R.drawable.ic_screen, true);
-      addNavButton(rail, "PHOTOS", "사진", R.drawable.ic_gallery, true);
-      addNavButton(rail, "CUSTOMIZE", "꾸미기", R.drawable.ic_sun, true);
-      addNavButton(rail, "SETTINGS", "설정", R.drawable.ic_tune, true);
-      View railSpacer = new View(this);
-      rail.addView(railSpacer, new LinearLayout.LayoutParams(1, 0, 1));
+      Ui.gap(rail, 10);
+
+      ScrollView navScroll = new ScrollView(this);
+      navScroll.setVerticalScrollBarEnabled(false);
+      navScroll.setFillViewport(true);
+      LinearLayout navCol = Ui.column(this);
+      navCol.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+      addNavButton(navCol, "FRAME", "액자", "액자 홈 탭", R.drawable.ic_screen, true);
+      addNavButton(navCol, "PHOTOS", "사진", "사진 보관함 탭", R.drawable.ic_gallery, true);
+      addNavButton(navCol, "ALBUMS", "앨범", "앨범 관리 탭", R.drawable.ic_folder, true);
+      addNavButton(navCol, "TEXTS", "글귀", "글귀 라이브러리 탭", R.drawable.ic_quote, true);
+      addNavButton(navCol, "SCENES", "재생장면", "재생 장면 관리 탭", R.drawable.ic_scene, true);
+      addNavButton(navCol, "SCHEDULES", "편성표", "주간 편성표 관리 탭", R.drawable.ic_calendar, true);
+      addNavButton(navCol, "SETTINGS", "설정", "설정 탭", R.drawable.ic_tune, true);
+      navScroll.addView(navCol);
+      rail.addView(navScroll, new LinearLayout.LayoutParams(-1, 0, 1));
+
       Button railExitBtn = Ui.tile(this, "종료", R.drawable.ic_exit, Ui.DANGER, () -> Ui.exitApp(this));
       railExitBtn.setContentDescription("앱 종료");
-      LinearLayout.LayoutParams exitLp = new LinearLayout.LayoutParams(-1, Ui.dp(this, 64));
-      int em = Ui.dp(this, 3);
-      exitLp.setMargins(em, em, em, em);
+      LinearLayout.LayoutParams exitLp = new LinearLayout.LayoutParams(-1, Ui.dp(this, 58));
+      int em = Ui.dp(this, 2);
+      exitLp.setMargins(em, Ui.dp(this, 6), em, em);
       rail.addView(railExitBtn, exitLp);
       shell.addView(rail, new LinearLayout.LayoutParams(Ui.dp(this, 96), -1));
       shell.addView(Ui.divider(this), new LinearLayout.LayoutParams(Ui.dp(this, 1), -1));
@@ -152,20 +200,29 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
       shell.addView(contentPane, new LinearLayout.LayoutParams(-1, 0, 1));
       shell.addView(Ui.divider(this), new LinearLayout.LayoutParams(-1, Ui.dp(this, 1)));
 
+      HorizontalScrollView bottomScroll = new HorizontalScrollView(this);
+      bottomScroll.setHorizontalScrollBarEnabled(false);
+      bottomScroll.setFillViewport(true);
+      bottomScroll.setBackgroundColor(Ui.SURFACE);
       LinearLayout bottomBar = Ui.row(this);
-      bottomBar.setBackgroundColor(Ui.SURFACE);
-      bottomBar.setPadding(Ui.dp(this, 8), Ui.dp(this, 6), Ui.dp(this, 8), Ui.dp(this, 6));
-      addNavButton(bottomBar, "FRAME", "액자", R.drawable.ic_screen, false);
-      addNavButton(bottomBar, "PHOTOS", "사진", R.drawable.ic_gallery, false);
-      addNavButton(bottomBar, "CUSTOMIZE", "꾸미기", R.drawable.ic_sun, false);
-      addNavButton(bottomBar, "SETTINGS", "설정", R.drawable.ic_tune, false);
+      bottomBar.setPadding(Ui.dp(this, 6), Ui.dp(this, 5), Ui.dp(this, 6), Ui.dp(this, 5));
+      addNavButton(bottomBar, "FRAME", "액자", "액자 홈 탭", R.drawable.ic_screen, false);
+      addNavButton(bottomBar, "PHOTOS", "사진", "사진 보관함 탭", R.drawable.ic_gallery, false);
+      addNavButton(bottomBar, "ALBUMS", "앨범", "앨범 관리 탭", R.drawable.ic_folder, false);
+      addNavButton(bottomBar, "TEXTS", "글귀", "글귀 라이브러리 탭", R.drawable.ic_quote, false);
+      addNavButton(bottomBar, "SCENES", "재생장면", "재생 장면 관리 탭", R.drawable.ic_scene, false);
+      addNavButton(bottomBar, "SCHEDULES", "편성표", "주간 편성표 관리 탭", R.drawable.ic_calendar, false);
+      addNavButton(bottomBar, "SETTINGS", "설정", "설정 탭", R.drawable.ic_tune, false);
       Button botExitBtn = Ui.tile(this, "종료", R.drawable.ic_exit, Ui.DANGER, () -> Ui.exitApp(this));
       botExitBtn.setContentDescription("앱 종료");
+      botExitBtn.setMinWidth(Ui.dp(this, 60));
+      botExitBtn.setMinimumWidth(Ui.dp(this, 60));
       LinearLayout.LayoutParams botExitLp = new LinearLayout.LayoutParams(0, Ui.dp(this, 58), 1);
-      int bm = Ui.dp(this, 3);
+      int bm = Ui.dp(this, 2);
       botExitLp.setMargins(bm, bm, bm, bm);
       bottomBar.addView(botExitBtn, botExitLp);
-      shell.addView(bottomBar, new LinearLayout.LayoutParams(-1, -2));
+      bottomScroll.addView(bottomBar, new LinearLayout.LayoutParams(-1, -2));
+      shell.addView(bottomScroll, new LinearLayout.LayoutParams(-1, -2));
     }
 
     updateNavSelection();
@@ -173,17 +230,31 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
   }
 
   private void addNavButton(
-      LinearLayout parent, String key, String label, int iconRes, boolean rail) {
+      LinearLayout parent,
+      String key,
+      String label,
+      String contentDesc,
+      int iconRes,
+      boolean rail) {
     Button b = Ui.tile(this, label, iconRes, Ui.INK, () -> switchTab(key));
-    b.setContentDescription(label + " 탭");
+    b.setContentDescription(contentDesc);
+    if (!rail) {
+      b.setMinWidth(Ui.dp(this, 64));
+      b.setMinimumWidth(Ui.dp(this, 64));
+    }
     LinearLayout.LayoutParams lp =
         rail
-            ? new LinearLayout.LayoutParams(-1, Ui.dp(this, 64))
+            ? new LinearLayout.LayoutParams(-1, Ui.dp(this, 58))
             : new LinearLayout.LayoutParams(0, Ui.dp(this, 58), 1);
-    int m = Ui.dp(this, 3);
+    int m = Ui.dp(this, 2);
     lp.setMargins(m, m, m, m);
     navButtons.put(key, b);
     parent.addView(b, lp);
+  }
+
+  public void openAlbumManagement(String albumId) {
+    pendingFocusAlbumId = albumId;
+    switchTab("ALBUMS");
   }
 
   public void switchTab(String key) {
@@ -194,16 +265,32 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
     renderCurrentTab();
   }
 
+  private static int navIconForKey(String key) {
+    switch (key) {
+      case "FRAME":
+        return R.drawable.ic_screen;
+      case "PHOTOS":
+        return R.drawable.ic_gallery;
+      case "ALBUMS":
+        return R.drawable.ic_folder;
+      case "TEXTS":
+        return R.drawable.ic_quote;
+      case "SCENES":
+        return R.drawable.ic_scene;
+      case "SCHEDULES":
+        return R.drawable.ic_calendar;
+      case "SETTINGS":
+      default:
+        return R.drawable.ic_tune;
+    }
+  }
+
   private void updateNavSelection() {
+    String highlighted = "CUSTOMIZE".equals(currentTab) ? "SCENES" : currentTab;
     for (Map.Entry<String, Button> e : navButtons.entrySet()) {
-      boolean sel = e.getKey().equals(currentTab);
+      boolean sel = e.getKey().equals(highlighted);
       Button b = e.getValue();
-      int iconRes =
-          "FRAME".equals(e.getKey())
-              ? R.drawable.ic_screen
-              : "PHOTOS".equals(e.getKey())
-                  ? R.drawable.ic_gallery
-                  : "CUSTOMIZE".equals(e.getKey()) ? R.drawable.ic_sun : R.drawable.ic_tune;
+      int iconRes = navIconForKey(e.getKey());
       int color = sel ? Ui.PRIMARY : Ui.MUTED;
       b.setTextColor(color);
       b.setTypeface(Typeface.DEFAULT, sel ? Typeface.BOLD : Typeface.NORMAL);
@@ -216,14 +303,27 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
 
   private void renderCurrentTab() {
     if (contentPane == null || !Ui.alive(this)) return;
-    if (!"PHOTOS".equals(currentTab) && libraryController != null) {
-      libraryController.release();
-      libraryController = null;
-    }
+    releaseActiveControllers();
     switch (currentTab) {
       case "PHOTOS":
         libraryController =
             LibraryActivity.buildView(contentPane, this, this::pickPhotosFromDevice);
+        break;
+      case "ALBUMS":
+        String focusAlbum = pendingFocusAlbumId;
+        pendingFocusAlbumId = null;
+        albumsController =
+            AlbumsActivity.buildView(
+                contentPane, this, this::pickPhotosForAlbumFromDevice, focusAlbum);
+        break;
+      case "TEXTS":
+        quotesController = QuotesActivity.buildView(contentPane, this);
+        break;
+      case "SCENES":
+        scenesController = ScenesActivity.buildView(contentPane, this);
+        break;
+      case "SCHEDULES":
+        schedulesController = SchedulesActivity.buildView(contentPane, this);
         break;
       case "CUSTOMIZE":
         buildCustomizeTab(contentPane);
@@ -279,8 +379,7 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
     }
 
     LinearLayout actionCard = Ui.card(actionCol);
-    actionCol.removeAllViews();
-    actionCol.addView(actionCard);
+    LinearLayout studioQuickCard = Ui.card(actionCol);
 
     a.io.execute(
         () -> {
@@ -288,8 +387,26 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
           List<Photo> active = a.db.photos().active();
           int n = active.size();
           long bytes = a.db.photos().used();
+          int albumCount = a.studio != null ? a.studio.dao().albums().size() : 0;
+          int textCount = a.studio != null ? a.studio.dao().textItems().size() : 0;
+          int sceneCount = a.studio != null ? a.studio.dao().scenes().size() : 0;
+          int schedCount = a.studio != null ? a.studio.dao().scheduleRules().size() : 0;
+
+          Core.ScheduleEvaluation eval =
+              (a.studio != null && a.prefs.studioScheduleEnabled())
+                  ? a.studio.evaluateCurrentSchedule(System.currentTimeMillis())
+                  : null;
+          Scene activeScene =
+              (eval != null && a.studio != null)
+                  ? a.studio.dao().scene(eval.activeSceneId)
+                  : null;
           List<TextItem> tItems =
-              a.studio != null ? a.studio.dao().enabledTextItems() : Collections.emptyList();
+              a.studio != null
+                  ? (activeScene != null
+                      ? a.studio.resolveTextsForScene(activeScene.id)
+                      : a.studio.dao().enabledTextItems())
+                  : Collections.emptyList();
+
           String samplePhrase;
           if (!a.prefs.phrase().isEmpty()) {
             samplePhrase = a.prefs.phrase();
@@ -304,51 +421,58 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
           } else {
             samplePhrase = "눈이 머무는 곳에 마음도 잠시 쉬어갑니다.|누니담";
           }
+          List<Photo> previewPool =
+              (activeScene != null && a.studio != null)
+                  ? a.studio.resolvePhotosForScene(activeScene.id)
+                  : active;
+          if (previewPool.isEmpty()) previewPool = active;
           Photo heroPhoto = null;
           String lastId = a.prefs.raw.getString("lastPhoto", "");
-          for (Photo p : active) {
+          for (Photo p : previewPool) {
             if (p.id.equals(lastId)) {
               heroPhoto = p;
               break;
             }
           }
-          if (heroPhoto == null && !active.isEmpty()) heroPhoto = active.get(0);
+          if (heroPhoto == null && !previewPool.isEmpty()) heroPhoto = previewPool.get(0);
           Bitmap heroBmp = heroPhoto != null ? a.store.load(heroPhoto, 960) : null;
           Photo finalHero = heroPhoto;
+          Scene finalScene = activeScene;
 
           a.main.post(
               () -> {
                 if (!Ui.alive(this) || !"FRAME".equals(currentTab)) return;
+                if (finalScene != null) {
+                  preview.setOverrideConfig(FrameView.Config.fromScene(finalScene, a.prefs));
+                } else {
+                  preview.setOverrideConfig(null);
+                }
                 if (finalHero != null && heroBmp != null) {
                   preview.show(finalHero, heroBmp, samplePhrase);
                 } else {
                   preview.showSample(samplePhrase);
                 }
-                String modeName =
-                    "PHOTO".equals(a.prefs.mode())
-                        ? "사진 액자"
-                        : "BOARD".equals(a.prefs.mode()) ? "생활 보드" : "스마트 매거진";
-                String themeName =
-                    "INK".equals(a.prefs.theme())
-                        ? "잉크"
-                        : "SAGE".equals(a.prefs.theme()) ? "세이지" : "밀크";
-                String nightSchedule =
-                    a.prefs.raw.getBoolean("night", true)
-                        ? ("야간 감광 " + Core.timeText(a.prefs.start()) + "~" + Core.timeText(a.prefs.end()))
-                        : "야간 감광 꺼짐";
+                String sceneSummary =
+                    finalScene != null
+                        ? ("현재 장면: " + finalScene.name + " (" + eval.activeRuleName + ")")
+                        : ("화면 구성: "
+                            + ("PHOTO".equals(a.prefs.mode())
+                                ? "사진 액자"
+                                : "BOARD".equals(a.prefs.mode()) ? "생활 보드" : "스마트 매거진"));
                 summaryText.setText(
                     String.format(
                         Locale.KOREA,
-                        "%d장의 사진 (%.1f MB) · %s · %s · %s",
+                        "%s\n사진 %d장 (%.1f MB) · 앨범 %d개 · 글귀 %d편 · 장면 %d개 · 편성 %d건",
+                        sceneSummary,
                         n,
                         bytes / 1048576d,
-                        modeName,
-                        themeName,
-                        nightSchedule));
+                        albumCount,
+                        textCount,
+                        sceneCount,
+                        schedCount));
 
                 actionCard.removeAllViews();
                 if (n == 0) {
-                  // First-time user onboarding (Section 4.2 & 6.1)
                   Ui.section(actionCard, R.drawable.ic_plus, "첫 번째 사진을 담아보세요");
                   actionCard.addView(
                       Ui.text(
@@ -374,14 +498,7 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
                       false,
                       R.drawable.ic_folder,
                       this::pickSyncFolder);
-                  Ui.add(
-                      actionCard,
-                      "앱 종료",
-                      false,
-                      R.drawable.ic_exit,
-                      () -> Ui.exitApp(this));
                 } else {
-                  // Returning user: one primary action to start frame
                   Ui.section(actionCard, R.drawable.ic_play, "지금 감상하기");
                   Ui.add(
                       actionCard,
@@ -401,19 +518,40 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
                       false,
                       R.drawable.ic_phone,
                       () -> Ui.open(this, TransferActivity.class));
-                  Ui.add(
-                      actionCard,
-                      "꾸미기 · 화면 구성과 문구 변경",
-                      false,
-                      R.drawable.ic_sun,
-                      () -> switchTab("CUSTOMIZE"));
-                  Ui.add(
-                      actionCard,
-                      "앱 종료",
-                      false,
-                      R.drawable.ic_exit,
-                      () -> Ui.exitApp(this));
                 }
+
+                studioQuickCard.removeAllViews();
+                Ui.section(studioQuickCard, R.drawable.ic_scene, "누니담 스튜디오 관리");
+                studioQuickCard.addView(
+                    Ui.text(
+                        this,
+                        "PC 연결 없이도 이 기기에서 바로 앨범, 글귀 라이브러리, 재생 장면, 주간 편성표를 관리할 수 있습니다.",
+                        13.5f,
+                        Ui.MUTED));
+                Ui.add(
+                    studioQuickCard,
+                    "앨범 관리 (" + albumCount + "개)",
+                    false,
+                    R.drawable.ic_folder,
+                    () -> switchTab("ALBUMS"));
+                Ui.add(
+                    studioQuickCard,
+                    "글귀 라이브러리 (" + textCount + "편)",
+                    false,
+                    R.drawable.ic_quote,
+                    () -> switchTab("TEXTS"));
+                Ui.add(
+                    studioQuickCard,
+                    "재생 장면 관리 (" + sceneCount + "개)",
+                    false,
+                    R.drawable.ic_scene,
+                    () -> switchTab("SCENES"));
+                Ui.add(
+                    studioQuickCard,
+                    "주간 편성표 관리 (" + schedCount + "건)",
+                    false,
+                    R.drawable.ic_calendar,
+                    () -> switchTab("SCHEDULES"));
 
                 if (!homeOpened && getIntent().hasCategory(Intent.CATEGORY_HOME) && n > 0) {
                   homeOpened = true;
@@ -473,7 +611,33 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
             R.drawable.ic_check,
             () -> {
               draftConfig.applyTo(a.prefs);
-              Ui.toast(this, "액자 꾸미기 설정을 적용했습니다.");
+              FrameView.Config snapCfg = draftConfig;
+              a.io.execute(
+                  () -> {
+                    try {
+                      if (a.studio != null) {
+                        a.studio.ensureSeeded();
+                        Scene def = a.studio.dao().defaultScene();
+                        if (def == null) def = a.studio.dao().scene("scene_default");
+                        if (def != null) {
+                          def.layout = snapCfg.mode;
+                          def.theme = snapCfg.theme;
+                          def.showClock = snapCfg.showClock;
+                          def.showCaptureDate = snapCfg.showCaptureDate;
+                          def.textDisplayMode = snapCfg.quoteOnPhoto ? "OVERLAY" : "NONE";
+                          def.quoteCycle = snapCfg.quoteCycle;
+                          def.fontScale = snapCfg.fontScale;
+                          def.seconds = snapCfg.seconds;
+                          def.transitionEffect = snapCfg.animate ? "ZOOM" : "NONE";
+                          def.updatedAt = System.currentTimeMillis();
+                          a.studio.dao().saveScene(def);
+                          a.studio.publishToTablet("간편 꾸미기에서 기본 장면 반영");
+                        }
+                      }
+                    } catch (Exception ignored) {
+                    }
+                  });
+              Ui.toast(this, "액자 꾸미기 설정을 기본 장면에 적용했습니다.");
             });
     applyRow.addView(applyBtn, new LinearLayout.LayoutParams(0, Ui.dp(this, 50), 1));
     previewWrap.addView(applyRow);
@@ -642,10 +806,16 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
 
     Ui.add(
         infoCard,
-        "명언 · 시 모음 관리 (직접 추가·편집)",
+        "글귀 라이브러리 관리 (카테고리·CSV·편집)",
         false,
         R.drawable.ic_quote,
-        () -> Ui.open(this, QuotesActivity.class));
+        () -> switchTab("TEXTS"));
+    Ui.add(
+        infoCard,
+        "시간대별 재생 장면 상세 관리",
+        false,
+        R.drawable.ic_scene,
+        () -> switchTab("SCENES"));
 
     // 4. 사진 전환
     LinearLayout transCard = Ui.card(optionsCol);
@@ -764,6 +934,16 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
     startActivityForResult(i, 1);
   }
 
+  public void pickPhotosForAlbumFromDevice(String albumId) {
+    pendingImportAlbumId = albumId == null ? "" : albumId;
+    Intent i =
+        new Intent(Intent.ACTION_OPEN_DOCUMENT)
+            .setType("image/*")
+            .addCategory(Intent.CATEGORY_OPENABLE)
+            .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+    startActivityForResult(i, AlbumsActivity.REQ_PICK_ALBUM_PHOTOS);
+  }
+
   public void pickSyncFolder() {
     startActivityForResult(
         new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
@@ -777,6 +957,25 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
     super.onActivityResult(request, result, data);
     if (request == 10 || request == 11 || request == 12 || request == 13) {
       if (settingsController != null) settingsController.onActivityResult(request, result, data);
+      return;
+    }
+    if (request == QuotesActivity.REQ_IMPORT_CSV
+        || request == QuotesActivity.REQ_EXPORT_CSV
+        || request == QuotesActivity.REQ_EXPORT_TEMPLATE_CSV) {
+      if (quotesController != null) quotesController.onActivityResult(request, result, data);
+      return;
+    }
+    if (request == AlbumsActivity.REQ_PICK_ALBUM_PHOTOS) {
+      if (result == RESULT_OK && data != null) {
+        AlbumsActivity.importPhotosIntoAlbum(
+            this,
+            a,
+            data,
+            pendingImportAlbumId,
+            () -> {
+              if (albumsController != null) albumsController.refresh();
+            });
+      }
       return;
     }
     if (result != RESULT_OK || data == null) return;

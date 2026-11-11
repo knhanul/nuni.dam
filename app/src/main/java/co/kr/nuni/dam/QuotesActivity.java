@@ -1,351 +1,1088 @@
 package co.kr.nuni.dam;
 
 import android.app.*;
+import android.content.*;
+import android.graphics.Typeface;
+import android.net.Uri;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.InputType;
+import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.view.*;
 import android.widget.*;
-import java.security.SecureRandom;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public final class QuotesActivity extends Activity implements PhotoStore.Listener {
+  public static final int REQ_IMPORT_CSV = 21;
+  public static final int REQ_EXPORT_CSV = 22;
+  public static final int REQ_EXPORT_TEMPLATE_CSV = 23;
+
   private NuniApp a;
   private boolean alive;
-  private String filter = "ALL";
-  private TextView title;
-  private List<TextItem> rows = new ArrayList<>();
-  private Adapter adapter;
-  private LinearLayout tabsRow;
-  private final Map<String, Button> tabs = new HashMap<>();
+  private Controller controller;
 
+  @Override
   public void onCreate(Bundle s) {
     super.onCreate(s);
     alive = true;
     a = NuniApp.of(this);
-    LinearLayout root = Ui.column(this);
-    root.setBackgroundColor(Ui.BG);
-    int pad = Ui.dp(this, 20);
-    root.setPadding(pad, pad, pad, Ui.dp(this, 12));
-    setContentView(root);
     getWindow().setStatusBarColor(Ui.BG);
     getWindow().setNavigationBarColor(Ui.BG);
+    LinearLayout root = Ui.column(this);
+    root.setBackgroundColor(Ui.BG);
+    int pad = Ui.dp(this, Ui.outerPaddingDp(getResources().getConfiguration().screenWidthDp));
+    root.setPadding(pad, Ui.dp(this, 16), pad, Ui.dp(this, 16));
+    setContentView(root);
     root.setOnApplyWindowInsetsListener(
         (v, i) -> {
           v.setPadding(
               pad + i.getSystemWindowInsetLeft(),
-              pad + i.getSystemWindowInsetTop(),
+              Ui.dp(this, 16) + i.getSystemWindowInsetTop(),
               pad + i.getSystemWindowInsetRight(),
-              Ui.dp(this, 12) + i.getSystemWindowInsetBottom());
+              Ui.dp(this, 16) + i.getSystemWindowInsetBottom());
           return i;
         });
     root.requestApplyInsets();
-    title = Ui.header(this, root, "글귀 라이브러리", "사진 곁에 놓아 둘 문장과 시를 등록·수정·삭제할 수 있습니다.");
-    Ui.gap(root, 14);
-    LinearLayout topActions = Ui.row(this);
-    root.addView(topActions);
-    LinearLayout.LayoutParams topBtnParams =
-        new LinearLayout.LayoutParams(0, Ui.dp(this, 50), 1);
-    topBtnParams.setMargins(0, 0, Ui.dp(this, 8), Ui.dp(this, 10));
-    topActions.addView(
-        Ui.button(this, "새 글귀 등록", true, R.drawable.ic_plus, () -> editor(null)),
-        topBtnParams);
-    LinearLayout.LayoutParams resetBtnParams =
-        new LinearLayout.LayoutParams(-2, Ui.dp(this, 50));
-    resetBtnParams.setMargins(0, 0, 0, Ui.dp(this, 10));
-    topActions.addView(
-        Ui.button(this, "기본 샘플 복원", false, R.drawable.ic_refresh, this::restoreDefaults),
-        resetBtnParams);
-    HorizontalScrollView tabScroll = new HorizontalScrollView(this);
-    tabScroll.setHorizontalScrollBarEnabled(false);
-    tabsRow = Ui.row(this);
-    tabScroll.addView(tabsRow);
-    root.addView(tabScroll, new LinearLayout.LayoutParams(-1, -2));
-    rebuildTabs();
-    ListView list = new ListView(this);
-    adapter = new Adapter();
-    list.setAdapter(adapter);
-    list.setDivider(null);
-    list.setDividerHeight(Ui.dp(this, 10));
-    list.setSelector(android.R.color.transparent);
-    list.setOnItemClickListener((p, v, pos, id) -> editor(rows.get(pos)));
-    root.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));
-    TextView empty = Ui.text(this, "해당하는 글귀가 없습니다.", 18, Ui.MUTED);
-    root.addView(empty);
-    list.setEmptyView(empty);
+    controller = buildView(root, this);
     a.store.listen(this);
-    refresh();
   }
 
-  private void rebuildTabs() {
-    if (tabsRow == null) return;
-    tabsRow.removeAllViews();
-    tabs.clear();
-    addTab(tabsRow, "전체", "ALL");
-    for (String cat : a.prefs.textCategories()) {
-      addTab(tabsRow, cat, cat);
-    }
-    addTab(tabsRow, "기타", "기타");
-  }
-
-  private void addTab(LinearLayout row, String label, String key) {
-    LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, Ui.dp(this, 40));
-    p.setMargins(Ui.dp(this, 3), 0, Ui.dp(this, 3), Ui.dp(this, 12));
-    Button b =
-        Ui.button(
-            this,
-            label,
-            false,
-            () -> {
-              filter = key;
-              for (Map.Entry<String, Button> t : tabs.entrySet())
-                selectTab(t.getValue(), t.getKey().equals(key));
-              refresh();
-            });
-    b.setTextSize(13.5f);
-    b.setPadding(Ui.dp(this, 14), 0, Ui.dp(this, 14), 0);
-    tabs.put(key, b);
-    selectTab(b, key.equals(filter));
-    row.addView(b, p);
-  }
-
-  private void selectTab(Button b, boolean on) {
-    b.setBackground(
-        on
-            ? Ui.bg(Ui.PRIMARY, Ui.dp(this, 12))
-            : Ui.strokeBg(Ui.SURFACE_SUBTLE, Ui.OUTLINE, Ui.dp(this, 1), Ui.dp(this, 12)));
-    b.setTextColor(on ? Ui.ON_PRIMARY : Ui.INK);
-  }
-
+  @Override
   protected void onDestroy() {
     alive = false;
     a.store.unlisten(this);
     super.onDestroy();
   }
 
+  @Override
   public void changed() {
-    runOnUiThread(this::refresh);
-  }
-
-  private void refresh() {
-    if (!alive) return;
-    String f = filter;
-    a.io.execute(
+    runOnUiThread(
         () -> {
-          a.studio.ensureSeeded();
-          List<TextItem> all = a.studio.dao().textItems();
-          List<TextItem> filtered = new ArrayList<>();
-          for (TextItem item : all) {
-            if (item.body == null || item.body.trim().isEmpty()) continue;
-            String cat = (item.category == null || item.category.trim().isEmpty()) ? "기타" : item.category.trim();
-            if ("ALL".equals(f) || f.equals(cat)) {
-              filtered.add(item);
-            }
-          }
-          a.main.post(
-              () -> {
-                if (!alive || !f.equals(filter)) return;
-                rows = filtered;
-                title.setText("글귀 라이브러리 · " + rows.size() + "편");
-                adapter.notifyDataSetChanged();
-              });
+          if (alive && controller != null) controller.refresh();
         });
   }
 
-  private void restoreDefaults() {
-    new AlertDialog.Builder(this)
-        .setTitle("기본 샘플 글귀 복원")
-        .setMessage("초기 기본 글귀(nunidam_sample.csv, 250편)를 복원할까요?\n직접 추가한 글귀는 그대로 유지됩니다.")
-        .setPositiveButton(
-            "복원",
-            (d, w) ->
+  @Override
+  protected void onActivityResult(int req, int result, Intent data) {
+    super.onActivityResult(req, result, data);
+    if (controller != null) controller.onActivityResult(req, result, data);
+  }
+
+  public static Controller buildView(LinearLayout container, Activity host) {
+    Controller c = new Controller(host);
+    c.attach(container);
+    return c;
+  }
+
+  public static final class Controller {
+    private final Activity host;
+    private final NuniApp a;
+    private LinearLayout rootContainer;
+    private LinearLayout tabsRow, editorPane;
+    private TextView headerTitle;
+    private String filter = "ALL";
+    private String searchQuery = "";
+    private String selectedTextId = "";
+    private List<TextItem> allItems = new ArrayList<>();
+    private List<TextItem> filteredRows = new ArrayList<>();
+    private final Map<String, Integer> catCounts = new LinkedHashMap<>();
+    private ListAdapter adapter;
+
+    public Controller(Activity h) {
+      host = h;
+      a = NuniApp.of(h);
+    }
+
+    public void attach(LinearLayout parent) {
+      rootContainer = parent;
+      buildLayout();
+      refresh();
+    }
+
+    public void onActivityResult(int req, int result, Intent data) {
+      if (result != RESULT_OK || data == null || data.getData() == null) return;
+      Uri uri = data.getData();
+      if (req == REQ_IMPORT_CSV) {
+        a.io.execute(
+            () -> {
+              try (InputStream in = host.getContentResolver().openInputStream(uri)) {
+                if (in == null) throw new IllegalStateException("파일을 열 수 없습니다.");
+                byte[] bytes = Core.read(in, 4 * 1024 * 1024);
+                String decoded = Core.decodeCsvBytes(bytes);
+                List<Core.ImportedTextRow> parsed = Core.parseSpreadsheetTextRows(decoded);
+                int[] counts = a.studio.importTextRows(parsed, false);
+                a.main.post(
+                    () -> {
+                      Ui.toast(
+                          host,
+                          String.format(
+                              Locale.KOREA,
+                              "CSV 불러오기 완료 · 추가 %d편 (중복 건너뜀 %d편)",
+                              counts[0],
+                              counts[1]));
+                      refresh();
+                    });
+              } catch (Exception e) {
+                a.main.post(() -> Ui.error(host, e));
+              }
+            });
+      } else if (req == REQ_EXPORT_CSV || req == REQ_EXPORT_TEMPLATE_CSV) {
+        boolean templateOnly = req == REQ_EXPORT_TEMPLATE_CSV;
+        a.io.execute(
+            () -> {
+              try (OutputStream out = host.getContentResolver().openOutputStream(uri)) {
+                if (out == null) throw new IllegalStateException("저장할 파일을 열 수 없습니다.");
+                List<String[]> rows = new ArrayList<>();
+                rows.add(new String[] {"카테고리", "본문", "작가", "제목", "출처", "표시시간"});
+                if (templateOnly) {
+                  rows.add(
+                      new String[] {
+                        "인생문장",
+                        "서두르지 않아도 괜찮습니다. 천천히 걷는 사람만이 길가의 들꽃을 기억합니다.",
+                        "누니담",
+                        "천천히 가는 길",
+                        "",
+                        "15"
+                      });
+                  rows.add(
+                      new String[] {
+                        "시 한 구절",
+                        "봄에는 여린 초록이 창을 두드리고\n여름에는 푸른 그늘이 마루에 내려앉습니다.",
+                        "누니담 문학 노트",
+                        "사계절의 창",
+                        "",
+                        "20"
+                      });
+                  rows.add(
+                      new String[] {
+                        "", "카테고리를 비워두면 자동으로 기타로 분류됩니다.", "누니담", "", "", "15"
+                      });
+                } else {
+                  for (TextItem t : a.studio.dao().textItems()) {
+                    rows.add(
+                        new String[] {
+                          t.category,
+                          t.body,
+                          t.author,
+                          t.title,
+                          t.source,
+                          String.valueOf(t.displaySeconds)
+                        });
+                  }
+                }
+                byte[] csvBytes = Core.formatCsvRecords(rows).getBytes(StandardCharsets.UTF_8);
+                out.write(csvBytes);
+                out.flush();
+                a.main.post(
+                    () ->
+                        Ui.toast(
+                            host,
+                            templateOnly
+                                ? "CSV 양식 파일을 저장했습니다."
+                                : "글귀 목록을 CSV 파일로 내보냈습니다."));
+              } catch (Exception e) {
+                a.main.post(() -> Ui.error(host, e));
+              }
+            });
+      }
+    }
+
+    private void buildLayout() {
+      if (rootContainer == null || !Ui.alive(host)) return;
+      rootContainer.removeAllViews();
+      int widthDp = host.getResources().getConfiguration().screenWidthDp;
+      boolean twoPane = widthDp >= 840;
+
+      headerTitle =
+          Ui.header(
+              host,
+              rootContainer,
+              "글귀 라이브러리",
+              "카테고리별 명언·시를 편집하고 CSV 불러오기·내보내기·붙여넣기로 일괄 관리합니다.");
+      Ui.gap(rootContainer, 12);
+
+      if (twoPane) {
+        LinearLayout split = Ui.row(host);
+        split.setGravity(Gravity.TOP);
+        rootContainer.addView(split, new LinearLayout.LayoutParams(-1, 0, 1));
+
+        ScrollView leftScroll = new ScrollView(host);
+        editorPane = Ui.column(host);
+        leftScroll.addView(editorPane);
+        LinearLayout.LayoutParams lpLeft = new LinearLayout.LayoutParams(0, -1, 4);
+        lpLeft.setMarginEnd(Ui.dp(host, 16));
+        split.addView(leftScroll, lpLeft);
+
+        LinearLayout rightCol = Ui.column(host);
+        split.addView(rightCol, new LinearLayout.LayoutParams(0, -1, 6));
+        buildListPane(rightCol, true);
+      } else {
+        editorPane = null;
+        LinearLayout singleCol = Ui.column(host);
+        rootContainer.addView(singleCol, new LinearLayout.LayoutParams(-1, 0, 1));
+        buildListPane(singleCol, false);
+      }
+    }
+
+    private void buildListPane(LinearLayout col, boolean twoPane) {
+      LinearLayout topActions = Ui.row(host);
+      Button newBtn =
+          Ui.button(
+              host,
+              "새 글귀 작성",
+              true,
+              R.drawable.ic_plus,
+              () -> {
+                selectedTextId = "";
+                if (twoPane && editorPane != null) {
+                  renderEditorPane(editorPane, null, null);
+                  if (adapter != null) adapter.notifyDataSetChanged();
+                } else {
+                  showEditorDialog(null);
+                }
+              });
+      newBtn.setTextSize(13.5f);
+      LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(0, Ui.dp(host, 46), 1);
+      np.setMarginEnd(Ui.dp(host, 6));
+      topActions.addView(newBtn, np);
+
+      Button catBtn =
+          Ui.button(
+              host,
+              "카테고리 관리",
+              false,
+              R.drawable.ic_tune,
+              this::showCategoryManagerDialog);
+      catBtn.setTextSize(13.5f);
+      LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-2, Ui.dp(host, 46));
+      cp.setMarginEnd(Ui.dp(host, 6));
+      topActions.addView(catBtn, cp);
+
+      Button bulkBtn =
+          Ui.button(
+              host,
+              "일괄 · CSV",
+              false,
+              R.drawable.ic_upload,
+              this::showBulkActionsDialog);
+      bulkBtn.setTextSize(13.5f);
+      topActions.addView(bulkBtn, new LinearLayout.LayoutParams(-2, Ui.dp(host, 46)));
+      col.addView(topActions);
+      Ui.gap(col, 8);
+
+      HorizontalScrollView tabScroll = new HorizontalScrollView(host);
+      tabScroll.setHorizontalScrollBarEnabled(false);
+      tabsRow = Ui.row(host);
+      tabScroll.addView(tabsRow);
+      col.addView(tabScroll, new LinearLayout.LayoutParams(-1, -2));
+      Ui.gap(col, 6);
+
+      EditText searchIn = Ui.input(host, "본문, 제목, 작가, 카테고리 검색…", searchQuery);
+      searchIn.setSingleLine();
+      searchIn.addTextChangedListener(
+          new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+              searchQuery = s == null ? "" : s.toString().trim();
+              applyFilterAndRender(false);
+            }
+          });
+      col.addView(searchIn);
+      Ui.gap(col, 8);
+
+      ListView list = new ListView(host);
+      adapter = new ListAdapter();
+      list.setAdapter(adapter);
+      list.setDivider(null);
+      list.setDividerHeight(Ui.dp(host, 8));
+      list.setSelector(android.R.color.transparent);
+      list.setOnItemClickListener(
+          (p, v, pos, id) -> {
+            if (pos < 0 || pos >= filteredRows.size()) return;
+            TextItem item = filteredRows.get(pos);
+            selectedTextId = item.id;
+            if (twoPane && editorPane != null) {
+              renderEditorPane(editorPane, item, null);
+              adapter.notifyDataSetChanged();
+            } else {
+              showEditorDialog(item);
+            }
+          });
+      col.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));
+      TextView empty =
+          Ui.text(
+              host,
+              "표시할 글귀가 없습니다. 새 글귀를 작성하거나 ‘일괄 · CSV’ 메뉴에서 샘플 복원 또는 CSV 불러오기를 이용해 보세요.",
+              14.5f,
+              Ui.MUTED);
+      empty.setPadding(Ui.dp(host, 8), Ui.dp(host, 20), Ui.dp(host, 8), Ui.dp(host, 20));
+      col.addView(empty);
+      list.setEmptyView(empty);
+    }
+
+    public void refresh() {
+      if (!Ui.alive(host)) return;
+      a.io.execute(
+          () -> {
+            a.studio.ensureSeeded();
+            List<TextItem> loaded = a.studio.dao().textItems();
+            List<String> managedCats = a.prefs.textCategories();
+            Map<String, Integer> counts = new LinkedHashMap<>();
+            for (String c : managedCats) {
+              if (!"기타".equals(c)) counts.put(c, 0);
+            }
+            int etcCount = 0;
+            List<TextItem> valid = new ArrayList<>();
+            for (TextItem item : loaded) {
+              if (item.body == null || item.body.trim().isEmpty()) continue;
+              valid.add(item);
+              String cat =
+                  (item.category == null || item.category.trim().isEmpty())
+                      ? "기타"
+                      : item.category.trim();
+              if ("기타".equals(cat)) {
+                etcCount++;
+              } else {
+                counts.put(cat, (counts.containsKey(cat) ? counts.get(cat) : 0) + 1);
+              }
+            }
+            counts.put("기타", etcCount);
+            a.main.post(
+                () -> {
+                  if (!Ui.alive(host)) return;
+                  allItems = valid;
+                  catCounts.clear();
+                  catCounts.putAll(counts);
+                  if (!"ALL".equals(filter) && !catCounts.containsKey(filter)) {
+                    filter = "ALL";
+                  }
+                  rebuildCategoryTabs();
+                  applyFilterAndRender(true);
+                });
+          });
+    }
+
+    private void rebuildCategoryTabs() {
+      if (tabsRow == null) return;
+      tabsRow.removeAllViews();
+      addFilterChip("전체 (" + allItems.size() + ")", "ALL");
+      for (Map.Entry<String, Integer> e : catCounts.entrySet()) {
+        addFilterChip(e.getKey() + " (" + e.getValue() + ")", e.getKey());
+      }
+    }
+
+    private void addFilterChip(String label, String key) {
+      boolean sel = key.equals(filter);
+      Button b =
+          Ui.button(
+              host,
+              label,
+              sel,
+              () -> {
+                filter = key;
+                rebuildCategoryTabs();
+                applyFilterAndRender(false);
+              });
+      b.setTextSize(13f);
+      b.setPadding(Ui.dp(host, 12), 0, Ui.dp(host, 12), 0);
+      LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, Ui.dp(host, 38));
+      p.setMargins(0, 0, Ui.dp(host, 6), 0);
+      tabsRow.addView(b, p);
+    }
+
+    private void applyFilterAndRender(boolean updateEditorIfOpen) {
+      String q = searchQuery == null ? "" : searchQuery.toLowerCase(Locale.ROOT);
+      List<TextItem> out = new ArrayList<>();
+      for (TextItem t : allItems) {
+        String cat =
+            (t.category == null || t.category.trim().isEmpty()) ? "기타" : t.category.trim();
+        if (!"ALL".equals(filter) && !filter.equals(cat)) continue;
+        if (!q.isEmpty()) {
+          boolean match =
+              t.body.toLowerCase(Locale.ROOT).contains(q)
+                  || t.title.toLowerCase(Locale.ROOT).contains(q)
+                  || t.author.toLowerCase(Locale.ROOT).contains(q)
+                  || cat.toLowerCase(Locale.ROOT).contains(q);
+          if (!match) continue;
+        }
+        out.add(t);
+      }
+      filteredRows = out;
+      if (headerTitle != null) {
+        headerTitle.setText(
+            String.format(
+                Locale.KOREA, "글귀 라이브러리 · 전체 %d편 중 %d편 표시", allItems.size(), filteredRows.size()));
+      }
+      if (editorPane != null && updateEditorIfOpen) {
+        TextItem active = null;
+        for (TextItem t : allItems) {
+          if (t.id.equals(selectedTextId)) {
+            active = t;
+            break;
+          }
+        }
+        if (active == null && !filteredRows.isEmpty()) {
+          active = filteredRows.get(0);
+          selectedTextId = active.id;
+        }
+        renderEditorPane(editorPane, active, null);
+      }
+      if (adapter != null) adapter.notifyDataSetChanged();
+    }
+
+    private void showEditorDialog(TextItem existing) {
+      ScrollView sv = new ScrollView(host);
+      LinearLayout box = Ui.column(host);
+      box.setPadding(Ui.dp(host, 16), Ui.dp(host, 12), Ui.dp(host, 16), Ui.dp(host, 8));
+      sv.addView(box);
+      AlertDialog dlg =
+          new AlertDialog.Builder(host)
+              .setView(sv)
+              .setNegativeButton("닫기", null)
+              .create();
+      renderEditorPane(box, existing, dlg::dismiss);
+      dlg.show();
+    }
+
+    private void renderEditorPane(LinearLayout parent, TextItem existing, Runnable onDone) {
+      parent.removeAllViews();
+      LinearLayout card = Ui.card(parent);
+      Ui.section(
+          card, R.drawable.ic_quote, existing == null ? "새 글귀 작성" : "선택한 글귀 상세 · 편집");
+
+      List<String> cats = new ArrayList<>(catCounts.keySet());
+      if (cats.isEmpty()) {
+        cats.addAll(a.prefs.textCategories());
+        if (!cats.contains("기타")) cats.add("기타");
+      }
+      if (existing != null
+          && !existing.category.trim().isEmpty()
+          && !cats.contains(existing.category.trim())) {
+        cats.add(existing.category.trim());
+      }
+
+      LinearLayout catLabelRow = Ui.row(host);
+      catLabelRow.addView(
+          Ui.text(host, "카테고리 (분류)", 13.5f, Ui.MUTED), new LinearLayout.LayoutParams(0, -2, 1));
+      Button manageCatLink =
+          Ui.button(
+              host,
+              "카테고리 관리",
+              false,
+              () -> {
+                if (onDone != null) onDone.run();
+                showCategoryManagerDialog();
+              });
+      manageCatLink.setTextSize(12f);
+      catLabelRow.addView(manageCatLink, new LinearLayout.LayoutParams(-2, Ui.dp(host, 34)));
+      card.addView(catLabelRow);
+
+      Spinner catSpinner = new Spinner(host);
+      catSpinner.setAdapter(
+          new ArrayAdapter<>(host, android.R.layout.simple_spinner_dropdown_item, cats));
+      String initCat =
+          existing != null && !existing.category.trim().isEmpty()
+              ? existing.category.trim()
+              : (!"ALL".equals(filter) ? filter : cats.get(0));
+      catSpinner.setSelection(Math.max(0, cats.indexOf(initCat)));
+      card.addView(catSpinner, new LinearLayout.LayoutParams(-1, Ui.dp(host, 48)));
+
+      Ui.gap(card, 8);
+      card.addView(Ui.text(host, "제목 (선택)", 13.5f, Ui.MUTED));
+      EditText titleIn = Ui.input(host, "예: 서시, 오늘의 햇살", existing != null ? existing.title : "");
+      titleIn.setSingleLine();
+      card.addView(titleIn);
+
+      Ui.gap(card, 8);
+      card.addView(Ui.text(host, "작가 · 쓴 사람 (선택)", 13.5f, Ui.MUTED));
+      EditText authorIn = Ui.input(host, "예: 윤동주, 누니담", existing != null ? existing.author : "");
+      authorIn.setSingleLine();
+      card.addView(authorIn);
+
+      Ui.gap(card, 8);
+      card.addView(Ui.text(host, "출처 · 메모 (선택)", 13.5f, Ui.MUTED));
+      EditText sourceIn =
+          Ui.input(host, "예: 하늘과 바람과 별과 시", existing != null ? existing.source : "");
+      sourceIn.setSingleLine();
+      card.addView(sourceIn);
+
+      Ui.gap(card, 8);
+      card.addView(Ui.text(host, "글귀 본문 (시는 줄바꿈 유지 · 긴 시 자동 페이지 분할)", 13.5f, Ui.MUTED));
+      EditText bodyIn =
+          Ui.input(
+              host,
+              "여기에 명언이나 시 본문을 입력해 주세요.",
+              existing != null ? existing.body : "");
+      bodyIn.setMinLines(4);
+      card.addView(bodyIn);
+
+      Ui.gap(card, 8);
+      card.addView(Ui.text(host, "표시 시간(초, 5~600)", 13.5f, Ui.MUTED));
+      EditText secIn =
+          Ui.input(
+              host, "15", String.valueOf(existing != null ? existing.displaySeconds : 15));
+      secIn.setInputType(InputType.TYPE_CLASS_NUMBER);
+      secIn.setSingleLine();
+      card.addView(secIn);
+
+      Ui.gap(card, 8);
+      Switch enabledSw = new Switch(host);
+      enabledSw.setText("액자 재생에 사용");
+      enabledSw.setTextColor(Ui.INK);
+      enabledSw.setChecked(existing == null || existing.enabled);
+      card.addView(enabledSw);
+
+      Ui.gap(card, 12);
+      Button saveBtn =
+          Ui.button(
+              host,
+              existing == null ? "새 글귀 저장" : "글귀 저장",
+              true,
+              R.drawable.ic_check,
+              () -> {
+                String body = bodyIn.getText().toString().trim();
+                if (body.isEmpty()) {
+                  bodyIn.setError("글귀 본문을 입력해 주세요.");
+                  return;
+                }
+                String cat = String.valueOf(catSpinner.getSelectedItem()).trim();
+                String title = titleIn.getText().toString().trim();
+                String author = authorIn.getText().toString().trim();
+                String source = sourceIn.getText().toString().trim();
+                int sec = 15;
+                try {
+                  sec = Integer.parseInt(secIn.getText().toString().trim());
+                } catch (NumberFormatException ignored) {
+                }
+                int finalSec = sec;
+                boolean en = enabledSw.isChecked();
+                String existingId = existing != null ? existing.id : "";
                 a.io.execute(
                     () -> {
-                      int count = a.studio.seedSampleTextsFromCsv(false);
-                      a.store.changed();
-                      a.main.post(
-                          () -> {
-                            if (alive) {
-                              rebuildTabs();
+                      try {
+                        TextItem saved =
+                            a.studio.saveTextEntry(
+                                existingId, cat, title, body, author, source, finalSec, en);
+                        selectedTextId = saved.id;
+                        a.main.post(
+                            () -> {
+                              Ui.toast(host, "글귀를 저장했습니다.");
+                              if (onDone != null) onDone.run();
                               refresh();
-                              Ui.toast(this, "기본 샘플 글귀 " + count + "편을 복원했습니다.");
-                            }
-                          });
-                    }))
-        .setNegativeButton("취소", null)
-        .show();
-  }
+                            });
+                      } catch (Exception e) {
+                        a.main.post(() -> Ui.error(host, e));
+                      }
+                    });
+              });
+      card.addView(saveBtn, new LinearLayout.LayoutParams(-1, Ui.dp(host, 50)));
 
-  private void editor(TextItem existing) {
-    LinearLayout box = Ui.column(this);
-    box.setPadding(Ui.dp(this, 22), Ui.dp(this, 10), Ui.dp(this, 22), Ui.dp(this, 10));
-    ScrollView scroll = new ScrollView(this);
-    scroll.addView(box);
+      if (existing != null) {
+        Ui.gap(card, 8);
+        LinearLayout subRow = Ui.row(host);
+        Button cloneBtn =
+            Ui.button(
+                host,
+                "복제",
+                false,
+                () ->
+                    a.io.execute(
+                        () -> {
+                          try {
+                            TextItem copy = a.studio.cloneTextEntry(existing.id);
+                            selectedTextId = copy.id;
+                            a.main.post(
+                                () -> {
+                                  Ui.toast(host, "글귀를 복제했습니다.");
+                                  if (onDone != null) onDone.run();
+                                  refresh();
+                                });
+                          } catch (Exception e) {
+                            a.main.post(() -> Ui.error(host, e));
+                          }
+                        }));
+        LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, Ui.dp(host, 46), 1);
+        cp.setMarginEnd(Ui.dp(host, 8));
+        subRow.addView(cloneBtn, cp);
 
-    List<String> cats = new ArrayList<>(a.prefs.textCategories());
-    if (!cats.contains("기타")) cats.add("기타");
-    if (existing != null && existing.category != null && !existing.category.trim().isEmpty() && !cats.contains(existing.category.trim())) {
-      cats.add(existing.category.trim());
+        Button delBtn =
+            Ui.dangerButton(
+                host,
+                "삭제",
+                R.drawable.ic_trash,
+                () ->
+                    new AlertDialog.Builder(host)
+                        .setTitle("이 글귀를 삭제할까요?")
+                        .setPositiveButton(
+                            "삭제",
+                            (d, w) ->
+                                a.io.execute(
+                                    () -> {
+                                      try {
+                                        a.studio.dao().deleteTextItem(existing.id);
+                                        a.studio.publishToTablet("앱에서 글귀 삭제");
+                                        if (existing.id.equals(selectedTextId)) selectedTextId = "";
+                                        a.main.post(
+                                            () -> {
+                                              Ui.toast(host, "글귀를 삭제했습니다.");
+                                              if (onDone != null) onDone.run();
+                                              refresh();
+                                            });
+                                      } catch (Exception e) {
+                                        a.main.post(() -> Ui.error(host, e));
+                                      }
+                                    }))
+                        .setNegativeButton("취소", null)
+                        .show());
+        subRow.addView(delBtn, new LinearLayout.LayoutParams(0, Ui.dp(host, 46), 1));
+        card.addView(subRow);
+      }
     }
 
-    box.addView(Ui.text(this, "카테고리", 14, Ui.MUTED));
-    Spinner catSpinner = new Spinner(this);
-    catSpinner.setAdapter(
-        new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, cats));
-    String initCat =
-        existing != null && existing.category != null && !existing.category.trim().isEmpty()
-            ? existing.category.trim()
-            : (!"ALL".equals(filter) ? filter : cats.get(0));
-    int catIdx = Math.max(0, cats.indexOf(initCat));
-    catSpinner.setSelection(catIdx);
-    box.addView(catSpinner, new LinearLayout.LayoutParams(-1, Ui.dp(this, 48)));
+    private void showCategoryManagerDialog() {
+      ScrollView sv = new ScrollView(host);
+      LinearLayout box = Ui.column(host);
+      box.setPadding(Ui.dp(host, 20), Ui.dp(host, 12), Ui.dp(host, 20), Ui.dp(host, 12));
+      sv.addView(box);
 
-    Ui.gap(box, 8);
-    box.addView(Ui.text(this, "글귀 본문 (시는 줄바꿈하여 입력해 주세요)", 14, Ui.MUTED));
-    EditText bodyInput =
-        Ui.input(
-            this,
-            "예: 별을 노래하는 마음으로\n모든 죽어가는것을 사랑해야지...",
-            existing != null ? existing.body : "");
-    bodyInput.setMinLines(4);
-    box.addView(bodyInput);
+      box.addView(
+          Ui.text(
+              host,
+              "카테고리를 추가·이름 변경·삭제할 수 있습니다. 삭제된 카테고리의 글귀는 자동으로 ‘기타’로 이동됩니다.",
+              13.5f,
+              Ui.MUTED));
+      Ui.gap(box, 10);
 
-    Ui.gap(box, 8);
-    box.addView(Ui.text(this, "작가 (선택)", 14, Ui.MUTED));
-    EditText authorInput = Ui.input(this, "예: 윤동주", existing != null ? existing.author : "");
-    authorInput.setSingleLine();
-    box.addView(authorInput);
+      LinearLayout addRow = Ui.row(host);
+      EditText newCatIn = Ui.input(host, "새 카테고리 이름 입력", "");
+      newCatIn.setSingleLine();
+      LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(0, -2, 1);
+      ip.setMarginEnd(Ui.dp(host, 8));
+      addRow.addView(newCatIn, ip);
 
-    Ui.gap(box, 8);
-    box.addView(Ui.text(this, "제목 (선택)", 14, Ui.MUTED));
-    EditText titleInput = Ui.input(this, "예: 서시", existing != null ? existing.title : "");
-    titleInput.setSingleLine();
-    box.addView(titleInput);
+      LinearLayout listBox = Ui.column(host);
+      Runnable[] renderListRef = new Runnable[1];
+      renderListRef[0] =
+          () -> {
+            listBox.removeAllViews();
+            for (Map.Entry<String, Integer> e : catCounts.entrySet()) {
+              String catName = e.getKey();
+              int count = e.getValue();
+              boolean isEtc = "기타".equals(catName);
+              LinearLayout row = Ui.row(host);
+              row.setPadding(Ui.dp(host, 10), Ui.dp(host, 8), Ui.dp(host, 10), Ui.dp(host, 8));
+              row.setBackground(
+                  Ui.strokeBg(Ui.SURFACE, Ui.OUTLINE, Ui.dp(host, 1), Ui.dp(host, 10)));
+              TextView tv =
+                  Ui.text(
+                      host,
+                      catName + " (" + count + "편)" + (isEtc ? " · 기본 미분류" : ""),
+                      14.5f,
+                      Ui.INK);
+              tv.setTypeface(Typeface.DEFAULT_BOLD);
+              row.addView(tv, new LinearLayout.LayoutParams(0, -2, 1));
+              if (!isEtc) {
+                Button renBtn =
+                    Ui.button(
+                        host,
+                        "이름 변경",
+                        false,
+                        () -> promptRenameCategory(catName, renderListRef[0]));
+                renBtn.setTextSize(12f);
+                LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-2, Ui.dp(host, 36));
+                rp.setMarginEnd(Ui.dp(host, 6));
+                row.addView(renBtn, rp);
 
-    Ui.gap(box, 8);
-    box.addView(Ui.text(this, "출처 · 메모 (선택)", 14, Ui.MUTED));
-    EditText sourceInput = Ui.input(this, "예: 하늘과 바람과 별과 시", existing != null ? existing.source : "");
-    sourceInput.setSingleLine();
-    box.addView(sourceInput);
+                Button delBtn =
+                    Ui.dangerButton(
+                        host,
+                        "삭제",
+                        0,
+                        () ->
+                            new AlertDialog.Builder(host)
+                                .setTitle("‘" + catName + "’ 카테고리를 삭제할까요?")
+                                .setMessage(
+                                    count > 0
+                                        ? ("이 카테고리에 속한 글귀 " + count + "편은 ‘기타’로 이동됩니다.")
+                                        : "비어 있는 카테고리입니다.")
+                                .setPositiveButton(
+                                    "삭제",
+                                    (d, w) ->
+                                        a.io.execute(
+                                            () -> {
+                                              try {
+                                                a.studio.deleteTextCategory(catName);
+                                                if (catName.equals(filter)) filter = "ALL";
+                                                a.main.post(
+                                                    () -> {
+                                                      refresh();
+                                                      Ui.toast(
+                                                          host, "‘" + catName + "’ 카테고리를 삭제했습니다.");
+                                                      a.main.postDelayed(renderListRef[0], 120);
+                                                    });
+                                              } catch (Exception ex) {
+                                                a.main.post(() -> Ui.error(host, ex));
+                                              }
+                                            }))
+                                .setNegativeButton("취소", null)
+                                .show());
+                delBtn.setTextSize(12f);
+                row.addView(delBtn, new LinearLayout.LayoutParams(-2, Ui.dp(host, 36)));
+              }
+              LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+              lp.bottomMargin = Ui.dp(host, 6);
+              listBox.addView(row, lp);
+            }
+          };
 
-    AlertDialog.Builder builder =
-        new AlertDialog.Builder(this)
-            .setTitle(existing == null ? "새 글귀 등록" : "글귀 수정 · 삭제")
-            .setView(scroll)
-            .setPositiveButton("저장", null)
-            .setNegativeButton("취소", null);
-    if (existing != null)
-      builder.setNeutralButton(
-          "삭제",
-          (d, w) ->
+      Button addBtn =
+          Ui.button(
+              host,
+              "추가",
+              true,
+              R.drawable.ic_plus,
+              () -> {
+                String name = newCatIn.getText().toString().trim();
+                if (name.isEmpty()) {
+                  Ui.toast(host, "추가할 카테고리 이름을 입력해 주세요.");
+                  return;
+                }
+                a.io.execute(
+                    () -> {
+                      try {
+                        a.studio.addTextCategory(name);
+                        a.main.post(
+                            () -> {
+                              newCatIn.setText("");
+                              refresh();
+                              Ui.toast(host, "‘" + name + "’ 카테고리를 추가했습니다.");
+                              a.main.postDelayed(renderListRef[0], 120);
+                            });
+                      } catch (Exception ex) {
+                        a.main.post(() -> Ui.error(host, ex));
+                      }
+                    });
+              });
+      addRow.addView(addBtn, new LinearLayout.LayoutParams(-2, Ui.dp(host, 46)));
+      box.addView(addRow);
+      Ui.gap(box, 12);
+      box.addView(listBox);
+      renderListRef[0].run();
+
+      new AlertDialog.Builder(host)
+          .setTitle("글귀 카테고리 관리")
+          .setView(sv)
+          .setPositiveButton("완료", null)
+          .show();
+    }
+
+    private void promptRenameCategory(String oldName, Runnable afterDone) {
+      LinearLayout box = Ui.column(host);
+      box.setPadding(Ui.dp(host, 20), Ui.dp(host, 12), Ui.dp(host, 20), Ui.dp(host, 4));
+      EditText in = Ui.input(host, "새 카테고리 이름", oldName);
+      in.setSingleLine();
+      box.addView(in);
+      new AlertDialog.Builder(host)
+          .setTitle("‘" + oldName + "’ 이름 변경")
+          .setView(box)
+          .setPositiveButton(
+              "변경",
+              (d, w) -> {
+                String next = in.getText().toString().trim();
+                if (next.isEmpty() || next.equals(oldName)) return;
+                a.io.execute(
+                    () -> {
+                      try {
+                        a.studio.renameTextCategory(oldName, next);
+                        if (oldName.equals(filter)) filter = next;
+                        a.main.post(
+                            () -> {
+                              refresh();
+                              Ui.toast(host, "카테고리 이름을 ‘" + next + "’(으)로 변경했습니다.");
+                              if (afterDone != null) a.main.postDelayed(afterDone, 120);
+                            });
+                      } catch (Exception ex) {
+                        a.main.post(() -> Ui.error(host, ex));
+                      }
+                    });
+              })
+          .setNegativeButton("취소", null)
+          .show();
+    }
+
+    private void showBulkActionsDialog() {
+      String[] items = {
+        "엑셀 · 텍스트 붙여넣기 일괄 등록",
+        "CSV 파일 불러오기 (UTF-8 / EUC-KR 자동 인식)",
+        "현재 글귀 목록 CSV 파일로 내보내기",
+        "CSV 작성 양식 파일 저장",
+        "기본 샘플 글귀 250편 복원 (추가한 글귀 유지)",
+        "글귀 전체 비우기"
+      };
+      new AlertDialog.Builder(host)
+          .setTitle("글귀 일괄 등록 · CSV 관리")
+          .setItems(
+              items,
+              (d, which) -> {
+                switch (which) {
+                  case 0:
+                    showPasteBulkDialog();
+                    break;
+                  case 1:
+                    host.startActivityForResult(
+                        new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                            .setType("*/*")
+                            .addCategory(Intent.CATEGORY_OPENABLE),
+                        REQ_IMPORT_CSV);
+                    break;
+                  case 2:
+                    host.startActivityForResult(
+                        new Intent(Intent.ACTION_CREATE_DOCUMENT)
+                            .setType("text/csv")
+                            .addCategory(Intent.CATEGORY_OPENABLE)
+                            .putExtra(Intent.EXTRA_TITLE, "nunidam_texts_export.csv"),
+                        REQ_EXPORT_CSV);
+                    break;
+                  case 3:
+                    host.startActivityForResult(
+                        new Intent(Intent.ACTION_CREATE_DOCUMENT)
+                            .setType("text/csv")
+                            .addCategory(Intent.CATEGORY_OPENABLE)
+                            .putExtra(Intent.EXTRA_TITLE, "nunidam_texts_template.csv"),
+                        REQ_EXPORT_TEMPLATE_CSV);
+                    break;
+                  case 4:
+                    confirmRestoreDefaults();
+                    break;
+                  case 5:
+                    confirmClearAll();
+                    break;
+                }
+              })
+          .setNegativeButton("닫기", null)
+          .show();
+    }
+
+    private void showPasteBulkDialog() {
+      LinearLayout box = Ui.column(host);
+      box.setPadding(Ui.dp(host, 20), Ui.dp(host, 12), Ui.dp(host, 20), Ui.dp(host, 8));
+      box.addView(
+          Ui.text(
+              host,
+              "엑셀·스프레드시트에서 복사한 표나 CSV 텍스트를 붙여넣으세요.\n열 순서: 카테고리 | 본문 | 작가 | 제목 | 출처 | 표시시간(초)\n(한 줄당 본문만 입력하면 자동으로 ‘기타’ 분류로 등록됩니다.)",
+              13f,
+              Ui.MUTED));
+      Ui.gap(box, 8);
+      EditText pasteIn =
+          Ui.input(
+              host,
+              "예: 인생문장,천천히 걸어도 괜찮습니다.,누니담,산책,,15",
+              "");
+      pasteIn.setMinLines(6);
+      box.addView(pasteIn);
+      new AlertDialog.Builder(host)
+          .setTitle("엑셀 · 텍스트 붙여넣기 일괄 등록")
+          .setView(box)
+          .setPositiveButton(
+              "일괄 등록",
+              (d, w) -> {
+                String raw = pasteIn.getText().toString();
+                a.io.execute(
+                    () -> {
+                      try {
+                        List<Core.ImportedTextRow> rows = Core.parseSpreadsheetTextRows(raw);
+                        int[] counts = a.studio.importTextRows(rows, false);
+                        a.main.post(
+                            () -> {
+                              Ui.toast(
+                                  host,
+                                  String.format(
+                                      Locale.KOREA,
+                                      "일괄 등록 완료 · 추가 %d편 (중복 건너뜀 %d편)",
+                                      counts[0],
+                                      counts[1]));
+                              refresh();
+                            });
+                      } catch (Exception e) {
+                        a.main.post(() -> Ui.error(host, e));
+                      }
+                    });
+              })
+          .setNegativeButton("취소", null)
+          .show();
+    }
+
+    private void confirmRestoreDefaults() {
+      new AlertDialog.Builder(host)
+          .setTitle("기본 샘플 글귀 복원")
+          .setMessage("초기 기본 글귀(nunidam_sample.csv, 250편)를 복원할까요?\n직접 추가한 글귀는 그대로 유지됩니다.")
+          .setPositiveButton(
+              "복원",
+              (d, w) ->
+                  a.io.execute(
+                      () -> {
+                        try {
+                          int count = a.studio.seedSampleTextsFromCsv(false);
+                          a.studio.publishToTablet("앱에서 기본 샘플 글귀 복원");
+                          a.main.post(
+                              () -> {
+                                Ui.toast(host, "기본 샘플 글귀 " + count + "편을 복원했습니다.");
+                                refresh();
+                              });
+                        } catch (Exception e) {
+                          a.main.post(() -> Ui.error(host, e));
+                        }
+                      }))
+          .setNegativeButton("취소", null)
+          .show();
+    }
+
+    private void confirmClearAll() {
+      if (allItems.isEmpty()) {
+        Ui.toast(host, "삭제할 글귀가 없습니다.");
+        return;
+      }
+      new AlertDialog.Builder(host)
+          .setTitle("모든 글귀를 비울까요?")
+          .setMessage("등록된 글귀 " + allItems.size() + "편이 모두 삭제됩니다. (필요 시 기본 샘플 복원으로 기본 250편은 다시 불러올 수 있습니다.)")
+          .setPositiveButton(
+              "전체 비우기",
+              (d, w) ->
+                  a.io.execute(
+                      () -> {
+                        try {
+                          a.studio.clearAllTextItems();
+                          selectedTextId = "";
+                          a.main.post(
+                              () -> {
+                                Ui.toast(host, "모든 글귀를 비웠습니다.");
+                                refresh();
+                              });
+                        } catch (Exception e) {
+                          a.main.post(() -> Ui.error(host, e));
+                        }
+                      }))
+          .setNegativeButton("취소", null)
+          .show();
+    }
+
+    private final class ListAdapter extends BaseAdapter {
+      @Override
+      public int getCount() {
+        return filteredRows.size();
+      }
+
+      @Override
+      public Object getItem(int i) {
+        return filteredRows.get(i);
+      }
+
+      @Override
+      public long getItemId(int i) {
+        return i;
+      }
+
+      @Override
+      public View getView(int pos, View old, ViewGroup parent) {
+        LinearLayout row = old instanceof LinearLayout ? (LinearLayout) old : Ui.column(host);
+        row.removeAllViews();
+        row.setPadding(Ui.dp(host, 16), Ui.dp(host, 14), Ui.dp(host, 16), Ui.dp(host, 14));
+        TextItem q = filteredRows.get(pos);
+        boolean sel = editorPane != null && q.id.equals(selectedTextId);
+        row.setBackground(
+            Ui.strokeBg(
+                sel ? Ui.SURFACE_SUBTLE : Ui.SURFACE,
+                sel ? Ui.PRIMARY : Ui.OUTLINE,
+                Ui.dp(host, sel ? 2 : 1),
+                Ui.dp(host, 16)));
+        boolean isPoem = "POEM".equals(q.kind) || (q.body != null && q.body.indexOf('\n') >= 0);
+        String cat =
+            (q.category == null || q.category.trim().isEmpty()) ? "기타" : q.category.trim();
+
+        LinearLayout topRow = Ui.row(host);
+        TextView badge =
+            Ui.text(
+                host,
+                "#"
+                    + (pos + 1)
+                    + "  "
+                    + cat
+                    + (!q.title.isEmpty() ? " · " + q.title : "")
+                    + " · "
+                    + q.displaySeconds
+                    + "초",
+                12.5f,
+                q.enabled ? Ui.PRIMARY : Ui.MUTED);
+        badge.setCompoundDrawablesRelative(
+            Ui.icon(
+                host,
+                isPoem ? R.drawable.ic_heart : R.drawable.ic_quote,
+                q.enabled ? Ui.PRIMARY : Ui.MUTED,
+                15),
+            null,
+            null,
+            null);
+        badge.setCompoundDrawablePadding(Ui.dp(host, 6));
+        badge.setGravity(Gravity.CENTER_VERTICAL);
+        topRow.addView(badge, new LinearLayout.LayoutParams(0, -2, 1));
+
+        CheckBox enableChk = new CheckBox(host);
+        enableChk.setText("사용");
+        enableChk.setTextSize(12.5f);
+        enableChk.setTextColor(Ui.MUTED);
+        enableChk.setFocusable(false);
+        enableChk.setChecked(q.enabled);
+        enableChk.setOnCheckedChangeListener(
+            (btn, on) -> {
+              q.enabled = on;
               a.io.execute(
                   () -> {
-                    a.studio.dao().deleteTextItem(existing.id);
-                    a.store.changed();
-                  }));
-    AlertDialog dialog = builder.create();
-    dialog.setOnShowListener(
-        d ->
-            dialog
-                .getButton(AlertDialog.BUTTON_POSITIVE)
-                .setOnClickListener(
-                    v -> {
-                      String b = bodyInput.getText().toString().trim();
-                      String au = authorInput.getText().toString().trim();
-                      String ti = titleInput.getText().toString().trim();
-                      String sr = sourceInput.getText().toString().trim();
-                      String cat = String.valueOf(catSpinner.getSelectedItem()).trim();
-                      if (cat.isEmpty()) cat = "기타";
-                      if (b.isEmpty()) {
-                        bodyInput.setError("본문을 입력해 주세요.");
-                        return;
-                      }
-                      if (b.length() > 2000) {
-                        bodyInput.setError("본문은 2,000자 이내로 입력해 주세요.");
-                        return;
-                      }
-                      final String finalCat = cat;
-                      a.io.execute(
-                          () -> {
-                            long now = System.currentTimeMillis();
-                            TextItem item = existing != null ? existing : new TextItem();
-                            if (existing == null || item.id == null || item.id.isEmpty()) {
-                              item.id = "text_" + now + "_" + new SecureRandom().nextInt(10000);
-                              item.createdAt = now;
-                              item.sortOrder = a.studio.dao().textItems().size() + 1;
-                              item.displaySeconds = 20;
-                              item.enabled = true;
-                            }
-                            item.category = finalCat;
-                            item.body = b;
-                            item.author = au;
-                            item.title = ti;
-                            item.source = sr;
-                            item.kind =
-                                ("시 한 구절".equals(finalCat)
-                                        || finalCat.contains("시")
-                                        || b.indexOf('\n') >= 0)
-                                    ? "POEM"
-                                    : "QUOTE";
-                            item.updatedAt = now;
-                            a.prefs.ensureTextCategory(finalCat);
-                            a.studio.dao().saveTextItem(item);
-                            a.store.changed();
-                          });
-                      dialog.dismiss();
-                    }));
-    dialog.show();
-  }
+                    try {
+                      a.studio.saveTextEntry(
+                          q.id,
+                          q.category,
+                          q.title,
+                          q.body,
+                          q.author,
+                          q.source,
+                          q.displaySeconds,
+                          on);
+                    } catch (Exception ignored) {
+                    }
+                  });
+            });
+        topRow.addView(enableChk, new LinearLayout.LayoutParams(-2, -2));
+        row.addView(topRow);
 
-  private final class Adapter extends BaseAdapter {
-    public int getCount() {
-      return rows.size();
-    }
-
-    public Object getItem(int i) {
-      return rows.get(i);
-    }
-
-    public long getItemId(int i) {
-      return i;
-    }
-
-    public View getView(int pos, View old, ViewGroup parent) {
-      Activity c = QuotesActivity.this;
-      LinearLayout row = old instanceof LinearLayout ? (LinearLayout) old : Ui.column(c);
-      row.removeAllViews();
-      row.setPadding(Ui.dp(c, 18), Ui.dp(c, 16), Ui.dp(c, 18), Ui.dp(c, 16));
-      android.graphics.drawable.GradientDrawable card = Ui.bg(Ui.SURFACE, Ui.dp(c, 20));
-      card.setStroke(Ui.dp(c, 1), Ui.LINE);
-      row.setBackground(card);
-      TextItem q = rows.get(pos);
-      boolean isPoem = "POEM".equals(q.kind) || (q.body != null && q.body.indexOf('\n') >= 0);
-      String cat = (q.category == null || q.category.trim().isEmpty()) ? "기타" : q.category.trim();
-      TextView badge =
-          Ui.text(
-              c,
-              cat + (q.title != null && !q.title.isEmpty() ? "  ·  " + q.title : ""),
-              12,
-              Ui.PRIMARY);
-      badge.setCompoundDrawablesRelative(
-          Ui.icon(c, isPoem ? R.drawable.ic_heart : R.drawable.ic_quote, Ui.PRIMARY, 16),
-          null,
-          null,
-          null);
-      badge.setCompoundDrawablePadding(Ui.dp(c, 6));
-      badge.setGravity(Gravity.CENTER_VERTICAL);
-      row.addView(badge);
-      Ui.gap(row, 8);
-      TextView body = Ui.text(c, q.body, 16, Ui.INK);
-      body.setTypeface(android.graphics.Typeface.SERIF);
-      body.setMaxLines(4);
-      body.setEllipsize(android.text.TextUtils.TruncateAt.END);
-      row.addView(body);
-      if (q.author != null && !q.author.isEmpty()) {
         Ui.gap(row, 6);
-        TextView author = Ui.text(c, "— " + q.author, 13, Ui.MUTED);
-        author.setTypeface(android.graphics.Typeface.SERIF, android.graphics.Typeface.ITALIC);
-        row.addView(author);
+        TextView body = Ui.text(host, q.body, 15.5f, q.enabled ? Ui.INK : Ui.MUTED);
+        body.setTypeface(Typeface.SERIF);
+        body.setMaxLines(3);
+        body.setEllipsize(TextUtils.TruncateAt.END);
+        row.addView(body);
+
+        if (!q.author.isEmpty() || !q.source.isEmpty()) {
+          Ui.gap(row, 4);
+          String credit =
+              !q.author.isEmpty() && !q.source.isEmpty()
+                  ? ("— " + q.author + " (" + q.source + ")")
+                  : (!q.author.isEmpty() ? ("— " + q.author) : q.source);
+          TextView author = Ui.text(host, credit, 12.5f, Ui.MUTED);
+          author.setTypeface(Typeface.SERIF, Typeface.ITALIC);
+          row.addView(author);
+        }
+        return row;
       }
-      return row;
     }
   }
 }

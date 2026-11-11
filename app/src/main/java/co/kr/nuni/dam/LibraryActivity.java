@@ -166,7 +166,27 @@ public final class LibraryActivity extends Activity implements PhotoStore.Listen
               R.drawable.ic_plus,
               () -> showCreateAlbumDialog(null));
       createAlbumBtn.setTextSize(13.5f);
-      albumRow.addView(createAlbumBtn, new LinearLayout.LayoutParams(-2, Ui.dp(host, 42)));
+      LinearLayout.LayoutParams cap = new LinearLayout.LayoutParams(-2, Ui.dp(host, 42));
+      cap.setMarginEnd(Ui.dp(host, 6));
+      albumRow.addView(createAlbumBtn, cap);
+      Button manageAlbumsBtn =
+          Ui.button(
+              host,
+              "앨범 관리",
+              false,
+              R.drawable.ic_folder,
+              () -> {
+                if (host instanceof MainActivity) {
+                  ((MainActivity) host).openAlbumManagement(selectedAlbumId);
+                } else {
+                  android.content.Intent i =
+                      new android.content.Intent(host, AlbumsActivity.class);
+                  i.putExtra("albumId", selectedAlbumId);
+                  host.startActivity(i);
+                }
+              });
+      manageAlbumsBtn.setTextSize(13.5f);
+      albumRow.addView(manageAlbumsBtn, new LinearLayout.LayoutParams(-2, Ui.dp(host, 42)));
       parent.addView(albumRow);
 
       batchBar = Ui.row(host);

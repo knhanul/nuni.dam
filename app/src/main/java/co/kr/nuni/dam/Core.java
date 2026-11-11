@@ -828,6 +828,10 @@ public final class Core {
    * into a list of string arrays.
    */
   public static java.util.List<String[]> parseCsvRecords(String text) {
+    return parseDelimitedRecords(text, ',');
+  }
+
+  public static java.util.List<String[]> parseDelimitedRecords(String text, char delimiter) {
     java.util.List<String[]> records = new java.util.ArrayList<>();
     if (text == null || text.isEmpty()) return records;
     int i = 0;
@@ -853,7 +857,7 @@ public final class Core {
       } else {
         if (ch == '"' && cell.length() == 0) {
           inQuotes = true;
-        } else if (ch == ',') {
+        } else if (ch == delimiter) {
           row.add(cell.toString());
           cell.setLength(0);
         } else if (ch == '\r' || ch == '\n') {
@@ -879,5 +883,180 @@ public final class Core {
       }
     }
     return records;
+  }
+
+  public static final class ImportedTextRow {
+    public final String category, body, author, title, source;
+    public final int displaySeconds;
+
+    public ImportedTextRow(
+        String category, String body, String author, String title, String source, int seconds) {
+      this.category = category == null || category.trim().isEmpty() ? "기타" : category.trim();
+      this.body = body == null ? "" : body.trim();
+      this.author = author == null ? "" : author.trim();
+      this.title = title == null ? "" : title.trim();
+      this.source = source == null ? "" : source.trim();
+      this.displaySeconds = Math.max(5, Math.min(600, seconds));
+    }
+  }
+
+  public static java.util.List<ImportedTextRow> parseSpreadsheetTextRows(String rawText) {
+    java.util.List<ImportedTextRow> out = new java.util.ArrayList<>();
+    if (rawText == null) return out;
+    String cleaned = rawText.startsWith("\uFEFF") ? rawText.substring(1).trim() : rawText.trim();
+    if (cleaned.isEmpty()) return out;
+    int nl = cleaned.indexOf('\n');
+    String firstLine = nl >= 0 ? cleaned.substring(0, nl) : cleaned;
+    char delimiter = firstLine.indexOf('\t') >= 0 ? '\t' : ',';
+    java.util.List<String[]> rows = parseDelimitedRecords(cleaned, delimiter);
+    if (rows.isEmpty()) return out;
+
+    int catCol = 0, bodyCol = 1, authorCol = 2, titleCol = 3, sourceCol = 4, secCol = 5;
+    int startIdx = 0;
+    String[] head = rows.get(0);
+    boolean isHeader = false;
+    for (String rawCol : head) {
+      String h = rawCol == null ? "" : rawCol.replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
+      if (h.equals("카테고리")
+          || h.equals("분류")
+          || h.equals("본문")
+          || h.equals("내용")
+          || h.equals("글귀")
+          || h.equals("문구")
+          || h.equals("category")
+          || h.equals("body")) {
+        isHeader = true;
+        break;
+      }
+    }
+    if (isHeader) {
+      startIdx = 1;
+      catCol = bodyCol = authorCol = titleCol = sourceCol = secCol = -1;
+      for (int idx = 0; idx < head.length; idx++) {
+        String h =
+            head[idx] == null ? "" : head[idx].replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
+        if (h.contains("카테고리") || h.contains("분류") || h.equals("category")) catCol = idx;
+        else if (h.contains("본문")
+            || h.contains("내용")
+            || h.contains("글귀")
+            || h.contains("문구")
+            || h.equals("body")
+            || h.equals("text")) bodyCol = idx;
+        else if (h.contains("작가")
+            || h.contains("저자")
+            || h.contains("글쓴이")
+            || h.contains("작성자")
+            || h.equals("author")) authorCol = idx;
+        else if (h.contains("제목") || h.equals("title")) titleCol = idx;
+        else if (h.contains("출처") || h.contains("메모") || h.equals("source")) sourceCol = idx;
+        else if (h.contains("시간") || h.contains("초") || h.equals("seconds")) secCol = idx;
+      }
+      if (bodyCol == -1) bodyCol = head.length > 1 ? 1 : 0;
+    }
+
+    for (int i = startIdx; i < rows.size(); i++) {
+      String[] r = rows.get(i);
+      if (r == null || r.length == 0) continue;
+      if (!isHeader && r.length == 1) {
+        String single = r[0] == null ? "" : r[0].trim();
+        if (!single.isEmpty()) {
+          out.add(new ImportedTextRow("기타", single, "", "", "", 15));
+        }
+        continue;
+      }
+      String body = (bodyCol >= 0 && bodyCol < r.length && r[bodyCol] != null) ? r[bodyCol].trim() : "";
+      if (body.isEmpty()) continue;
+      String cat = (catCol >= 0 && catCol < r.length && r[catCol] != null) ? r[catCol].trim() : "";
+      String author =
+          (authorCol >= 0 && authorCol < r.length && r[authorCol] != null) ? r[authorCol].trim() : "";
+      String title =
+          (titleCol >= 0 && titleCol < r.length && r[titleCol] != null) ? r[titleCol].trim() : "";
+      String source =
+          (sourceCol >= 0 && sourceCol < r.length && r[sourceCol] != null) ? r[sourceCol].trim() : "";
+      int sec = 15;
+      if (secCol >= 0 && secCol < r.length && r[secCol] != null && !r[secCol].trim().isEmpty()) {
+        try {
+          sec = Integer.parseInt(r[secCol].trim());
+        } catch (NumberFormatException ignored) {
+        }
+      }
+      out.add(new ImportedTextRow(cat.isEmpty() ? "기타" : cat, body, author, title, source, sec));
+    }
+    return out;
+  }
+
+  public static String decodeCsvBytes(byte[] bytes) {
+    if (bytes == null || bytes.length == 0) return "";
+    String utf8 = new String(bytes, StandardCharsets.UTF_8);
+    if (utf8.indexOf('\uFFFD') >= 0) {
+      try {
+        return new String(bytes, java.nio.charset.Charset.forName("EUC-KR"));
+      } catch (Exception ignored) {
+      }
+    }
+    return utf8;
+  }
+
+  public static String csvEscape(String val) {
+    String s = val == null ? "" : val;
+    if (s.indexOf(',') >= 0 || s.indexOf('"') >= 0 || s.indexOf('\n') >= 0 || s.indexOf('\r') >= 0) {
+      return "\"" + s.replace("\"", "\"\"") + "\"";
+    }
+    return s;
+  }
+
+  public static String formatCsvRecords(java.util.List<String[]> rows) {
+    StringBuilder sb = new StringBuilder("\uFEFF");
+    if (rows == null) return sb.toString();
+    for (int i = 0; i < rows.size(); i++) {
+      if (i > 0) sb.append("\r\n");
+      String[] r = rows.get(i);
+      if (r == null) continue;
+      for (int j = 0; j < r.length; j++) {
+        if (j > 0) sb.append(',');
+        sb.append(csvEscape(r[j]));
+      }
+    }
+    return sb.toString();
+  }
+
+  private static final String[] DAYS_KOR = {"일", "월", "화", "수", "목", "금", "토"};
+
+  public static String formatDaysMask(int mask) {
+    int m = mask & 127;
+    if (m == 127) return "매일";
+    if (m == 62) return "평일(월~금)";
+    if (m == 65) return "주말(토·일)";
+    if (m == 0) return "요일 미선택";
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < 7; i++) {
+      if ((m & (1 << i)) != 0) {
+        if (sb.length() > 0) sb.append('·');
+        sb.append(DAYS_KOR[i]);
+      }
+    }
+    return sb.toString();
+  }
+
+  public static int weeklyBandCoveredMinutes(
+      ScheduleSlot r, int dayOfWeek0Sun, int bandStart, int bandEnd) {
+    if (r == null || !r.enabled || !"WEEKLY".equals(r.ruleType) || bandEnd <= bandStart) return 0;
+    int bit = 1 << (dayOfWeek0Sun & 7);
+    int prevBit = 1 << ((dayOfWeek0Sun + 6) % 7);
+    if (r.startMin == r.endMin) {
+      return (r.daysMask & bit) != 0 ? (bandEnd - bandStart) : 0;
+    }
+    if (r.startMin < r.endMin) {
+      if ((r.daysMask & bit) == 0) return 0;
+      return Math.max(0, Math.min(r.endMin, bandEnd) - Math.max(r.startMin, bandStart));
+    }
+    int covered = 0;
+    if ((r.daysMask & bit) != 0) {
+      covered += Math.max(0, Math.min(1440, bandEnd) - Math.max(r.startMin, bandStart));
+    }
+    if ((r.daysMask & prevBit) != 0) {
+      covered += Math.max(0, Math.min(r.endMin, bandEnd) - Math.max(0, bandStart));
+    }
+    return Math.min(bandEnd - bandStart, covered);
   }
 }

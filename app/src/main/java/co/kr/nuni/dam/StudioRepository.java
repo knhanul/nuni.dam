@@ -1291,4 +1291,732 @@ public final class StudioRepository {
     for (byte b : bytes) sb.append(String.format(Locale.ROOT, "%02x", b & 255));
     return sb.toString();
   }
+
+  // --- Shared App & Studio Management Operations ---
+
+  public Album saveAlbumMetadata(
+      String id,
+      String name,
+      String description,
+      String coverPhotoId,
+      String sortOrder,
+      int seconds,
+      boolean shuffle)
+      throws Exception {
+    synchronized (lock) {
+      ensureSeeded();
+      StudioDao sdao = dao();
+      long now = System.currentTimeMillis();
+      String cleanId = id == null ? "" : id.trim();
+      Album existing = cleanId.isEmpty() ? null : sdao.album(cleanId);
+      Album al = existing != null ? existing : new Album();
+      if (al.id.isEmpty()) {
+        al.id = "album_" + now + "_" + new java.security.SecureRandom().nextInt(10000);
+      }
+      boolean allPhotos = Album.isAllPhotos(al.id);
+      if (allPhotos) {
+        al.name = Album.ALL_PHOTOS_NAME;
+        al.description = "누니담에 보관된 모든 사진을 자동으로 모아 보여줍니다.";
+        al.isDefault = true;
+      } else {
+        String cleanName = name == null ? "" : name.trim();
+        if (cleanName.isEmpty()) throw new IllegalArgumentException("앨범 이름을 입력해 주세요.");
+        if (Album.ALL_PHOTOS_NAME.equals(cleanName)) {
+          throw new IllegalArgumentException("‘모든 사진’은 이름이 고정된 기본 보기입니다. 다른 이름을 입력해 주세요.");
+        }
+        al.name = cleanName.length() > 60 ? cleanName.substring(0, 60) : cleanName;
+        al.description = description == null ? "" : description.trim();
+        al.sortOrder =
+            (sortOrder == null || sortOrder.trim().isEmpty()) ? "CUSTOM" : sortOrder.trim();
+        al.seconds = Math.max(5, Math.min(3600, seconds));
+        al.shuffle = shuffle;
+      }
+      if (coverPhotoId != null) {
+        al.coverPhotoId = coverPhotoId;
+      }
+      if (existing == null) al.createdAt = now;
+      al.updatedAt = now;
+      sdao.saveAlbum(al);
+      publishToTablet("앱에서 앨범 설정 저장");
+      return al;
+    }
+  }
+
+  public Album cloneAlbum(String srcAlbumId, String customName) throws Exception {
+    synchronized (lock) {
+      ensureSeeded();
+      StudioDao sdao = dao();
+      Album src = sdao.album(srcAlbumId);
+      if (src == null) throw new IllegalArgumentException("복제할 앨범을 찾을 수 없습니다.");
+      long now = System.currentTimeMillis();
+      Album copy = new Album();
+      copy.id = "album_" + now + "_" + new java.security.SecureRandom().nextInt(10000);
+      String candidate =
+          (customName == null || customName.trim().isEmpty())
+              ? (src.name + " (복사본)")
+              : customName.trim();
+      if (Album.ALL_PHOTOS_NAME.equals(candidate)) candidate = candidate + " (복사본)";
+      copy.name = candidate.length() > 60 ? candidate.substring(0, 60) : candidate;
+      copy.description = Album.isAllPhotos(src.id) ? "" : src.description;
+      copy.coverPhotoId = src.coverPhotoId;
+      copy.sortOrder = src.sortOrder;
+      copy.seconds = src.seconds;
+      copy.shuffle = src.shuffle;
+      copy.isDefault = false;
+      copy.createdAt = now;
+      copy.updatedAt = now;
+      sdao.saveAlbum(copy);
+      List<Photo> sourcePhotos = sdao.albumPhotos(src.id);
+      for (int i = 0; i < sourcePhotos.size(); i++) {
+        AlbumItem cit = new AlbumItem();
+        cit.albumId = copy.id;
+        cit.photoId = sourcePhotos.get(i).id;
+        cit.position = i;
+        cit.addedAt = now;
+        sdao.saveAlbumItem(cit);
+        if (copy.coverPhotoId.isEmpty()) {
+          copy.coverPhotoId = sourcePhotos.get(i).id;
+          sdao.saveAlbum(copy);
+        }
+      }
+      publishToTablet("앱에서 앨범 복제");
+      return copy;
+    }
+  }
+
+  public void deleteAlbum(String albumId) throws Exception {
+    synchronized (lock) {
+      ensureSeeded();
+      StudioDao sdao = dao();
+      Album al = sdao.album(albumId);
+      if (al == null) throw new IllegalArgumentException("없는 앨범입니다.");
+      if (al.isDefault || Album.isAllPhotos(al.id)) {
+        throw new IllegalArgumentException("‘모든 사진’ 기본 보기는 삭제할 수 없습니다.");
+      }
+      sdao.deleteAlbum(albumId);
+      publishToTablet("앱에서 앨범 삭제");
+    }
+  }
+
+  public int addPhotosToAlbum(String albumId, Collection<String> photoIds) throws Exception {
+    synchronized (lock) {
+      ensureSeeded();
+      if (Album.isAllPhotos(albumId)) {
+        throw new IllegalArgumentException("‘모든 사진’에는 사진을 직접 추가할 수 없습니다. 다른 앨범을 선택해 주세요.");
+      }
+      StudioDao sdao = dao();
+      Album al = sdao.album(albumId);
+      if (al == null) throw new IllegalArgumentException("대상 앨범을 찾을 수 없습니다.");
+      if (photoIds == null || photoIds.isEmpty()) return 0;
+      List<AlbumItem> existingItems = sdao.albumItems(albumId);
+      Set<String> present = new HashSet<>();
+      for (AlbumItem it : existingItems) present.add(it.photoId);
+      int pos = existingItems.size();
+      int added = 0;
+      long now = System.currentTimeMillis();
+      for (String pid : photoIds) {
+        if (pid == null || present.contains(pid)) continue;
+        if (db.photos().get(pid) == null) continue;
+        AlbumItem item = new AlbumItem();
+        item.albumId = albumId;
+        item.photoId = pid;
+        item.position = pos++;
+        item.addedAt = now;
+        sdao.saveAlbumItem(item);
+        present.add(pid);
+        added++;
+        if (al.coverPhotoId.isEmpty()) {
+          al.coverPhotoId = pid;
+          al.updatedAt = now;
+          sdao.saveAlbum(al);
+        }
+      }
+      if (added > 0) publishToTablet("앱에서 앨범 사진 추가");
+      return added;
+    }
+  }
+
+  public void removePhotosFromAlbum(String albumId, Collection<String> photoIds) throws Exception {
+    synchronized (lock) {
+      ensureSeeded();
+      if (Album.isAllPhotos(albumId)) {
+        throw new IllegalArgumentException("‘모든 사진’에서는 사진을 제외할 수 없습니다.");
+      }
+      if (photoIds == null || photoIds.isEmpty()) return;
+      StudioDao sdao = dao();
+      for (String pid : photoIds) {
+        if (pid != null) sdao.removeAlbumItem(albumId, pid);
+      }
+      Album al = sdao.album(albumId);
+      if (al != null && photoIds.contains(al.coverPhotoId)) {
+        List<Photo> rem = sdao.albumPhotos(albumId);
+        al.coverPhotoId = rem.isEmpty() ? "" : rem.get(0).id;
+        al.updatedAt = System.currentTimeMillis();
+        sdao.saveAlbum(al);
+      }
+      publishToTablet("앱에서 앨범 사진 제외");
+    }
+  }
+
+  public void movePhotosBetweenAlbums(
+      String srcAlbumId, String targetAlbumId, Collection<String> photoIds) throws Exception {
+    synchronized (lock) {
+      if (Album.isAllPhotos(srcAlbumId) || Album.isAllPhotos(targetAlbumId)) {
+        throw new IllegalArgumentException("‘모든 사진’과는 이동 작업을 수행할 수 없습니다.");
+      }
+      addPhotosToAlbum(targetAlbumId, photoIds);
+      removePhotosFromAlbum(srcAlbumId, photoIds);
+    }
+  }
+
+  public void reorderAlbumPhoto(String albumId, String photoId, int delta) throws Exception {
+    synchronized (lock) {
+      ensureSeeded();
+      if (Album.isAllPhotos(albumId) || delta == 0) return;
+      StudioDao sdao = dao();
+      List<Photo> photos = sdao.albumPhotos(albumId);
+      int idx = -1;
+      for (int i = 0; i < photos.size(); i++) {
+        if (photos.get(i).id.equals(photoId)) {
+          idx = i;
+          break;
+        }
+      }
+      if (idx < 0) return;
+      int nextIdx = Math.max(0, Math.min(photos.size() - 1, idx + delta));
+      if (nextIdx == idx) return;
+      Photo moving = photos.remove(idx);
+      photos.add(nextIdx, moving);
+      long now = System.currentTimeMillis();
+      sdao.clearAlbumItems(albumId);
+      for (int i = 0; i < photos.size(); i++) {
+        AlbumItem item = new AlbumItem();
+        item.albumId = albumId;
+        item.photoId = photos.get(i).id;
+        item.position = i;
+        item.addedAt = now;
+        sdao.saveAlbumItem(item);
+      }
+      Album al = sdao.album(albumId);
+      if (al != null && !"CUSTOM".equals(al.sortOrder)) {
+        al.sortOrder = "CUSTOM";
+        al.updatedAt = now;
+        sdao.saveAlbum(al);
+      }
+      publishToTablet("앱에서 앨범 사진 순서 변경");
+    }
+  }
+
+  // --- Quote Library & Category Operations ---
+
+  public void addTextCategory(String name) {
+    synchronized (lock) {
+      String clean = name == null ? "" : name.trim();
+      if (clean.isEmpty()) throw new IllegalArgumentException("추가할 카테고리 이름을 입력해 주세요.");
+      if ("기타".equals(clean)) return;
+      List<String> cats = new ArrayList<>(prefs.textCategories());
+      if (!cats.contains(clean)) {
+        cats.add(clean);
+        prefs.setTextCategories(cats);
+      }
+      store.changed();
+    }
+  }
+
+  public void renameTextCategory(String oldName, String newName) throws Exception {
+    synchronized (lock) {
+      ensureSeeded();
+      String oldClean = oldName == null ? "" : oldName.trim();
+      String newClean = newName == null ? "" : newName.trim();
+      if (oldClean.isEmpty() || newClean.isEmpty()) {
+        throw new IllegalArgumentException("변경할 카테고리 이름을 입력해 주세요.");
+      }
+      if ("기타".equals(oldClean)) {
+        throw new IllegalArgumentException("‘기타’ 기본 분류의 이름은 변경할 수 없습니다.");
+      }
+      List<String> cats = new ArrayList<>(prefs.textCategories());
+      int idx = cats.indexOf(oldClean);
+      if (idx >= 0) {
+        if (cats.contains(newClean) && !oldClean.equals(newClean)) {
+          cats.remove(idx);
+        } else {
+          cats.set(idx, newClean);
+        }
+      } else if (!"기타".equals(newClean) && !cats.contains(newClean)) {
+        cats.add(newClean);
+      }
+      prefs.setTextCategories(cats);
+      StudioDao sdao = dao();
+      long now = System.currentTimeMillis();
+      for (TextItem t : sdao.textItems()) {
+        if (oldClean.equals(t.category)) {
+          t.category = newClean;
+          t.updatedAt = now;
+          sdao.saveTextItem(t);
+        }
+      }
+      ensureTextCollectionExists(newClean);
+      for (Scene sc : sdao.scenes()) {
+        List<SceneTextCollection> links = sdao.sceneTextCollections(sc.id);
+        boolean updated = false;
+        Set<String> nextCols = new LinkedHashSet<>();
+        for (SceneTextCollection stc : links) {
+          if (oldClean.equals(stc.collectionId) || ("cat:" + oldClean).equals(stc.collectionId)) {
+            nextCols.add(newClean);
+            updated = true;
+          } else {
+            nextCols.add(stc.collectionId);
+          }
+        }
+        if (updated) {
+          sdao.clearSceneTextCollections(sc.id);
+          for (String cid : nextCols) linkSceneText(sc.id, cid);
+        }
+      }
+      publishToTablet("앱에서 글귀 카테고리 이름 변경");
+    }
+  }
+
+  public void deleteTextCategory(String name) throws Exception {
+    synchronized (lock) {
+      ensureSeeded();
+      String clean = name == null ? "" : name.trim();
+      if ("기타".equals(clean)) {
+        throw new IllegalArgumentException("‘기타’ 분류는 기본 미분류 항목이므로 삭제할 수 없습니다.");
+      }
+      List<String> cats = new ArrayList<>(prefs.textCategories());
+      cats.remove(clean);
+      prefs.setTextCategories(cats);
+      StudioDao sdao = dao();
+      long now = System.currentTimeMillis();
+      for (TextItem t : sdao.textItems()) {
+        if (clean.equals(t.category)) {
+          t.category = "기타";
+          t.updatedAt = now;
+          sdao.saveTextItem(t);
+        }
+      }
+      publishToTablet("앱에서 글귀 카테고리 삭제");
+    }
+  }
+
+  public TextItem saveTextEntry(
+      String id,
+      String category,
+      String title,
+      String body,
+      String author,
+      String source,
+      int displaySeconds,
+      boolean enabled)
+      throws Exception {
+    synchronized (lock) {
+      ensureSeeded();
+      String cleanBody = body == null ? "" : body.trim();
+      if (cleanBody.isEmpty()) throw new IllegalArgumentException("글귀 본문을 입력해 주세요.");
+      if (cleanBody.length() > 2000) throw new IllegalArgumentException("본문은 2,000자 이내로 입력해 주세요.");
+      StudioDao sdao = dao();
+      long now = System.currentTimeMillis();
+      String cleanId = id == null ? "" : id.trim();
+      TextItem existing = cleanId.isEmpty() ? null : sdao.textItem(cleanId);
+      TextItem t = existing != null ? existing : new TextItem();
+      if (t.id.isEmpty()) {
+        t.id = "text_" + now + "_" + new java.security.SecureRandom().nextInt(10000);
+        t.createdAt = now;
+        t.sortOrder = sdao.textItems().size() + 1;
+      }
+      String cleanCat = (category == null || category.trim().isEmpty()) ? "기타" : category.trim();
+      prefs.ensureTextCategory(cleanCat);
+      t.category = cleanCat;
+      t.title = title == null ? "" : title.trim();
+      t.body = cleanBody;
+      t.author = author == null ? "" : author.trim();
+      t.source = source == null ? "" : source.trim();
+      t.kind =
+          ("시 한 구절".equals(cleanCat)
+                  || cleanCat.contains("시")
+                  || cleanBody.indexOf('\n') >= 0)
+              ? "POEM"
+              : "QUOTE";
+      t.displaySeconds = Math.max(5, Math.min(600, displaySeconds));
+      t.enabled = enabled;
+      t.updatedAt = now;
+      sdao.saveTextItem(t);
+      publishToTablet("앱에서 글귀 저장");
+      return t;
+    }
+  }
+
+  public TextItem cloneTextEntry(String srcId) throws Exception {
+    synchronized (lock) {
+      ensureSeeded();
+      StudioDao sdao = dao();
+      TextItem src = sdao.textItem(srcId);
+      if (src == null) throw new IllegalArgumentException("복제할 글귀를 찾을 수 없습니다.");
+      long now = System.currentTimeMillis();
+      TextItem copy = new TextItem();
+      copy.id = "text_" + now + "_" + new java.security.SecureRandom().nextInt(10000);
+      copy.category = src.category;
+      copy.title = src.title.isEmpty() ? "" : (src.title + " (복사본)");
+      copy.body = src.body;
+      copy.author = src.author;
+      copy.source = src.source;
+      copy.kind = src.kind;
+      copy.tags = src.tags;
+      copy.licenseNote = src.licenseNote;
+      copy.displaySeconds = src.displaySeconds;
+      copy.sortOrder = src.sortOrder + 1;
+      copy.enabled = src.enabled;
+      copy.createdAt = now;
+      copy.updatedAt = now;
+      sdao.saveTextItem(copy);
+      publishToTablet("앱에서 글귀 복제");
+      return copy;
+    }
+  }
+
+  public int[] importTextRows(List<Core.ImportedTextRow> rows, boolean replaceAll) throws Exception {
+    synchronized (lock) {
+      ensureSeeded();
+      if (rows == null || rows.isEmpty()) {
+        throw new IllegalArgumentException("가져올 수 있는 글귀 행을 찾지 못했습니다.");
+      }
+      StudioDao sdao = dao();
+      final int[] counts = new int[2]; // [0]=added, [1]=skipped
+      final long now = System.currentTimeMillis();
+      db.runInTransaction(
+          () -> {
+            Set<String> existingBodies = new HashSet<>();
+            if (replaceAll) {
+              for (TextItem old : sdao.textItems()) sdao.deleteTextItem(old.id);
+            } else {
+              for (TextItem old : sdao.textItems()) {
+                existingBodies.add(
+                    (old.category + "|" + old.body.trim()).toLowerCase(Locale.ROOT));
+              }
+            }
+            int baseOrder = sdao.textItems().size();
+            java.security.SecureRandom rng = new java.security.SecureRandom();
+            for (int i = 0; i < rows.size(); i++) {
+              Core.ImportedTextRow row = rows.get(i);
+              if (row == null || row.body.isEmpty()) continue;
+              prefs.ensureTextCategory(row.category);
+              String dedup = (row.category + "|" + row.body).toLowerCase(Locale.ROOT);
+              if (!existingBodies.add(dedup)) {
+                counts[1]++;
+                continue;
+              }
+              TextItem t = new TextItem();
+              t.id = "text_" + (now + i) + "_" + rng.nextInt(10000);
+              t.category = row.category;
+              t.title = row.title;
+              t.body = row.body;
+              t.author = row.author;
+              t.source = row.source;
+              t.kind =
+                  ("시 한 구절".equals(row.category)
+                          || row.category.contains("시")
+                          || row.body.indexOf('\n') >= 0)
+                      ? "POEM"
+                      : "QUOTE";
+              t.displaySeconds = row.displaySeconds;
+              t.sortOrder = baseOrder + counts[0] + 1;
+              t.enabled = true;
+              t.createdAt = now + i;
+              t.updatedAt = now + i;
+              sdao.saveTextItem(t);
+              counts[0]++;
+            }
+          });
+      publishToTablet("앱에서 글귀 일괄 등록");
+      return counts;
+    }
+  }
+
+  public void clearAllTextItems() throws Exception {
+    synchronized (lock) {
+      ensureSeeded();
+      StudioDao sdao = dao();
+      db.runInTransaction(
+          () -> {
+            for (TextItem t : sdao.textItems()) sdao.deleteTextItem(t.id);
+          });
+      publishToTablet("앱에서 글귀 전체 비우기");
+    }
+  }
+
+  // --- Playback Scene Operations ---
+
+  public Set<String> extractSceneCategories(String sceneId) {
+    Set<String> cats = new LinkedHashSet<>();
+    if (sceneId == null || sceneId.isEmpty()) return cats;
+    StudioDao sdao = dao();
+    for (SceneTextCollection stc : sdao.sceneTextCollections(sceneId)) {
+      String idOrCat = stc.collectionId;
+      if (idOrCat == null || idOrCat.isEmpty() || "ALL".equals(idOrCat) || "col_all".equals(idOrCat)) {
+        continue;
+      }
+      TextCollection col = sdao.textCollection(idOrCat);
+      if (col != null && !col.categoryFilter.trim().isEmpty()) {
+        for (String part : col.categoryFilter.split(",")) {
+          if (!part.trim().isEmpty()) cats.add(part.trim());
+        }
+      } else {
+        String clean = idOrCat.startsWith("cat:") ? idOrCat.substring(4).trim() : idOrCat.trim();
+        if (!clean.isEmpty()) cats.add(clean);
+      }
+    }
+    return cats;
+  }
+
+  public Scene saveSceneWithLinks(
+      Scene draft,
+      Collection<String> albumIds,
+      Collection<String> categoryNames,
+      boolean makeDefault)
+      throws Exception {
+    synchronized (lock) {
+      ensureSeeded();
+      StudioDao sdao = dao();
+      long now = System.currentTimeMillis();
+      String cleanId = draft.id == null ? "" : draft.id.trim();
+      Scene existing = cleanId.isEmpty() ? null : sdao.scene(cleanId);
+      Scene sc = existing != null ? existing : new Scene();
+      if (sc.id.isEmpty()) {
+        sc.id = "scene_" + now + "_" + new java.security.SecureRandom().nextInt(10000);
+      }
+      String cleanName = draft.name == null ? "" : draft.name.trim();
+      sc.name = cleanName.isEmpty() ? "새 장면" : cleanName;
+      sc.description = draft.description == null ? "" : draft.description.trim();
+      sc.layout = draft.layout == null || draft.layout.isEmpty() ? "MAGAZINE" : draft.layout;
+      sc.transitionEffect =
+          draft.transitionEffect == null || draft.transitionEffect.isEmpty()
+              ? "ZOOM"
+              : draft.transitionEffect;
+      sc.textDisplayMode =
+          draft.textDisplayMode == null || draft.textDisplayMode.isEmpty()
+              ? "OVERLAY"
+              : draft.textDisplayMode;
+      sc.quoteCycle =
+          draft.quoteCycle == null || draft.quoteCycle.isEmpty() ? "PHOTO" : draft.quoteCycle;
+      sc.theme = draft.theme == null || draft.theme.isEmpty() ? "MILK" : draft.theme;
+      sc.textColor = draft.textColor == null ? "" : draft.textColor;
+      sc.textAlign = draft.textAlign == null || draft.textAlign.isEmpty() ? "LEFT" : draft.textAlign;
+      sc.seconds = Math.max(5, Math.min(3600, draft.seconds));
+      sc.textEveryN = Math.max(1, Math.min(50, draft.textEveryN));
+      sc.brightness = Math.max(5, Math.min(100, draft.brightness));
+      sc.fontScale = Math.max(80, Math.min(160, draft.fontScale));
+      sc.textPadding = Math.max(8, Math.min(80, draft.textPadding));
+      sc.scrimOpacity = Math.max(0, Math.min(100, draft.scrimOpacity));
+      sc.showClock = draft.showClock;
+      sc.showWeather = draft.showWeather;
+      sc.showCaptureDate = draft.showCaptureDate;
+      sc.shufflePhotos = draft.shufflePhotos;
+      sc.nightDim = draft.nightDim;
+
+      boolean effectiveDefault = "scene_default".equals(sc.id) || makeDefault;
+      if (effectiveDefault) {
+        sdao.clearDefaultScenes();
+        sc.isDefault = true;
+      } else {
+        sc.isDefault = false;
+      }
+      if (existing == null) sc.createdAt = now;
+      sc.updatedAt = now;
+      sdao.saveScene(sc);
+
+      if (sdao.defaultScene() == null) {
+        Scene def = sdao.scene("scene_default");
+        if (def != null) {
+          def.isDefault = true;
+          sdao.saveScene(def);
+        } else {
+          sc.isDefault = true;
+          sdao.saveScene(sc);
+        }
+      }
+
+      if (albumIds != null) {
+        sdao.clearSceneAlbums(sc.id);
+        List<String> selectedAlbums =
+            Core.exclusiveAlbumSelection(albumIds, Album.ALL_PHOTOS_ID);
+        for (String aid : selectedAlbums) {
+          if (sdao.album(aid) != null) linkSceneAlbum(sc.id, aid);
+        }
+      }
+
+      if (categoryNames != null) {
+        sdao.clearSceneTextCollections(sc.id);
+        for (String cat : categoryNames) {
+          if (cat != null && !cat.trim().isEmpty()) {
+            linkSceneText(sc.id, cat.trim());
+          }
+        }
+      }
+
+      publishToTablet("앱에서 재생 장면 저장");
+      return sc;
+    }
+  }
+
+  public Scene cloneScene(String srcSceneId) throws Exception {
+    synchronized (lock) {
+      ensureSeeded();
+      StudioDao sdao = dao();
+      Scene src = sdao.scene(srcSceneId);
+      if (src == null) throw new IllegalArgumentException("복제할 장면을 찾을 수 없습니다.");
+      Scene draft = new Scene();
+      draft.name = src.name + " (복사본)";
+      draft.description = src.description;
+      draft.layout = src.layout;
+      draft.transitionEffect = src.transitionEffect;
+      draft.textDisplayMode = src.textDisplayMode;
+      draft.quoteCycle = src.quoteCycle;
+      draft.theme = src.theme;
+      draft.textColor = src.textColor;
+      draft.textAlign = src.textAlign;
+      draft.seconds = src.seconds;
+      draft.textEveryN = src.textEveryN;
+      draft.brightness = src.brightness;
+      draft.fontScale = src.fontScale;
+      draft.textPadding = src.textPadding;
+      draft.scrimOpacity = src.scrimOpacity;
+      draft.showClock = src.showClock;
+      draft.showWeather = src.showWeather;
+      draft.showCaptureDate = src.showCaptureDate;
+      draft.shufflePhotos = src.shufflePhotos;
+      draft.nightDim = src.nightDim;
+
+      List<String> albumIds = new ArrayList<>();
+      for (SceneAlbum sa : sdao.sceneAlbums(src.id)) albumIds.add(sa.albumId);
+      Set<String> cats = extractSceneCategories(src.id);
+      return saveSceneWithLinks(draft, albumIds, cats, false);
+    }
+  }
+
+  public void deleteScene(String sceneId) throws Exception {
+    synchronized (lock) {
+      ensureSeeded();
+      StudioDao sdao = dao();
+      Scene target = sdao.scene(sceneId);
+      if (target == null) throw new IllegalArgumentException("삭제할 장면을 찾을 수 없습니다.");
+      if ("scene_default".equals(sceneId) || target.isDefault) {
+        throw new IllegalArgumentException("기본 장면은 삭제할 수 없습니다.");
+      }
+      if (sdao.scenes().size() <= 1) {
+        throw new IllegalArgumentException("최소 1개의 장면은 유지되어야 합니다.");
+      }
+      sdao.deleteScene(sceneId);
+      publishToTablet("앱에서 재생 장면 삭제");
+    }
+  }
+
+  // --- Weekly Schedule Operations ---
+
+  public List<String> saveScheduleRuleAndCheckConflicts(ScheduleRule draft) throws Exception {
+    synchronized (lock) {
+      ensureSeeded();
+      StudioDao sdao = dao();
+      long now = System.currentTimeMillis();
+      String cleanId = draft.id == null ? "" : draft.id.trim();
+      ScheduleRule existing = cleanId.isEmpty() ? null : sdao.scheduleRule(cleanId);
+      ScheduleRule r = existing != null ? existing : new ScheduleRule();
+      if (r.id.isEmpty()) {
+        r.id = "rule_" + now + "_" + new java.security.SecureRandom().nextInt(10000);
+      }
+      String cleanName = draft.name == null ? "" : draft.name.trim();
+      r.name = cleanName.isEmpty() ? "재생 일정" : cleanName;
+      r.ruleType =
+          (draft.ruleType == null || draft.ruleType.trim().isEmpty())
+              ? "WEEKLY"
+              : draft.ruleType.trim();
+      r.specificDate = draft.specificDate == null ? "" : draft.specificDate.trim();
+      if ("DATE".equals(r.ruleType) && !r.specificDate.matches("\\d{4}-\\d{2}-\\d{2}")) {
+        throw new IllegalArgumentException("특정 날짜는 YYYY-MM-DD 형식(예: 2026-12-25)으로 입력해 주세요.");
+      }
+      if ("ANNIVERSARY".equals(r.ruleType)
+          && !r.specificDate.matches("(\\d{4}-)?\\d{2}-\\d{2}")) {
+        throw new IllegalArgumentException("기념일은 MM-DD 형식(예: 05-08)으로 입력해 주세요.");
+      }
+      if ("ANNIVERSARY".equals(r.ruleType) && r.specificDate.length() == 10) {
+        r.specificDate = r.specificDate.substring(5);
+      }
+      r.sceneId = draft.sceneId == null ? "" : draft.sceneId.trim();
+      if (r.sceneId.isEmpty() || sdao.scene(r.sceneId) == null) {
+        Scene def = sdao.defaultScene();
+        r.sceneId = def != null ? def.id : "scene_default";
+      }
+      r.daysMask = "WEEKLY".equals(r.ruleType) ? (draft.daysMask == 0 ? 127 : (draft.daysMask & 127)) : 127;
+      r.startMin = Math.max(0, Math.min(1439, draft.startMin));
+      r.endMin = Math.max(0, Math.min(1439, draft.endMin));
+      r.priority =
+          "TEMP".equals(r.ruleType)
+              ? 1
+              : ("DATE".equals(r.ruleType) || "ANNIVERSARY".equals(r.ruleType))
+                  ? 2
+                  : "WEEKLY".equals(r.ruleType) ? 3 : 4;
+      r.enabled = draft.enabled;
+      r.expiresAt = draft.expiresAt;
+      if (existing == null) r.createdAt = now;
+      r.updatedAt = now;
+      sdao.saveScheduleRule(r);
+      draft.id = r.id;
+      publishToTablet("앱에서 주간 편성 규칙 저장");
+
+      List<Core.ScheduleSlot> slots = new ArrayList<>();
+      for (ScheduleRule sr : sdao.enabledScheduleRules()) slots.add(Core.ScheduleSlot.from(sr));
+      return Core.detectScheduleConflicts(slots);
+    }
+  }
+
+  public ScheduleRule cloneScheduleRule(String srcRuleId) throws Exception {
+    synchronized (lock) {
+      ensureSeeded();
+      StudioDao sdao = dao();
+      ScheduleRule src = sdao.scheduleRule(srcRuleId);
+      if (src == null) throw new IllegalArgumentException("복제할 편성 규칙을 찾을 수 없습니다.");
+      ScheduleRule copy = new ScheduleRule();
+      copy.name = src.name + " (복사본)";
+      copy.ruleType = src.ruleType;
+      copy.specificDate = src.specificDate;
+      copy.sceneId = src.sceneId;
+      copy.daysMask = src.daysMask;
+      copy.startMin = src.startMin;
+      copy.endMin = src.endMin;
+      copy.enabled = src.enabled;
+      saveScheduleRuleAndCheckConflicts(copy);
+      return sdao.scheduleRule(copy.id);
+    }
+  }
+
+  public void deleteScheduleRuleAndPublish(String ruleId) throws Exception {
+    synchronized (lock) {
+      ensureSeeded();
+      dao().deleteScheduleRule(ruleId);
+      publishToTablet("앱에서 편성 규칙 삭제");
+    }
+  }
+
+  public void applyTempScheduleOverride(String sceneId, int durationMinutes) throws Exception {
+    synchronized (lock) {
+      ensureSeeded();
+      StudioDao sdao = dao();
+      sdao.clearTempScheduleRules();
+      if (sceneId != null && !sceneId.trim().isEmpty() && durationMinutes > 0) {
+        long now = System.currentTimeMillis();
+        ScheduleRule temp = new ScheduleRule();
+        temp.id = "rule_temp_override";
+        temp.name = "임시 지정 재생 (" + durationMinutes + "분)";
+        temp.ruleType = "TEMP";
+        temp.sceneId = sceneId.trim();
+        temp.priority = 1;
+        temp.enabled = true;
+        temp.expiresAt = now + durationMinutes * 60_000L;
+        temp.createdAt = now;
+        temp.updatedAt = now;
+        sdao.saveScheduleRule(temp);
+      }
+      store.changed();
+    }
+  }
 }

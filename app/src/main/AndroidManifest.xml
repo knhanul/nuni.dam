@@ -11,7 +11,10 @@
   <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
   <activity android:name=".SettingsActivity" android:exported="true"/>
   <activity android:name=".LibraryActivity" android:exported="false"/>
+  <activity android:name=".AlbumsActivity" android:exported="false"/>
   <activity android:name=".QuotesActivity" android:exported="false"/>
+  <activity android:name=".ScenesActivity" android:exported="false"/>
+  <activity android:name=".SchedulesActivity" android:exported="false"/>
   <activity android:name=".FrameActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden"/>
   <activity android:name=".TransferActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden"/>
   <activity-alias android:name=".HomeEntry" android:targetActivity=".MainActivity" android:enabled="false" android:exported="true" android:label="누니담 액자 홈"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.HOME"/><category android:name="android.intent.category.DEFAULT"/></intent-filter></activity-alias>

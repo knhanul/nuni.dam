@@ -191,14 +191,51 @@ public final class SettingsActivity extends Activity {
           "누니담 0.1.0 · 오픈소스 고지 · 실제 구현 범위",
           twoPane);
 
+      LinearLayout linkCard = Ui.card(col);
+      Ui.section(linkCard, R.drawable.ic_scene, "앱 내 스튜디오 콘텐츠 · 편성 관리");
+      Ui.settingRow(
+          linkCard,
+          R.drawable.ic_folder,
+          "앨범 관리",
+          "앨범 생성·정렬·대표 사진·수록 사진 정리",
+          () -> openStudioTabOrActivity("ALBUMS", AlbumsActivity.class));
+      linkCard.addView(Ui.divider(host), new LinearLayout.LayoutParams(-1, Ui.dp(host, 1)));
+      Ui.settingRow(
+          linkCard,
+          R.drawable.ic_quote,
+          "글귀 라이브러리",
+          "카테고리별 명언·시 편집, CSV 불러오기·내보내기",
+          () -> openStudioTabOrActivity("TEXTS", QuotesActivity.class));
+      linkCard.addView(Ui.divider(host), new LinearLayout.LayoutParams(-1, Ui.dp(host, 1)));
+      Ui.settingRow(
+          linkCard,
+          R.drawable.ic_scene,
+          "재생 장면(Scene) 관리",
+          "실시간 미리보기와 함께 레이아웃·색감·연결 앨범/글귀 구성",
+          () -> openStudioTabOrActivity("SCENES", ScenesActivity.class));
+      linkCard.addView(Ui.divider(host), new LinearLayout.LayoutParams(-1, Ui.dp(host, 1)));
+      Ui.settingRow(
+          linkCard,
+          R.drawable.ic_calendar,
+          "주간 편성표 관리",
+          "요일별·시간대별 재생 장면 자동 전환 및 임시 즉시 재생",
+          () -> openStudioTabOrActivity("SCHEDULES", SchedulesActivity.class));
       if (onOpenCustomize != null) {
-        LinearLayout linkCard = Ui.card(col);
+        linkCard.addView(Ui.divider(host), new LinearLayout.LayoutParams(-1, Ui.dp(host, 1)));
         Ui.settingRow(
             linkCard,
             R.drawable.ic_sun,
-            "화면 구성 · 색감 · 문구 꾸미기",
-            "실제 미리보기를 보며 화면 구성과 색감, 시·명언을 변경합니다.",
+            "간편 화면 꾸미기",
+            "기본 화면 구성과 색감을 빠르게 변경합니다.",
             onOpenCustomize);
+      }
+    }
+
+    private void openStudioTabOrActivity(String tabKey, Class<? extends Activity> fallbackCls) {
+      if (host instanceof MainActivity) {
+        ((MainActivity) host).switchTab(tabKey);
+      } else {
+        Ui.open(host, fallbackCls);
       }
     }
 
