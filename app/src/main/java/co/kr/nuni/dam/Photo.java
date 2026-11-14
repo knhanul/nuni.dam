@@ -6,7 +6,7 @@ import androidx.room.*;
 @Entity(tableName = "photos")
 public class Photo {
   @PrimaryKey @NonNull public String id = "";
-  @NonNull public String name = "사진", note = "", faces = "[]";
+  @NonNull public String name = "사진", note = "", faces = "[]", publicUri = "";
   public long importedAt, capturedAt, bytes, trashedAt;
   public int width, height, accent = 0xff526951;
   public boolean owned, favourite;

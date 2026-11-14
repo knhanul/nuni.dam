@@ -55,7 +55,18 @@ public final class SettingsActivity extends Activity {
   @Override
   protected void onActivityResult(int req, int result, Intent data) {
     super.onActivityResult(req, result, data);
+    PublicArchive.onDeleteResult(this, req, result);
     handleActivityResult(req, result, data);
+  }
+
+  @Override
+  public void onRequestPermissionsResult(
+      int requestCode, String[] permissions, int[] grantResults) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    if ((requestCode == PublicArchive.REQ_READ || requestCode == PublicArchive.REQ_WRITE)
+        && controller != null) {
+      controller.rebuild();
+    }
   }
 
   public static final class Controller {
@@ -152,10 +163,10 @@ public final class SettingsActivity extends Activity {
           "사진 보관",
           String.format(
               Locale.KOREA,
-              "상한 %d MB · 폴더 %s · 얼굴 분석 %s",
+              "상한 %d MB · 폴더 %s · 지워도 보관 %s",
               a.prefs.quota(),
               a.prefs.folder().isEmpty() ? "미연결" : "연결됨",
-              a.prefs.ai() ? "켜짐" : "꺼짐"),
+              PublicArchive.keep(a.prefs) ? "켜짐" : "꺼짐"),
           twoPane);
       groupCard.addView(Ui.divider(host), new LinearLayout.LayoutParams(-1, Ui.dp(host, 1)));
       addGroupItem(
@@ -844,6 +855,151 @@ public final class SettingsActivity extends Activity {
           });
       String syncStatus = a.prefs.raw.getString("syncStatus", "폴더 동기화 이력 없음");
       storage.addView(Ui.text(host, "동기화 상태: " + syncStatus, 13, Ui.MUTED));
+
+      LinearLayout keepCard = Ui.card(pane);
+      Ui.section(keepCard, R.drawable.ic_folder, "사진 보관");
+      PublicArchive.Stats st = PublicArchive.stats(host);
+      keepCard.addView(
+          Ui.text(
+              host,
+              "앱이 담은 사진 원본을 기기의 사진/누니담 폴더에도 한 장씩 둡니다. 앱을 지웠다가 다시 설치해도 이 폴더에서 되살릴 수 있습니다. 갤러리 앱에도 보일 수 있습니다.",
+              14,
+              Ui.MUTED));
+      Ui.gap(keepCard, 8);
+      keepCard.addView(Ui.text(host, st.summary(), 15, Ui.INK));
+      String mig = PublicArchive.migrationStatus(a.prefs);
+      if (!mig.isEmpty()) {
+        keepCard.addView(Ui.text(host, mig, 13, Ui.MUTED));
+      }
+      Switch keepSw = new Switch(host);
+      keepSw.setText("앱을 지워도 사진 보관");
+      keepSw.setTextColor(Ui.INK);
+      keepSw.setTextSize(15.5f);
+      keepSw.setChecked(PublicArchive.keep(a.prefs));
+      keepCard.addView(keepSw);
+      keepSw.setOnCheckedChangeListener(
+          (v, on) -> {
+            if (on) {
+              a.prefs.flag(PublicArchive.PREF_KEEP, true);
+              if (PublicArchive.hasWritePermission(host)) {
+                PublicCopyWorker.scheduleMigration(host);
+                PublicCopyWorker.scheduleBackup(host);
+                Ui.toast(host, "앞으로 담는 사진을 사진 폴더에도 둡니다.");
+              } else {
+                PublicArchive.requestWrite(
+                    host,
+                    () -> {
+                      PublicCopyWorker.scheduleMigration(host);
+                      PublicCopyWorker.scheduleBackup(host);
+                    });
+              }
+              return;
+            }
+            new AlertDialog.Builder(host)
+                .setTitle("공개 폴더 보관을 끌까요?")
+                .setMessage("앞으로 새 사진은 사진/누니담 폴더에 복사하지 않습니다. 이미 두어 둔 보관본을 지금 지울까요?")
+                .setPositiveButton(
+                    "보관본 지우기",
+                    (d, k) -> {
+                      a.prefs.flag(PublicArchive.PREF_KEEP, false);
+                      a.io.execute(
+                          () -> {
+                            PublicArchive.removeAllCopies(a);
+                            a.main.post(
+                                () -> {
+                                  PublicArchive.launchPendingDeletes(host);
+                                  rebuild();
+                                  Ui.toast(host, "사진 폴더 보관본을 지웠습니다.");
+                                });
+                          });
+                    })
+                .setNeutralButton(
+                    "보관본은 남기기",
+                    (d, k) -> {
+                      a.prefs.flag(PublicArchive.PREF_KEEP, false);
+                      rebuild();
+                    })
+                .setNegativeButton("취소", (d, k) -> keepSw.setChecked(true))
+                .setOnCancelListener(d -> keepSw.setChecked(true))
+                .show();
+          });
+      Ui.add(
+          keepCard,
+          "이전 누니담 사진 불러오기",
+          false,
+          R.drawable.ic_download,
+          () ->
+              PublicArchive.requestRead(
+                  host,
+                  () -> {
+                    int n = PublicArchive.countPublicPhotos(host);
+                    if (n <= 0) {
+                      Ui.toast(host, "사진/누니담 폴더에서 불러올 사진이 없습니다.");
+                      return;
+                    }
+                    new AlertDialog.Builder(host)
+                        .setTitle("이전 사진을 불러올까요?")
+                        .setMessage("이전 누니담 사진 " + n + "장을 찾았어요. 불러올까요?")
+                        .setPositiveButton(
+                            "불러오기", (d, k) -> restorePublicPhotos())
+                        .setNegativeButton("취소", null)
+                        .show();
+                  }));
+      Ui.add(
+          keepCard,
+          "누니담 사진 폴더 비우기",
+          false,
+          R.drawable.ic_trash,
+          () ->
+              new AlertDialog.Builder(host)
+                  .setTitle("사진 폴더를 비울까요?")
+                  .setMessage(
+                      "사진/누니담 폴더의 보관본과 설정 백업 파일을 삭제합니다. 앱 안에 있는 사진은 그대로 둡니다. 이 작업은 되돌릴 수 없습니다.")
+                  .setPositiveButton(
+                      "폴더 비우기",
+                      (d, k) ->
+                          a.io.execute(
+                              () -> {
+                                PublicArchive.emptyFolder(host);
+                                a.main.post(
+                                    () -> {
+                                      PublicArchive.launchPendingDeletes(host);
+                                      rebuild();
+                                      Ui.toast(host, "사진 폴더를 비웠습니다.");
+                                    });
+                              }))
+                  .setNegativeButton("취소", null)
+                  .show());
+    }
+
+    private void restorePublicPhotos() {
+      TextView progress = Ui.text(host, "사진을 불러오는 중…", 16, Ui.INK);
+      progress.setPadding(Ui.dp(host, 20), Ui.dp(host, 16), Ui.dp(host, 20), Ui.dp(host, 16));
+      AlertDialog dlg =
+          new AlertDialog.Builder(host)
+              .setTitle("이전 사진 불러오기")
+              .setView(progress)
+              .setCancelable(false)
+              .create();
+      dlg.show();
+      a.io.execute(
+          () -> {
+            try {
+              int n = PublicArchive.restoreAll(a);
+              a.main.post(
+                  () -> {
+                    if (dlg.isShowing()) dlg.dismiss();
+                    rebuild();
+                    Ui.toast(host, n + "장을 불러왔습니다.");
+                  });
+            } catch (Exception e) {
+              a.main.post(
+                  () -> {
+                    if (dlg.isShowing()) dlg.dismiss();
+                    Ui.error(host, e);
+                  });
+            }
+          });
     }
 
     private void buildLaunchSection(LinearLayout pane) {

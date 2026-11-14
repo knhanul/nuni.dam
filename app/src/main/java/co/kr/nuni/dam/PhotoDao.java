@@ -67,6 +67,12 @@ public interface PhotoDao {
   @Query("DELETE FROM quotes WHERE id=:id")
   void deleteQuote(int id);
 
+  @Query("SELECT * FROM photos WHERE owned=1")
+  java.util.List<Photo> owned();
+
+  @Query("UPDATE photos SET publicUri=:uri WHERE id=:id")
+  void setPublicUri(String id, String uri);
+
   @Query("SELECT COALESCE(MAX(id),999) FROM quotes WHERE id>=1000")
   int maxCustomQuoteId();
 

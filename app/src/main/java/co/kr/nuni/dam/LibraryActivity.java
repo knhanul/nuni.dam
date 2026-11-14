@@ -47,6 +47,12 @@ public final class LibraryActivity extends Activity implements PhotoStore.Listen
     super.onDestroy();
   }
 
+  @Override
+  protected void onActivityResult(int request, int result, android.content.Intent data) {
+    super.onActivityResult(request, result, data);
+    PublicArchive.onDeleteResult(this, request, result);
+  }
+
   public void changed() {
     runOnUiThread(
         () -> {
@@ -319,7 +325,7 @@ public final class LibraryActivity extends Activity implements PhotoStore.Listen
                   Set<String> ids = new HashSet<>(selectedIds);
                   new AlertDialog.Builder(host)
                       .setTitle(ids.size() + "장을 영구 삭제할까요?")
-                      .setMessage("누니담 사본을 영구 삭제합니다. 원본 기기의 사진은 지우지 않습니다.")
+                      .setMessage("누니담 사본을 영구 삭제합니다. 사진/누니담 폴더의 보관본도 함께 지웁니다. 원본 기기의 사진은 지우지 않습니다.")
                       .setPositiveButton(
                           ids.size() + "장 영구 삭제",
                           (d, w) -> {
@@ -332,6 +338,7 @@ public final class LibraryActivity extends Activity implements PhotoStore.Listen
                                     } catch (Exception ignored) {
                                     }
                                   }
+                                  a.main.post(() -> PublicArchive.launchPendingDeletes(host));
                                 });
                           })
                       .setNegativeButton("취소", null)
@@ -673,7 +680,7 @@ public final class LibraryActivity extends Activity implements PhotoStore.Listen
     private void confirmPurgeSingle(Photo p) {
       new AlertDialog.Builder(host)
           .setTitle("1장을 영구 삭제할까요?")
-          .setMessage("누니담 사본을 영구 삭제합니다. 원본 기기의 사진은 변경하지 않습니다.")
+          .setMessage("누니담 사본을 영구 삭제합니다. 사진/누니담 폴더의 보관본도 함께 지웁니다. 원본 기기의 사진은 변경하지 않습니다.")
           .setPositiveButton(
               "1장 영구 삭제",
               (x, y) ->
@@ -683,7 +690,9 @@ public final class LibraryActivity extends Activity implements PhotoStore.Listen
                           a.store.purge(p.id);
                         } catch (Exception e) {
                           a.main.post(() -> Ui.error(host, e));
+                          return;
                         }
+                        a.main.post(() -> PublicArchive.launchPendingDeletes(host));
                       }))
           .setNegativeButton("취소", null)
           .show();

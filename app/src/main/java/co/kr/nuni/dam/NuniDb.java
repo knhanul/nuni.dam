@@ -21,7 +21,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
       PublishedConfiguration.class,
       AdminSession.class
     },
-    version = 2,
+    version = 3,
     exportSchema = true)
 public abstract class NuniDb extends RoomDatabase {
   public abstract PhotoDao photos();
@@ -118,6 +118,15 @@ public abstract class NuniDb extends RoomDatabase {
                   + " `userAgent` TEXT NOT NULL, `label` TEXT NOT NULL, `createdAt` INTEGER NOT"
                   + " NULL, `lastAccessAt` INTEGER NOT NULL, `expiresAt` INTEGER NOT NULL,"
                   + " `revoked` INTEGER NOT NULL, PRIMARY KEY(`sessionId`))");
+        }
+      };
+
+  public static final Migration MIGRATION_2_3 =
+      new Migration(2, 3) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+          db.execSQL(
+              "ALTER TABLE `photos` ADD COLUMN `publicUri` TEXT NOT NULL DEFAULT ''");
         }
       };
 }

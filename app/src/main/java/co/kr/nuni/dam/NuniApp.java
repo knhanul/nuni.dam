@@ -25,7 +25,7 @@ public final class NuniApp extends Application {
     prefs = new Prefs(this);
     db =
         Room.databaseBuilder(this, NuniDb.class, "nunidam.db")
-            .addMigrations(NuniDb.MIGRATION_1_2)
+            .addMigrations(NuniDb.MIGRATION_1_2, NuniDb.MIGRATION_2_3)
             .build();
     store = new PhotoStore(this, db, prefs);
     studio = new StudioRepository(this, db, store, prefs);
@@ -41,6 +41,7 @@ public final class NuniApp extends Application {
             studio.ensureSeeded();
           } catch (Exception ignored) {
           }
+          PublicArchive.onAppStart(NuniApp.this);
           if (prefs.remoteEnabled()) {
             startStudioServer();
           }

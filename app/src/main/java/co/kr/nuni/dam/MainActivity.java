@@ -79,21 +79,90 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
     maybeShowExitNotice();
   }
 
+  private boolean restoreAskShown;
+
   /** 액자 재생을 가리지 않는다. 홈으로 바로 액자를 여는 경우에는 나중에 메인으로 돌아왔을 때 보여 준다. */
   private void maybeShowExitNotice() {
-    if (!Ui.alive(this) || !ExitLog.hasPendingNotice(this)) return;
+    if (!Ui.alive(this)) return;
     if (!homeOpened && getIntent() != null && getIntent().hasCategory(Intent.CATEGORY_HOME)) {
       return;
     }
-    ExitLog.consumePendingNotice(this);
+    if (ExitLog.hasPendingNotice(this)) {
+      ExitLog.consumePendingNotice(this);
+      AlertDialog d =
+          new AlertDialog.Builder(this)
+              .setTitle("앱이 비정상 종료됐어요")
+              .setMessage("지난번에 앱이 비정상 종료됐어요. 설정 > 앱 종료 기록에서 확인할 수 있어요.")
+              .setPositiveButton("확인", null)
+              .setNeutralButton("기록 보기", (x, w) -> switchTab("SETTINGS"))
+              .create();
+      d.setOnDismissListener(x -> maybeShowRestoreOffer());
+      d.show();
+      return;
+    }
+    maybeShowRestoreOffer();
+  }
+
+  private void maybeShowRestoreOffer() {
+    if (!Ui.alive(this) || restoreAskShown) return;
+    if (!PublicArchive.hasPendingRestoreOffer(this)) return;
+    if (!homeOpened && getIntent() != null && getIntent().hasCategory(Intent.CATEGORY_HOME)) {
+      return;
+    }
+    restoreAskShown = true;
+    if (!PublicArchive.hasReadPermission(this)) {
+      PublicArchive.requestRead(this, this::showRestoreCountDialog);
+      return;
+    }
+    PublicArchive.refreshOfferCount(this);
+    showRestoreCountDialog();
+  }
+
+  private void showRestoreCountDialog() {
+    if (!Ui.alive(this)) return;
+    PublicArchive.refreshOfferCount(this);
+    int n = PublicArchive.countPublicPhotos(this);
+    if (n <= 0) {
+      PublicArchive.markOfferDeclined(this);
+      return;
+    }
     new AlertDialog.Builder(this)
-        .setTitle("앱이 비정상 종료됐어요")
-        .setMessage("지난번에 앱이 비정상 종료됐어요. 설정 > 앱 종료 기록에서 확인할 수 있어요.")
-        .setPositiveButton("확인", null)
-        .setNeutralButton(
-            "기록 보기",
-            (d, w) -> switchTab("SETTINGS"))
+        .setTitle("이전 사진을 찾았어요")
+        .setMessage("이전 누니담 사진 " + n + "장을 찾았어요. 불러올까요?")
+        .setPositiveButton("불러오기", (d, w) -> restorePublicPhotos())
+        .setNegativeButton("지금은 그만", (d, w) -> PublicArchive.markOfferDeclined(this))
+        .setOnCancelListener(d -> PublicArchive.markOfferDeclined(this))
         .show();
+  }
+
+  private void restorePublicPhotos() {
+    TextView progress = Ui.text(this, "사진을 불러오는 중…", 16, Ui.INK);
+    progress.setPadding(Ui.dp(this, 20), Ui.dp(this, 16), Ui.dp(this, 20), Ui.dp(this, 16));
+    AlertDialog dlg =
+        new AlertDialog.Builder(this)
+            .setTitle("이전 사진 불러오기")
+            .setView(progress)
+            .setCancelable(false)
+            .create();
+    dlg.show();
+    a.io.execute(
+        () -> {
+          try {
+            int n = PublicArchive.restoreAll(a);
+            a.main.post(
+                () -> {
+                  if (dlg.isShowing()) dlg.dismiss();
+                  refreshOrRenderCurrentTab();
+                  Ui.toast(this, n + "장을 불러왔습니다.");
+                });
+          } catch (Exception e) {
+            a.main.post(
+                () -> {
+                  if (dlg.isShowing()) dlg.dismiss();
+                  Ui.error(this, e);
+                });
+          }
+        });
   }
 
   protected void onDestroy() {
@@ -971,8 +1040,33 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
         2);
   }
 
+  @Override
+  public void onRequestPermissionsResult(
+      int requestCode, String[] permissions, int[] grantResults) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    if (requestCode == PublicArchive.REQ_READ) {
+      boolean ok =
+          grantResults.length > 0
+              && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED;
+      if (ok) {
+        PublicArchive.refreshOfferCount(this);
+        showRestoreCountDialog();
+      } else {
+        Ui.toast(this, "권한이 없어 이전 사진을 확인하지 못했습니다. 설정 > 사진 보관에서 다시 시도할 수 있어요.");
+      }
+    } else if (requestCode == PublicArchive.REQ_WRITE) {
+      if (grantResults.length > 0
+          && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+        PublicCopyWorker.scheduleMigration(this);
+        PublicCopyWorker.scheduleBackup(this);
+      }
+    }
+  }
+
   protected void onActivityResult(int request, int result, Intent data) {
     super.onActivityResult(request, result, data);
+    PublicArchive.onDeleteResult(this, request, result);
+    if (request == PublicArchive.REQ_DELETE) return;
     if (request == 10 || request == 11 || request == 12 || request == 13) {
       if (settingsController != null) settingsController.onActivityResult(request, result, data);
       return;

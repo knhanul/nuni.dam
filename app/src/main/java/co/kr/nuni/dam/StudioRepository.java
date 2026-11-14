@@ -1084,6 +1084,10 @@ public final class StudioRepository {
               p.focusY = (float) pm.optDouble("focusY", -1);
               if (existing == null) db.photos().insert(p);
               else db.photos().update(p);
+              try {
+                PublicArchive.ensureCopy(NuniApp.of(c), p);
+              } catch (Exception ignored) {
+              }
               importedPhotos++;
             }
           }
@@ -1261,6 +1265,8 @@ public final class StudioRepository {
           }
         }
         ensureSeeded();
+        PublicCopyWorker.scheduleMigration(c);
+        PublicCopyWorker.scheduleBackup(c);
         publishToTablet("패키지 복원 적용");
         return new JSONObject()
             .put("ok", true)

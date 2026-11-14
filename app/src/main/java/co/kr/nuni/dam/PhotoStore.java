@@ -147,6 +147,10 @@ public final class PhotoStore {
         old.owned = true;
         old.trashedAt = 0;
         dao().update(old);
+        try {
+          PublicArchive.ensureCopy(NuniApp.of(c), old);
+        } catch (Exception ignored) {
+        }
         changed();
       }
       return new ImportResult(old, true);
@@ -260,6 +264,13 @@ public final class PhotoStore {
       }
       if (old == null) dao().insert(p);
       else dao().update(p);
+      if (p.owned) {
+        try {
+          PublicArchive.copyFromFile(NuniApp.of(c), p, input);
+        } catch (Exception ignored) {
+        }
+        PublicCopyWorker.scheduleBackup(c);
+      }
       changed();
       return new ImportResult(p, false);
     } catch (OutOfMemoryError error) {
@@ -303,7 +314,9 @@ public final class PhotoStore {
           originalFile(id).delete();
         } catch (Exception ignored) {
         }
+        PublicArchive.deleteCopy(NuniApp.of(c), p);
         dao().purge(id);
+        PublicCopyWorker.scheduleBackup(c);
         changed();
       }
     }
