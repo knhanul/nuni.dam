@@ -16,6 +16,7 @@ public final class FrameView extends View {
     public boolean showClock = true;
     public boolean showWeather = false;
     public boolean showCaptureDate = true;
+    public boolean showPlace = true;
     public boolean quoteOnPhoto = true;
     public String textDisplayMode = "OVERLAY"; // OVERLAY, DEDICATED, SPLIT, NONE
     public String quoteKind = "ALL";
@@ -34,6 +35,7 @@ public final class FrameView extends View {
       c.theme = p.theme();
       c.showClock = p.showClock();
       c.showCaptureDate = p.showCaptureDate();
+      c.showPlace = p.showPlace();
       c.quoteOnPhoto = p.quoteOnPhoto();
       c.textDisplayMode = p.quoteOnPhoto() ? "OVERLAY" : "NONE";
       c.quoteKind = p.quoteKind();
@@ -53,6 +55,7 @@ public final class FrameView extends View {
       c.showClock = sc.showClock;
       c.showWeather = sc.showWeather;
       c.showCaptureDate = sc.showCaptureDate;
+      c.showPlace = fallback.showPlace();
       c.textDisplayMode = sc.textDisplayMode;
       c.quoteOnPhoto = !"NONE".equals(sc.textDisplayMode);
       c.quoteKind = "ALL";
@@ -74,6 +77,7 @@ public final class FrameView extends View {
           .putString("theme", theme)
           .putBoolean("showClock", showClock)
           .putBoolean("showCaptureDate", showCaptureDate)
+          .putBoolean("showPlace", showPlace)
           .putBoolean("quoteOnPhoto", quoteOnPhoto)
           .putString("quoteKind", quoteKind)
           .putString("quoteCycle", quoteCycle)
@@ -92,7 +96,6 @@ public final class FrameView extends View {
   private final Rect src = new Rect();
   private final SimpleDateFormat clockFormat = new SimpleDateFormat("HH:mm", Locale.ROOT);
   private final SimpleDateFormat dayFormat = new SimpleDateFormat("M월 d일 EEEE", Locale.KOREAN);
-  private final SimpleDateFormat captureFormat = new SimpleDateFormat("yyyy. MM. dd", Locale.KOREA);
   private final android.util.LruCache<String, StaticLayout> layouts =
       new android.util.LruCache<>(16);
   private long minuteStamp = -1;
@@ -147,15 +150,25 @@ public final class FrameView extends View {
     return dimmedOverlay;
   }
 
+  private String captionText(Config cfg) {
+    if (samplePreview && (captureText != null && !captureText.isEmpty())) return captureText;
+    return PlaceNames.caption(
+        photo == null ? 0L : photo.capturedAt,
+        photo == null ? "" : photo.placeName,
+        cfg.showCaptureDate,
+        cfg.showPlace);
+  }
+
+  private boolean showsCaption(Config cfg) {
+    return !captionText(cfg).isEmpty();
+  }
+
   public void show(Photo data, Bitmap bitmap, String text) {
     samplePreview = false;
     photo = data;
     image = bitmap;
     faces = data != null ? FaceAnalyzer.boxes(data.faces) : new double[0];
-    captureText =
-        data != null && data.capturedAt > 0
-            ? captureFormat.format(new Date(data.capturedAt))
-            : "소중한 순간";
+    captureText = "";
     phrase = text == null ? "" : text;
     error = "";
     began = SystemClock.elapsedRealtime();
@@ -277,7 +290,7 @@ public final class FrameView extends View {
               ? photo.note
               : (cfg.quoteOnPhoto && !"NONE".equals(cfg.quoteKind) && !"NONE".equals(cfg.textDisplayMode) ? phrase : "");
       Core.QuoteEntry entry = Core.parseQuote(rawCaption);
-      boolean hasText = !entry.body.isEmpty() || cfg.showClock || cfg.showCaptureDate;
+      boolean hasText = !entry.body.isEmpty() || cfg.showClock || showsCaption(cfg);
       if (hasText) {
         boolean tallScrim = !entry.body.isEmpty() && (entry.isPoem() || entry.body.length() > 45);
         p.setShader(tallScrim ? deepScrim : scrim);
@@ -287,14 +300,14 @@ public final class FrameView extends View {
       float sh = previewMode ? 0 : shift(s);
       if (w > h && !entry.body.isEmpty() && cfg.showClock) {
         text(c, time(), w * .055f + sh, h * .88f + sh, 48 * s * fs, Color.WHITE, false);
-        if (cfg.showCaptureDate)
-          text(c, captureText, w * .055f + sh, h * .935f + sh, 14 * s * fs, 0xd8ffffff, false);
+        if (showsCaption(cfg))
+          text(c, captionText(cfg), w * .055f + sh, h * .935f + sh, 14 * s * fs, 0xd8ffffff, false);
         drawLiteraryOverlay(
             c, entry, w * .34f + sh, w * .945f, h * .935f + sh, s * fs, 0xffffffff, 0xd8e8ede5);
       } else {
         float bottomY = h * .93f + sh;
-        if (cfg.showCaptureDate) {
-          text(c, captureText, w * .055f + sh, bottomY, 13.5f * s * fs, 0xd0ffffff, false);
+        if (showsCaption(cfg)) {
+          text(c, captionText(cfg), w * .055f + sh, bottomY, 13.5f * s * fs, 0xd0ffffff, false);
           bottomY -= 22 * s * fs;
         }
         if (!entry.body.isEmpty()) {
@@ -475,11 +488,11 @@ public final class FrameView extends View {
       if (calendar && !compact) y = calendar(c, x, y, width, ink, muted, s) + 18 * s;
       drawBoardQuote(c, entry, x, y, width, b.bottom - 28 * s, s * fs, ink, muted);
     }
-    if (cfg.showCaptureDate) {
+    if (showsCaption(cfg) || calendar || paused) {
       String foot =
-          captureText
-              + (calendar ? "  ·  이번 달 달력" : "")
-              + (paused ? "  ·  일시 정지" : "");
+          captionText(cfg)
+              + (calendar ? (captionText(cfg).isEmpty() ? "" : "  ·  ") + "이번 달 달력" : "")
+              + (paused ? ((captionText(cfg).isEmpty() && !calendar) ? "" : "  ·  ") + "일시 정지" : "");
       text(c, foot, x, b.bottom - 8 * s, 12.5f * s, muted, false);
     }
     c.restore();

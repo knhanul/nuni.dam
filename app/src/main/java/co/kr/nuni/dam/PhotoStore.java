@@ -168,8 +168,9 @@ public final class PhotoStore {
       if (bitmap == null) throw new IOException("읽을 수 없는 이미지입니다. JPEG/PNG로 변환해 주세요.");
       long captured = 0;
       int orientation = 1;
+      ExifInterface exif = null;
       try {
-        ExifInterface exif = new ExifInterface(input);
+        exif = new ExifInterface(input);
         orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, 1);
         String date = exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL);
         if (date != null) {
@@ -232,6 +233,8 @@ public final class PhotoStore {
       p.height = rotated.getHeight();
       p.bytes = part.length();
       p.owned = (old != null && old.owned) || owned;
+      Places.applyExif(p, exif);
+      if (p.hasGps) Places.applyCachedName(NuniApp.of(c), p);
       p.accent =
           Palette.from(rotated)
               .resizeBitmapArea(6400)
@@ -264,6 +267,7 @@ public final class PhotoStore {
       }
       if (old == null) dao().insert(p);
       else dao().update(p);
+      Places.afterImport(NuniApp.of(c), p);
       if (p.owned) {
         try {
           PublicArchive.copyFromFile(NuniApp.of(c), p, input);

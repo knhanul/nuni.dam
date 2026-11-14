@@ -365,6 +365,8 @@ public final class PublicArchive {
       }
     }
     if (backup != null) applyBackupMetadata(a, backup);
+    Places.fillFromCache(a);
+    GeocodeWorker.schedule(a);
     markOfferDone(a);
     PublicCopyWorker.scheduleBackup(a);
     a.store.changed();
@@ -427,6 +429,7 @@ public final class PublicArchive {
     if (o.outHeight > 0) p.height = o.outHeight;
     if (existing == null) a.db.photos().insert(p);
     else a.db.photos().update(p);
+    Places.afterImport(a, p);
     return p;
   }
 
@@ -515,7 +518,8 @@ public final class PublicArchive {
               .put("accent", p.accent)
               .put("faces", p.faces)
               .put("width", p.width)
-              .put("height", p.height));
+              .put("height", p.height)
+              .put("placeName", p.placeName));
     }
     root.put("photos", photos);
 
@@ -591,6 +595,9 @@ public final class PublicArchive {
       p.focusX = (float) meta.optDouble("focusX", p.focusX);
       p.focusY = (float) meta.optDouble("focusY", p.focusY);
       if (meta.has("capturedAt") && p.capturedAt == 0) p.capturedAt = meta.optLong("capturedAt");
+      if (meta.has("placeName") && (p.placeName == null || p.placeName.isEmpty())) {
+        p.placeName = meta.optString("placeName", "");
+      }
       a.db.photos().update(p);
     } catch (Exception ignored) {
     }

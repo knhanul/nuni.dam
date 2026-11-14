@@ -866,6 +866,25 @@ public final class ScenesActivity extends Activity implements PhotoStore.Listene
           });
       card.addView(dateSw);
 
+      Switch placeSw = new Switch(host);
+      placeSw.setText("위치 표시");
+      placeSw.setTextColor(Ui.INK);
+      placeSw.setChecked(a.prefs.showPlace());
+      placeSw.setOnCheckedChangeListener(
+          (v, on) -> {
+            a.prefs.flag("showPlace", on);
+            if (livePreview != null) {
+              livePreview.setOverrideConfig(FrameView.Config.fromScene(draft, a.prefs));
+            }
+          });
+      card.addView(placeSw);
+      card.addView(
+          Ui.text(
+              host,
+              "위치 표시는 앱 전체에 적용됩니다. 좌표는 기기에만 저장되며, 이름을 찾을 때만 지오코딩 서비스에 전달됩니다.",
+              13,
+              Ui.MUTED));
+
       Switch shufSw = new Switch(host);
       shufSw.setText("사진 무작위 순서(셔플)");
       shufSw.setTextColor(Ui.INK);

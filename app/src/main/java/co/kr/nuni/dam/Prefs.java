@@ -79,6 +79,10 @@ public final class Prefs {
     return raw.getBoolean("showCaptureDate", true);
   }
 
+  public boolean showPlace() {
+    return raw.getBoolean("showPlace", true);
+  }
+
   public int fontScale() {
     return raw.getInt("fontScale", 100);
   }
@@ -280,6 +284,7 @@ public final class Prefs {
         .put("quoteOnPhoto", quoteOnPhoto())
         .put("showClock", showClock())
         .put("showCaptureDate", showCaptureDate())
+        .put("showPlace", showPlace())
         .put("fontScale", fontScale())
         .put("motionEnabled", motionEnabled())
         .put("idleMinutes", idleMinutes())
@@ -320,6 +325,7 @@ public final class Prefs {
         qp = o.optBoolean("quoteOnPhoto", true),
         sc = o.optBoolean("showClock", true),
         sd = o.optBoolean("showCaptureDate", true),
+        sp = o.optBoolean("showPlace", true),
         me = o.optBoolean("motionEnabled", false),
         nr = o.optBoolean("nightReact", false);
     // Note: Device-specific verification flags (such as screenOffWakeVerified or camera permissions)
@@ -348,6 +354,7 @@ public final class Prefs {
         .putBoolean("quoteOnPhoto", qp)
         .putBoolean("showClock", sc)
         .putBoolean("showCaptureDate", sd)
+        .putBoolean("showPlace", sp)
         .putBoolean("motionEnabled", me)
         .putBoolean("nightReact", nr)
         .apply();

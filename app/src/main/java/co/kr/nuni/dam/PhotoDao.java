@@ -67,6 +67,9 @@ public interface PhotoDao {
   @Query("DELETE FROM quotes WHERE id=:id")
   void deleteQuote(int id);
 
+  @Query("SELECT * FROM photos WHERE hasGps=1 AND placeName='' ")
+  List<Photo> needingPlaceName();
+
   @Query("SELECT * FROM photos WHERE owned=1")
   java.util.List<Photo> owned();
 

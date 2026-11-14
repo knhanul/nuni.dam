@@ -1151,7 +1151,9 @@ public final class StudioServer extends NanoHTTPD {
         .put("height", p.height)
         .put("favourite", p.favourite)
         .put("focusX", p.focusX)
-        .put("focusY", p.focusY);
+        .put("focusY", p.focusY)
+        .put("placeName", p.placeName)
+        .put("hasGps", p.hasGps);
   }
 
   private static long requireLength(IHTTPSession s, long max) throws IOException {

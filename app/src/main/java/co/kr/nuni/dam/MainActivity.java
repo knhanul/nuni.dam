@@ -795,7 +795,7 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
 
     // 3. 시계 · 날짜 · 문구
     LinearLayout infoCard = Ui.card(optionsCol);
-    Ui.section(infoCard, R.drawable.ic_quote, "3. 시계 · 날짜 · 문구");
+    Ui.section(infoCard, R.drawable.ic_quote, "3. 시계 · 날짜 · 위치 · 문구");
     Switch clockSw = new Switch(this);
     clockSw.setText("시계 표시");
     clockSw.setTextColor(Ui.INK);
@@ -817,6 +817,23 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
           preview.setOverrideConfig(draftConfig);
         });
     infoCard.addView(dateSw);
+
+    Switch placeSw = new Switch(this);
+    placeSw.setText("위치 표시");
+    placeSw.setTextColor(Ui.INK);
+    placeSw.setChecked(draftConfig.showPlace);
+    placeSw.setOnCheckedChangeListener(
+        (v, on) -> {
+          draftConfig.showPlace = on;
+          preview.setOverrideConfig(draftConfig);
+        });
+    infoCard.addView(placeSw);
+    infoCard.addView(
+        Ui.text(
+            this,
+            "위치 이름은 사진에 담긴 좌표로 찾습니다. 좌표는 기기에만 저장되며, 이름을 찾을 때만 지오코딩 서비스에 전달됩니다.",
+            13,
+            Ui.MUTED));
 
     Switch overlaySw = new Switch(this);
     overlaySw.setText("전체 화면 사진 위에도 명언·시 표시");

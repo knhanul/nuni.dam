@@ -541,6 +541,17 @@ public final class SettingsActivity extends Activity {
     private void buildPowerSection(LinearLayout pane) {
       PowerSaving.DeviceCapabilities caps = PowerSaving.DeviceCapabilities.inspect(host);
 
+      LinearLayout captionCard = Ui.card(pane);
+      Ui.section(captionCard, R.drawable.ic_clock, "위치·날짜 표시");
+      toggle(captionCard, "촬영 날짜 표시", "showCaptureDate", true);
+      toggle(captionCard, "위치 표시", "showPlace", true);
+      captionCard.addView(
+          Ui.text(
+              host,
+              "액자 화면에 ‘2024년 5월 3일 · 제주 서귀포시’처럼 촬영일과 장소 이름을 보여 줍니다. GPS가 없는 사진은 날짜만 표시합니다. 위치 이름은 사진에 담긴 좌표로 찾으며, 좌표는 이 기기에만 저장됩니다. 이름을 찾을 때만 기기의 지오코딩 서비스 또는 OpenStreetMap에 좌표가 전달됩니다.",
+              13,
+              Ui.MUTED));
+
       LinearLayout card1 = Ui.card(pane);
       Ui.section(card1, R.drawable.ic_moon, "1. 화면 쉬는 시간 (야간 감광)");
       toggle(card1, "야간 시간표에 맞춰 화면 어둡게 하기", "night", true);

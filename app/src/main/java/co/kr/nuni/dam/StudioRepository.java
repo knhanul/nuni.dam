@@ -881,7 +881,12 @@ public final class StudioRepository {
               .put("accent", p.accent)
               .put("favourite", p.favourite)
               .put("focusX", p.focusX)
-              .put("focusY", p.focusY));
+              .put("focusY", p.focusY)
+              .put("placeName", p.placeName)
+              .put("hasGps", p.hasGps)
+              .put("lat", p.lat)
+              .put("lon", p.lon)
+              .put("geocodedAt", p.geocodedAt));
     }
 
     JSONObject manifest =
@@ -1082,8 +1087,14 @@ public final class StudioRepository {
               p.favourite = pm.optBoolean("favourite", false);
               p.focusX = (float) pm.optDouble("focusX", -1);
               p.focusY = (float) pm.optDouble("focusY", -1);
+              p.placeName = pm.optString("placeName", p.placeName);
+              p.hasGps = pm.optBoolean("hasGps", p.hasGps);
+              p.lat = pm.optDouble("lat", p.lat);
+              p.lon = pm.optDouble("lon", p.lon);
+              p.geocodedAt = pm.optLong("geocodedAt", p.geocodedAt);
               if (existing == null) db.photos().insert(p);
               else db.photos().update(p);
+              Places.afterImport(NuniApp.of(c), p);
               try {
                 PublicArchive.ensureCopy(NuniApp.of(c), p);
               } catch (Exception ignored) {

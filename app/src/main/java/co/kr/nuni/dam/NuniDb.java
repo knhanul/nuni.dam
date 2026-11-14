@@ -19,14 +19,17 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
       SceneTextCollection.class,
       ScheduleRule.class,
       PublishedConfiguration.class,
-      AdminSession.class
+      AdminSession.class,
+      GeoCache.class
     },
-    version = 3,
+    version = 4,
     exportSchema = true)
 public abstract class NuniDb extends RoomDatabase {
   public abstract PhotoDao photos();
 
   public abstract StudioDao studio();
+
+  public abstract GeoCacheDao geoCache();
 
   public static final Migration MIGRATION_1_2 =
       new Migration(1, 2) {
@@ -127,6 +130,21 @@ public abstract class NuniDb extends RoomDatabase {
         public void migrate(@NonNull SupportSQLiteDatabase db) {
           db.execSQL(
               "ALTER TABLE `photos` ADD COLUMN `publicUri` TEXT NOT NULL DEFAULT ''");
+        }
+      };
+
+  public static final Migration MIGRATION_3_4 =
+      new Migration(3, 4) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+          db.execSQL("ALTER TABLE `photos` ADD COLUMN `placeName` TEXT NOT NULL DEFAULT ''");
+          db.execSQL("ALTER TABLE `photos` ADD COLUMN `geocodedAt` INTEGER NOT NULL DEFAULT 0");
+          db.execSQL("ALTER TABLE `photos` ADD COLUMN `hasGps` INTEGER NOT NULL DEFAULT 0");
+          db.execSQL("ALTER TABLE `photos` ADD COLUMN `lat` REAL NOT NULL DEFAULT 0");
+          db.execSQL("ALTER TABLE `photos` ADD COLUMN `lon` REAL NOT NULL DEFAULT 0");
+          db.execSQL(
+              "CREATE TABLE IF NOT EXISTS `geo_cache` (`key` TEXT NOT NULL, `placeName` TEXT"
+                  + " NOT NULL, `geocodedAt` INTEGER NOT NULL, PRIMARY KEY(`key`))");
         }
       };
 }
