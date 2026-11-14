@@ -63,7 +63,7 @@ public final class SettingsActivity extends Activity {
     private final NuniApp a;
     private final Runnable onOpenCustomize;
     private LinearLayout rootContainer;
-    private String selectedGroup = "POWER"; // POWER, STORAGE, LAUNCH, BACKUP, ADVANCED, ABOUT
+    private String selectedGroup = "POWER"; // POWER, STORAGE, LAUNCH, BACKUP, ADVANCED, EXITS, ABOUT
     private LinearLayout detailPane;
 
     public Controller(Activity h, Runnable openCustomize) {
@@ -185,6 +185,14 @@ public final class SettingsActivity extends Activity {
       groupCard.addView(Ui.divider(host), new LinearLayout.LayoutParams(-1, Ui.dp(host, 1)));
       addGroupItem(
           groupCard,
+          "EXITS",
+          R.drawable.ic_bell,
+          "앱 종료 기록",
+          ExitLog.listSummary(host),
+          twoPane);
+      groupCard.addView(Ui.divider(host), new LinearLayout.LayoutParams(-1, Ui.dp(host, 1)));
+      addGroupItem(
+          groupCard,
           "ABOUT",
           R.drawable.ic_screen,
           "앱 정보",
@@ -301,6 +309,9 @@ public final class SettingsActivity extends Activity {
           break;
         case "ADVANCED":
           buildAdvancedSection(pane);
+          break;
+        case "EXITS":
+          buildExitsSection(pane);
           break;
         case "ABOUT":
           buildAboutSection(pane);
@@ -993,6 +1004,111 @@ public final class SettingsActivity extends Activity {
           });
       plug.addView(
           Ui.text(host, a.prefs.raw.getString("plugStatus", "기본값: 사용 안 함"), 12, Ui.MUTED));
+    }
+
+    private void buildExitsSection(LinearLayout pane) {
+      LinearLayout card = Ui.card(pane);
+      Ui.section(card, R.drawable.ic_bell, "앱 종료 기록");
+      card.addView(
+          Ui.text(
+              host,
+              "앱이 갑자기 꺼졌을 때의 시각과 원인을 남깁니다. 오류로 죽은 경우와, Android 11 이상에서 시스템이 프로세스를 종료한 이유를 확인할 수 있습니다.",
+              14,
+              Ui.MUTED));
+      Ui.gap(card, 10);
+
+      java.util.List<ExitLog.Entry> entries = ExitLog.recentEntries(host);
+      if (entries.isEmpty()) {
+        card.addView(Ui.text(host, "아직 저장된 기록이 없습니다.", 15, Ui.INK));
+      } else {
+        int shown = Math.min(entries.size(), 8);
+        for (int i = 0; i < shown; i++) {
+          if (i > 0) {
+            card.addView(Ui.divider(host), new LinearLayout.LayoutParams(-1, Ui.dp(host, 1)));
+          }
+          ExitLog.Entry e = entries.get(i);
+          TextView when = Ui.text(host, ExitLog.formatTime(e.timeMs), 13, Ui.MUTED);
+          TextView why = Ui.text(host, e.title, 16, Ui.INK);
+          why.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+          card.addView(when);
+          card.addView(why);
+        }
+        if (entries.size() > shown) {
+          Ui.gap(card, 6);
+          card.addView(
+              Ui.text(host, "최근 " + shown + "건만 보여 줍니다. 전체는 ‘자세히 보기’에서 확인할 수 있어요.", 13, Ui.MUTED));
+        }
+      }
+
+      Ui.gap(card, 12);
+      Ui.add(card, "자세히 보기", true, R.drawable.ic_screen, this::showExitLogDetail);
+      Ui.add(
+          card,
+          "기록 지우기",
+          false,
+          R.drawable.ic_trash,
+          () ->
+              new AlertDialog.Builder(host)
+                  .setTitle("기록을 지울까요?")
+                  .setMessage("저장된 종료·오류 기록이 모두 삭제됩니다.")
+                  .setPositiveButton(
+                      "지우기",
+                      (d, w) -> {
+                        ExitLog.clear(host);
+                        Ui.toast(host, "기록을 지웠습니다.");
+                        rebuild();
+                      })
+                  .setNegativeButton("취소", null)
+                  .show());
+      if (android.os.Build.VERSION.SDK_INT < 30) {
+        Ui.gap(card, 8);
+        card.addView(
+            Ui.text(
+                host,
+                "이 기기는 Android 11 미만이라 시스템이 앱을 종료한 이유는 남지 않고, 오류로 죽은 경우만 기록됩니다.",
+                13,
+                Ui.MUTED));
+      }
+    }
+
+    private void showExitLogDetail() {
+      String text = ExitLog.fullText(host);
+      ScrollView sv = new ScrollView(host);
+      int pad = Ui.dp(host, 16);
+      sv.setPadding(pad, pad, pad, pad);
+      TextView tv = Ui.text(host, text, 13, Ui.INK);
+      tv.setTextIsSelectable(true);
+      tv.setTypeface(android.graphics.Typeface.MONOSPACE);
+      sv.addView(tv);
+      new AlertDialog.Builder(host)
+          .setTitle("앱 종료 기록")
+          .setView(sv)
+          .setPositiveButton("닫기", null)
+          .setNeutralButton(
+              "복사",
+              (d, w) -> {
+                android.content.ClipboardManager cm =
+                    (android.content.ClipboardManager)
+                        host.getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+                if (cm != null) {
+                  cm.setPrimaryClip(android.content.ClipData.newPlainText("누니담 종료 기록", text));
+                  Ui.toast(host, "복사했습니다.");
+                }
+              })
+          .setNegativeButton(
+              "공유",
+              (d, w) -> {
+                Intent share = new Intent(Intent.ACTION_SEND);
+                share.setType("text/plain");
+                share.putExtra(Intent.EXTRA_SUBJECT, "누니담 종료 기록");
+                share.putExtra(Intent.EXTRA_TEXT, text);
+                try {
+                  host.startActivity(Intent.createChooser(share, "종료 기록 공유"));
+                } catch (Exception e) {
+                  Ui.toast(host, "공유할 수 있는 앱이 없습니다.");
+                }
+              })
+          .show();
     }
 
     private void buildAboutSection(LinearLayout pane) {

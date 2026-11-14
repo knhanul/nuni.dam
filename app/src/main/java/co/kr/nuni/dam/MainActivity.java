@@ -76,6 +76,24 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
   protected void onResume() {
     super.onResume();
     refreshOrRenderCurrentTab();
+    maybeShowExitNotice();
+  }
+
+  /** 액자 재생을 가리지 않는다. 홈으로 바로 액자를 여는 경우에는 나중에 메인으로 돌아왔을 때 보여 준다. */
+  private void maybeShowExitNotice() {
+    if (!Ui.alive(this) || !ExitLog.hasPendingNotice(this)) return;
+    if (!homeOpened && getIntent() != null && getIntent().hasCategory(Intent.CATEGORY_HOME)) {
+      return;
+    }
+    ExitLog.consumePendingNotice(this);
+    new AlertDialog.Builder(this)
+        .setTitle("앱이 비정상 종료됐어요")
+        .setMessage("지난번에 앱이 비정상 종료됐어요. 설정 > 앱 종료 기록에서 확인할 수 있어요.")
+        .setPositiveButton("확인", null)
+        .setNeutralButton(
+            "기록 보기",
+            (d, w) -> switchTab("SETTINGS"))
+        .show();
   }
 
   protected void onDestroy() {

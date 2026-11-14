@@ -33,15 +33,7 @@ public final class NuniApp extends Application {
       getSystemService(NotificationManager.class)
           .createNotificationChannel(
               new NotificationChannel("frame", "액자 시작 안내", NotificationManager.IMPORTANCE_LOW));
-    Thread.UncaughtExceptionHandler original = Thread.getDefaultUncaughtExceptionHandler();
-    Thread.setDefaultUncaughtExceptionHandler(
-        (thread, error) -> {
-          try {
-            prefs.raw.edit().putLong("lastCrash", System.currentTimeMillis()).commit();
-          } catch (Exception ignored) {
-          }
-          if (original != null) original.uncaughtException(thread, error);
-        });
+    ExitLog.install(this);
     io.execute(
         () -> {
           store.cleanup();
@@ -54,6 +46,18 @@ public final class NuniApp extends Application {
           }
         });
     FolderSync.schedule(this);
+  }
+
+  @Override
+  public void onTrimMemory(int level) {
+    super.onTrimMemory(level);
+    ExitLog.logTrimMemory(this, level);
+  }
+
+  @Override
+  public void onLowMemory() {
+    super.onLowMemory();
+    ExitLog.logLowMemory(this);
   }
 
   public synchronized StudioServer studioServer() {
