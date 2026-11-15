@@ -34,6 +34,7 @@ public final class NuniApp extends Application {
           .createNotificationChannel(
               new NotificationChannel("frame", "액자 시작 안내", NotificationManager.IMPORTANCE_LOW));
     ExitLog.install(this);
+    FrameWatchdog.onProcessStart(this);
     io.execute(
         () -> {
           store.cleanup();
@@ -54,12 +55,14 @@ public final class NuniApp extends Application {
   public void onTrimMemory(int level) {
     super.onTrimMemory(level);
     ExitLog.logTrimMemory(this, level);
+    if (Core.shouldReleaseCaches(level)) MemoryGuard.dispatch(level);
   }
 
   @Override
   public void onLowMemory() {
     super.onLowMemory();
     ExitLog.logLowMemory(this);
+    MemoryGuard.dispatch(15); // TRIM_MEMORY_RUNNING_CRITICAL
   }
 
   public synchronized StudioServer studioServer() {

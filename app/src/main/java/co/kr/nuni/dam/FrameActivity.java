@@ -9,6 +9,13 @@ import android.widget.*;
 import java.util.Calendar;
 
 public final class FrameActivity extends Activity {
+  private static final java.util.concurrent.atomic.AtomicInteger LIVING =
+      new java.util.concurrent.atomic.AtomicInteger();
+
+  public static boolean isAlive() {
+    return LIVING.get() > 0;
+  }
+
   private NuniApp a;
   private FrameView frame;
   private FrameSession session;
@@ -37,7 +44,9 @@ public final class FrameActivity extends Activity {
 
   public void onCreate(Bundle b) {
     super.onCreate(b);
+    LIVING.incrementAndGet();
     a = NuniApp.of(this);
+    FrameWatchdog.onFrameStarted(this);
     Ui.immersive(this);
     FrameLayout root = new FrameLayout(this);
     frame = new FrameView(this);
@@ -101,7 +110,16 @@ public final class FrameActivity extends Activity {
     add(two, "재생장면", R.drawable.ic_scene, Ui.INK, true, () -> openManage("SCENES"));
     add(two, "편성표", R.drawable.ic_calendar, Ui.INK, true, () -> openManage("SCHEDULES"));
     add(two, "설정", R.drawable.ic_tune, Ui.INK, true, () -> openManage("SETTINGS"));
-    add(two, "관리 홈", R.drawable.ic_home, Ui.MUTED, true, this::finish);
+    add(
+        two,
+        "관리 홈",
+        R.drawable.ic_home,
+        Ui.MUTED,
+        true,
+        () -> {
+          leaveFrameByUser();
+          finish();
+        });
     add(two, "앱 종료", R.drawable.ic_exit, Ui.DANGER, true, this::exitApp);
     FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
     int margin = Ui.dp(this, 16);
@@ -134,7 +152,24 @@ public final class FrameActivity extends Activity {
         });
   }
 
+  private void leaveFrameByUser() {
+    FrameWatchdog.onUserLeftFrame(this);
+  }
+
+  @Override
+  public void onBackPressed() {
+    leaveFrameByUser();
+    super.onBackPressed();
+  }
+
+  @Override
+  protected void onDestroy() {
+    LIVING.decrementAndGet();
+    super.onDestroy();
+  }
+
   private void openManage(String tab) {
+    leaveFrameByUser();
     android.content.Intent i = new android.content.Intent(this, MainActivity.class);
     i.putExtra("tab", tab);
     i.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP | android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -149,6 +184,7 @@ public final class FrameActivity extends Activity {
         .setPositiveButton(
             "종료",
             (d, w) -> {
+              leaveFrameByUser();
               finishAffinity();
               android.content.Intent home =
                   new android.content.Intent(android.content.Intent.ACTION_MAIN);

@@ -44,6 +44,7 @@ public final class LibraryActivity extends Activity implements PhotoStore.Listen
   protected void onDestroy() {
     alive = false;
     a.store.unlisten(this);
+    if (activeController != null) activeController.release();
     super.onDestroy();
   }
 
@@ -89,19 +90,25 @@ public final class LibraryActivity extends Activity implements PhotoStore.Listen
     private final Map<String, Button> filterButtons = new HashMap<>();
     private final ExecutorService images = Executors.newSingleThreadExecutor();
     private final LruCache<String, Bitmap> cache =
-        new LruCache<String, Bitmap>(4 * 1024 * 1024) {
+        new LruCache<String, Bitmap>(Core.bitmapCacheBytes(Runtime.getRuntime().maxMemory())) {
           protected int sizeOf(String k, Bitmap b) {
             return b.getByteCount();
           }
+        };
+    private final MemoryGuard.Listener trimListener =
+        level -> {
+          if (Core.shouldReleaseCaches(level)) cache.evictAll();
         };
 
     public Controller(Activity h, Runnable addDeviceAction) {
       host = h;
       a = NuniApp.of(h);
       onAddDevice = addDeviceAction;
+      MemoryGuard.register(trimListener);
     }
 
     public void release() {
+      MemoryGuard.unregister(trimListener);
       images.shutdownNow();
       cache.evictAll();
     }

@@ -3,6 +3,8 @@
  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
  <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+ <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
+ <uses-permission android:name="android.permission.WAKE_LOCK"/>
  <uses-permission android:name="android.permission.CAMERA"/>
  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
@@ -23,6 +25,7 @@
   <activity-alias android:name=".HomeEntry" android:targetActivity=".MainActivity" android:enabled="false" android:exported="true" android:label="누니담 액자 홈"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.HOME"/><category android:name="android.intent.category.DEFAULT"/></intent-filter></activity-alias>
   <service android:name=".NuniDream" android:exported="true" android:permission="android.permission.BIND_DREAM_SERVICE" android:label="누니담"><intent-filter><action android:name="android.service.dreams.DreamService"/></intent-filter><meta-data android:name="android.service.dream" android:resource="@xml/dream"/></service>
   <receiver android:name=".BootReceiver" android:exported="false"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/></intent-filter></receiver>
+  <receiver android:name=".FrameWatchdogReceiver" android:exported="false"/>
  </application>
 </manifest>
 

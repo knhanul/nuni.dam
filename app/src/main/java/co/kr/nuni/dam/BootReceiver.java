@@ -10,6 +10,10 @@ public final class BootReceiver extends BroadcastReceiver {
   public void onReceive(Context c, Intent i) {
     if (!Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) return;
     FolderSync.schedule(c);
+    if (FrameWatchdog.isDesired(c)) {
+      FrameWatchdog.schedule(c);
+      FrameWatchdog.tick(c);
+    }
     if (Build.VERSION.SDK_INT >= 33
         && c.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
             != PackageManager.PERMISSION_GRANTED) return;

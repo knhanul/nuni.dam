@@ -24,6 +24,9 @@ public final class FrameSession implements PhotoStore.Listener {
   private boolean active, loading, paused, powerPaused;
   private long next, lastScheduleCheckMs;
   private boolean receiverRegistered;
+  private Bitmap preloaded;
+  private String preloadedId;
+  private final MemoryGuard.Listener trimListener = this::onTrimMemory;
 
   private final BroadcastReceiver timeReceiver =
       new BroadcastReceiver() {
@@ -67,6 +70,7 @@ public final class FrameSession implements PhotoStore.Listener {
     active = true;
     view.paused(false);
     a.store.listen(this);
+    MemoryGuard.register(trimListener);
     registerTimeReceiver();
     reload();
     h.post(tick);
@@ -78,6 +82,8 @@ public final class FrameSession implements PhotoStore.Listener {
     h.removeCallbacksAndMessages(null);
     unregisterTimeReceiver();
     a.store.unlisten(this);
+    MemoryGuard.unregister(trimListener);
+    dropPreload();
     images.shutdownNow();
     view.clear();
   }
@@ -256,26 +262,105 @@ public final class FrameSession implements PhotoStore.Listener {
     Photo p = deck.get(index);
     int ticket = ++generation;
     loading = true;
+    final int target = decodeTarget();
     images.execute(
         () -> {
-          Bitmap b = a.store.load(p, a.prefs.low() ? 1280 : 2048);
+          Bitmap b = takePreload(p.id);
+          if (b == null) b = a.store.load(p, target);
+          final Bitmap loaded = b;
           h.post(
               () -> {
                 if (!active || ticket != generation) {
-                  if (b != null) b.recycle();
+                  recycleQuietly(loaded);
                   return;
                 }
                 loading = false;
-                if (b == null) {
+                if (loaded == null) {
                   next = SystemClock.elapsedRealtime() + 2000;
                   view.error();
                   return;
                 }
-                view.show(p, b, phrase());
+                view.show(p, loaded, phrase());
                 next = SystemClock.elapsedRealtime() + currentDurationSec() * 1000L;
                 a.prefs.text("lastPhoto", p.id);
+                preloadNext(target);
               });
         });
+  }
+
+  private int decodeTarget() {
+    int w = view.getWidth();
+    int h = view.getHeight();
+    if (w <= 0 || h <= 0) {
+      android.util.DisplayMetrics m = ctx.getResources().getDisplayMetrics();
+      w = m.widthPixels;
+      h = m.heightPixels;
+    }
+    return Core.frameDecodeTarget(w, h, a.prefs.low());
+  }
+
+  private Bitmap takePreload(String id) {
+    synchronized (this) {
+      if (preloaded != null && id.equals(preloadedId) && !preloaded.isRecycled()) {
+        Bitmap b = preloaded;
+        preloaded = null;
+        preloadedId = null;
+        return b;
+      }
+      dropPreloadLocked();
+      return null;
+    }
+  }
+
+  private void preloadNext(int target) {
+    if (!active || deck.size() < 2 || images.isShutdown()) return;
+    final Photo nextPhoto = deck.get((index + 1) % deck.size());
+    images.execute(
+        () -> {
+          if (!active) return;
+          Bitmap b = a.store.load(nextPhoto, target);
+          synchronized (this) {
+            if (!active || b == null) {
+              recycleQuietly(b);
+              return;
+            }
+            if (nextPhoto.id.equals(preloadedId) && preloaded != null && !preloaded.isRecycled()) {
+              recycleQuietly(b);
+              return;
+            }
+            dropPreloadLocked();
+            preloaded = b;
+            preloadedId = nextPhoto.id;
+          }
+        });
+  }
+
+  void onTrimMemory(int level) {
+    if (Core.shouldReleaseCaches(level)) {
+      dropPreload();
+      view.evictCaches();
+    }
+  }
+
+  private void dropPreload() {
+    synchronized (this) {
+      dropPreloadLocked();
+    }
+  }
+
+  private void dropPreloadLocked() {
+    recycleQuietly(preloaded);
+    preloaded = null;
+    preloadedId = null;
+  }
+
+  private static void recycleQuietly(Bitmap b) {
+    if (b != null && !b.isRecycled()) {
+      try {
+        b.recycle();
+      } catch (Exception ignored) {
+      }
+    }
   }
 
   private String phrase() {

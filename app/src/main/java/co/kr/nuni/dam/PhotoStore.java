@@ -288,10 +288,21 @@ public final class PhotoStore {
 
   public Bitmap load(Photo p, int max) {
     try {
+      String path = file(p.id).getPath();
+      int w = p.width, h = p.height;
+      if (w <= 0 || h <= 0) {
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(path, bounds);
+        w = bounds.outWidth;
+        h = bounds.outHeight;
+      }
       BitmapFactory.Options o = new BitmapFactory.Options();
-      o.inSampleSize = Core.sample(p.width, p.height, max);
+      o.inSampleSize = Core.sample(w, h, max);
       o.inPreferredConfig = Bitmap.Config.RGB_565;
-      return BitmapFactory.decodeFile(file(p.id).getPath(), o);
+      o.inDither = true;
+      o.inScaled = false;
+      return BitmapFactory.decodeFile(path, o);
     } catch (Exception | OutOfMemoryError e) {
       return null;
     }

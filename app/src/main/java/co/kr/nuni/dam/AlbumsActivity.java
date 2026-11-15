@@ -228,16 +228,21 @@ public final class AlbumsActivity extends Activity implements PhotoStore.Listene
     private LinearLayout albumListContainer, editorContainer, batchBar;
     private final ExecutorService images = Executors.newSingleThreadExecutor();
     private final LruCache<String, Bitmap> cache =
-        new LruCache<String, Bitmap>(4 * 1024 * 1024) {
+        new LruCache<String, Bitmap>(Core.bitmapCacheBytes(Runtime.getRuntime().maxMemory())) {
           @Override
           protected int sizeOf(String k, Bitmap b) {
             return b.getByteCount();
           }
         };
+    private final MemoryGuard.Listener trimListener =
+        level -> {
+          if (Core.shouldReleaseCaches(level)) cache.evictAll();
+        };
 
     public Controller(Activity h, DevicePhotoPicker picker, String initialAlbumId) {
       host = h;
       a = NuniApp.of(h);
+      MemoryGuard.register(trimListener);
       devicePicker = picker;
       currentAlbumId =
           (initialAlbumId == null || initialAlbumId.isEmpty())
@@ -254,6 +259,7 @@ public final class AlbumsActivity extends Activity implements PhotoStore.Listene
     }
 
     public void release() {
+      MemoryGuard.unregister(trimListener);
       images.shutdownNow();
       cache.evictAll();
     }

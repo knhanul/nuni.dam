@@ -38,6 +38,7 @@ public final class ExitLog {
   static final String PREF_LAST_EXIT = "lastRecordedExitAt";
   static final String PREF_NOTICE = "pendingExitNotice";
   static final String PREF_INIT = "exitLogInitialized";
+  static final String PREF_LAST_TRIM = "lastTrimLabel";
 
   private static final Object LOCK = new Object();
 
@@ -200,10 +201,39 @@ public final class ExitLog {
 
   public static void logTrimMemory(Context context, int level) {
     appendMemoryLine(context, formatTime(System.currentTimeMillis()) + "  메모리 정리 요청 (" + trimLabel(level) + ")");
+    saveLastTrim(context, trimLabel(level));
   }
 
   public static void logLowMemory(Context context) {
     appendMemoryLine(context, formatTime(System.currentTimeMillis()) + "  메모리 부족 (onLowMemory)");
+    saveLastTrim(context, "onLowMemory");
+  }
+
+  public static void logLine(Context context, String message) {
+    if (message == null || message.isEmpty()) return;
+    appendMemoryLine(context, formatTime(System.currentTimeMillis()) + "  " + message);
+  }
+
+  public static void markNotice(Context context) {
+    try {
+      prefs(context).edit().putBoolean(PREF_NOTICE, true).commit();
+    } catch (Exception ignored) {
+    }
+  }
+
+  public static String lastTrimLabel(Context context) {
+    try {
+      return prefs(context).getString(PREF_LAST_TRIM, "");
+    } catch (Exception e) {
+      return "";
+    }
+  }
+
+  private static void saveLastTrim(Context context, String label) {
+    try {
+      prefs(context).edit().putString(PREF_LAST_TRIM, label == null ? "" : label).apply();
+    } catch (Exception ignored) {
+    }
   }
 
   public static List<Entry> recentEntries(Context context) {

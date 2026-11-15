@@ -38,6 +38,43 @@ public final class Core {
     return s;
   }
 
+  /** Longest display edge used when decoding a frame photo. Never larger than the screen, and at most 1280 (low) or 2048. */
+  public static int frameDecodeTarget(int screenW, int screenH, boolean lowQuality) {
+    int cap = lowQuality ? 1280 : 2048;
+    int screen = Math.max(screenW, screenH);
+    if (screen <= 0) return cap;
+    return Math.min(cap, screen);
+  }
+
+  /** Thumbnail LruCache size: about 1/8 of the heap, kept between 1MB and 8MB. */
+  public static int bitmapCacheBytes(long maxMemory) {
+    if (maxMemory <= 0L) return 1024 * 1024;
+    long eighth = maxMemory / 8L;
+    long capped = Math.min(eighth, 8L * 1024L * 1024L);
+    return (int) Math.max(1024L * 1024L, capped);
+  }
+
+  /**
+   * Restart the frame only when the user left it running, it is not already open, and it is not the scheduled off period.
+   */
+  public static boolean shouldRelaunchFrame(
+      boolean frameDesired, boolean frameAlive, boolean scheduledOff) {
+    return frameDesired && !frameAlive && !scheduledOff;
+  }
+
+  /** RUNNING_LOW (10) and higher, including UI_HIDDEN and background trims. */
+  public static boolean shouldReleaseCaches(int trimLevel) {
+    return trimLevel >= 10;
+  }
+
+  public static String abnormalExitMessage(
+      boolean frameDesired, boolean recentCrash, String lastTrimLabel) {
+    if (!frameDesired || recentCrash) return null;
+    String state =
+        lastTrimLabel == null || lastTrimLabel.isEmpty() ? "없음" : lastTrimLabel;
+    return "비정상 종료 추정: 기록 없음, 마지막 메모리 상태 " + state;
+  }
+
   public static boolean fits(long used, long add, long quota, long free) {
     return used >= 0
         && add >= 0

@@ -50,6 +50,17 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
     }
     a.store.listen(this);
     buildShell();
+    maybeResumeFrame();
+  }
+
+  /** After a low-memory kill, tapping the app icon should return to the frame. */
+  private void maybeResumeFrame() {
+    if (getIntent() != null && getIntent().hasExtra("tab")) return;
+    if (!FrameWatchdog.shouldOpenFrameNow(this)) return;
+    try {
+      startActivity(new android.content.Intent(this, FrameActivity.class));
+    } catch (Exception ignored) {
+    }
   }
 
   @Override

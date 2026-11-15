@@ -166,7 +166,9 @@ public final class FrameView extends View {
   public void show(Photo data, Bitmap bitmap, String text) {
     samplePreview = false;
     photo = data;
+    Bitmap previous = image;
     image = bitmap;
+    recycleIfUnused(previous);
     faces = data != null ? FaceAnalyzer.boxes(data.faces) : new double[0];
     captureText = "";
     phrase = text == null ? "" : text;
@@ -183,7 +185,9 @@ public final class FrameView extends View {
     photo.width = 1600;
     photo.height = 1200;
     photo.accent = Ui.PRIMARY;
+    Bitmap previous = image;
     image = null;
+    recycleIfUnused(previous);
     faces = new double[0];
     captureText = "예시 미리보기 · 보관함에 추가되지 않음";
     phrase = text == null || text.isEmpty() ? "눈이 머무는 곳에 마음도 잠시 쉬어갑니다.|누니담" : text;
@@ -210,8 +214,20 @@ public final class FrameView extends View {
   public void clear() {
     samplePreview = false;
     photo = null;
+    Bitmap previous = image;
     image = null;
+    recycleIfUnused(previous);
     invalidate();
+  }
+
+  public void evictCaches() {
+    layouts.evictAll();
+  }
+
+  private void recycleIfUnused(Bitmap previous) {
+    if (previous != null && previous != image && !previous.isRecycled()) {
+      previous.recycle();
+    }
   }
 
   @Override
