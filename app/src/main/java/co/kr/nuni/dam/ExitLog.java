@@ -288,12 +288,26 @@ public final class ExitLog {
     if (Build.VERSION.SDK_INT < 30) {
       sb.append("\n(시스템 종료 이유는 Android 11 이상에서만 확인할 수 있습니다.)\n");
     }
-    String places = PlaceLog.read(context);
-    if (!places.isEmpty()) {
-      sb.append("\n--------------------\n\n[지명 찾기 기록]\n").append(places);
+    appendPlaceSection(sb, placeSummary(context), PlaceLog.read(context));
+    return sb.toString();
+  }
+
+  static String placeSummary(Context context) {
+    try {
+      NuniApp app = NuniApp.of(context);
+      if (app != null && app.db != null) return Places.placeSummary(app);
+    } catch (Exception ignored) {
+    }
+    return "";
+  }
+
+  static void appendPlaceSection(StringBuilder sb, String summary, String places) {
+    sb.append("\n--------------------\n\n[지명 찾기 기록]\n");
+    if (summary != null && !summary.isEmpty()) sb.append(summary).append('\n');
+    if (places != null && !places.isEmpty()) {
+      sb.append(places);
       if (!endsWithNewline(places)) sb.append('\n');
     }
-    return sb.toString();
   }
 
   public static String listSummary(Context context) {

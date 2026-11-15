@@ -92,6 +92,38 @@ public final class PlaceLog {
     return one;
   }
 
+  static String summaryLine(int total, int withGps, int named, int pending, int noGps) {
+    return "전체 "
+        + total
+        + "장 · 위치 있음 "
+        + withGps
+        + "장 · 지명 찾음 "
+        + named
+        + "장 · 찾는 중 "
+        + pending
+        + "장 · 위치 없음 "
+        + noGps
+        + "장";
+  }
+
+  static String summaryLine(Iterable<Photo> photos) {
+    int total = 0, withGps = 0, named = 0, pending = 0, noGps = 0;
+    if (photos != null) {
+      for (Photo p : photos) {
+        if (p == null) continue;
+        total++;
+        if (p.hasGps) {
+          withGps++;
+          if (p.placeName != null && !p.placeName.isEmpty()) named++;
+          else pending++;
+        } else {
+          noGps++;
+        }
+      }
+    }
+    return summaryLine(total, withGps, named, pending, noGps);
+  }
+
   /**
    * 파일이 {@code maxBytes}를 넘으면 앞의 절반을 {@code oldFile}로 옮기고 최근 절반만 남긴다.
    */

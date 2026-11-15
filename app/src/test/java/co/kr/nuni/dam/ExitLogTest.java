@@ -102,4 +102,22 @@ public class ExitLogTest {
     assertEquals("UI_HIDDEN", ExitLog.trimLabel(20));
     assertEquals("LEVEL_3", ExitLog.trimLabel(3));
   }
+
+  @Test
+  public void placeSectionAppearsEvenWhenLogIsEmpty() {
+    String summary = PlaceLog.summaryLine(3, 2, 1, 1, 1);
+    StringBuilder empty = new StringBuilder("앞부분");
+    ExitLog.appendPlaceSection(empty, summary, "");
+    String text = empty.toString();
+    assertTrue(text.contains("[지명 찾기 기록]"));
+    assertTrue(text.contains(summary));
+    assertFalse(text.contains("NO_GPS"));
+
+    StringBuilder withLog = new StringBuilder("앞부분");
+    ExitLog.appendPlaceSection(withLog, summary, "12:00  abcd1234  NO_GPS");
+    String logged = withLog.toString();
+    assertTrue(logged.contains(summary));
+    assertTrue(logged.contains("NO_GPS"));
+    assertTrue(logged.endsWith("\n"));
+  }
 }

@@ -1239,7 +1239,18 @@ public final class SettingsActivity extends Activity {
     }
 
     private void showExitLogDetail() {
-      String text = ExitLog.fullText(host);
+      a.io.execute(
+          () -> {
+            final String text = ExitLog.fullText(host);
+            host.runOnUiThread(
+                () -> {
+                  if (host.isFinishing()) return;
+                  showExitLogDetailDialog(text);
+                });
+          });
+    }
+
+    private void showExitLogDetailDialog(String text) {
       ScrollView sv = new ScrollView(host);
       int pad = Ui.dp(host, 16);
       sv.setPadding(pad, pad, pad, pad);

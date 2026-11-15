@@ -32,6 +32,7 @@ public final class Places {
   public static void onAppStart(NuniApp a) {
     try {
       scanExistingGps(a);
+      rescanForPlaceLog(a);
       fillFromCache(a);
     } catch (Exception ignored) {
     }
@@ -154,6 +155,85 @@ public final class Places {
       }
     }
     a.prefs.flag("gpsExifMigrated", true);
+  }
+
+  static final String PREF_PLACE_LOG_RESCAN = "placeLogRescan1";
+
+  /** 지명 로그가 생기기 전에 들어온 사진을 한 번 더 살펴 상태를 남긴다. */
+  public static void rescanForPlaceLog(NuniApp a) {
+    if (a.prefs.raw.getBoolean(PREF_PLACE_LOG_RESCAN, false)) return;
+    List<Photo> all;
+    try {
+      all = a.db.photos().active();
+    } catch (Exception e) {
+      return;
+    }
+    boolean net = hasNetwork(a);
+    for (Photo p : all) {
+      if (p == null) continue;
+      if (!p.hasGps) {
+        GpsProbe probe = probeGps(a, p);
+        if (probe.found && probe.exif != null) {
+          applyExif(p, probe.exif);
+          if (p.hasGps) {
+            try {
+              a.db.photos().update(p);
+            } catch (Exception ignored) {
+            }
+          }
+        }
+        if (!p.hasGps) {
+          PlaceLog.record(a, p, "NO_GPS", probe.sourcesNote());
+          continue;
+        }
+      }
+      if (p.placeName != null && !p.placeName.isEmpty()) {
+        PlaceLog.record(
+            a, p, "FOUND", PlaceLog.coords(p.lat, p.lon) + " " + p.placeName + " via=stored");
+      } else {
+        PlaceLog.record(
+            a, p, "PENDING", PlaceLog.coords(p.lat, p.lon) + (net ? " net=on" : " net=off"));
+      }
+    }
+    a.prefs.flag(PREF_PLACE_LOG_RESCAN, true);
+  }
+
+  public static String placeSummary(NuniApp a) {
+    try {
+      return PlaceLog.summaryLine(a.db.photos().active());
+    } catch (Exception e) {
+      return PlaceLog.summaryLine(0, 0, 0, 0, 0);
+    }
+  }
+
+  /** 액자 재생 시 지명 상태를 남긴다. DB 필드만 쓰고, 호출 쪽은 백그라운드에서 부른다. */
+  public static void logPlayback(Context c, Photo p, boolean showPlace, boolean network) {
+    PlaybackOutcome o = playbackOutcome(p, showPlace, network);
+    if (o == null) return;
+    PlaceLog.record(c, p, o.result, o.detail);
+  }
+
+  static PlaybackOutcome playbackOutcome(Photo p, boolean showPlace, boolean network) {
+    if (p == null || !showPlace) return null;
+    String name = p.placeName == null ? "" : p.placeName;
+    if (!name.isEmpty()) {
+      String prefix = p.hasGps ? PlaceLog.coords(p.lat, p.lon) + " " : "";
+      return new PlaybackOutcome("FOUND", prefix + name + " via=stored");
+    }
+    if (!p.hasGps) return new PlaybackOutcome("NO_GPS", "");
+    String coords = PlaceLog.coords(p.lat, p.lon);
+    if (p.geocodedAt > 0) return new PlaybackOutcome("FAILED", coords + " tried");
+    return new PlaybackOutcome("PENDING", coords + (network ? " net=on" : " net=off"));
+  }
+
+  static final class PlaybackOutcome {
+    final String result;
+    final String detail;
+
+    PlaybackOutcome(String result, String detail) {
+      this.result = result;
+      this.detail = detail == null ? "" : detail;
+    }
   }
 
   public static void fillFromCache(NuniApp a) {

@@ -265,6 +265,8 @@ public final class FrameSession implements PhotoStore.Listener {
     final int target = decodeTarget();
     images.execute(
         () -> {
+          refreshPlaceFields(p);
+          Places.logPlayback(a, p, a.prefs.showPlace(), Places.hasNetwork(a));
           Bitmap b = takePreload(p.id);
           if (b == null) b = a.store.load(p, target);
           final Bitmap loaded = b;
@@ -286,6 +288,20 @@ public final class FrameSession implements PhotoStore.Listener {
                 preloadNext(target);
               });
         });
+  }
+
+  private void refreshPlaceFields(Photo p) {
+    if (p == null || p.id == null || p.id.isEmpty()) return;
+    try {
+      Photo fresh = a.db.photos().get(p.id);
+      if (fresh == null) return;
+      p.hasGps = fresh.hasGps;
+      p.lat = fresh.lat;
+      p.lon = fresh.lon;
+      p.placeName = fresh.placeName;
+      p.geocodedAt = fresh.geocodedAt;
+    } catch (Exception ignored) {
+    }
   }
 
   private int decodeTarget() {
