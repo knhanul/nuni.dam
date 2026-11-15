@@ -1041,6 +1041,10 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
   }
 
   public void pickPhotosFromDevice() {
+    MediaAccess.runWithLocationAccess(this, this::openPhotoPicker);
+  }
+
+  private void openPhotoPicker() {
     Intent i =
         new Intent(Intent.ACTION_OPEN_DOCUMENT)
             .setType("image/*")
@@ -1051,6 +1055,10 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
 
   public void pickPhotosForAlbumFromDevice(String albumId) {
     pendingImportAlbumId = albumId == null ? "" : albumId;
+    MediaAccess.runWithLocationAccess(this, this::openAlbumPhotoPicker);
+  }
+
+  private void openAlbumPhotoPicker() {
     Intent i =
         new Intent(Intent.ACTION_OPEN_DOCUMENT)
             .setType("image/*")
@@ -1060,6 +1068,10 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
   }
 
   public void pickSyncFolder() {
+    MediaAccess.runWithLocationAccess(this, this::openSyncFolderPicker);
+  }
+
+  private void openSyncFolderPicker() {
     startActivityForResult(
         new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
             .addFlags(
@@ -1072,6 +1084,7 @@ public final class MainActivity extends Activity implements PhotoStore.Listener 
   public void onRequestPermissionsResult(
       int requestCode, String[] permissions, int[] grantResults) {
     super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    if (MediaAccess.consumeLocationResult(requestCode)) return;
     if (requestCode == PublicArchive.REQ_READ) {
       boolean ok =
           grantResults.length > 0

@@ -8,7 +8,6 @@ import androidx.exifinterface.media.ExifInterface;
 import androidx.palette.graphics.Palette;
 import java.io.*;
 import java.security.*;
-import java.text.*;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -92,7 +91,7 @@ public final class PhotoStore {
   }
 
   public Photo fromUri(Uri uri, String name, boolean owned) throws Exception {
-    try (InputStream in = c.getContentResolver().openInputStream(uri)) {
+    try (InputStream in = MediaAccess.openInputStream(c, uri)) {
       if (in == null) throw new IOException("사진을 열 수 없습니다.");
       return importStream(in, name, owned);
     }
@@ -172,13 +171,7 @@ public final class PhotoStore {
       try {
         exif = new ExifInterface(input);
         orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, 1);
-        String date = exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL);
-        if (date != null) {
-          SimpleDateFormat fmt = new SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.ROOT);
-          fmt.setLenient(false);
-          Date parsed = fmt.parse(date);
-          if (parsed != null) captured = parsed.getTime();
-        }
+        captured = ExifCopy.capturedAt(exif);
       } catch (Exception ignored) {
       }
       Matrix m = new Matrix();
@@ -217,6 +210,7 @@ public final class PhotoStore {
         if (!rotated.compress(Bitmap.CompressFormat.JPEG, 90, out)) throw new IOException("저장 실패");
         out.getFD().sync();
       }
+      ExifCopy.writeTo(exif, part);
       if (!Core.fits(
           Math.max(0, dao().used() - (old == null ? 0 : old.bytes)),
           part.length(),

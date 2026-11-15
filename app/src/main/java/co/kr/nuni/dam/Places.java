@@ -79,9 +79,11 @@ public final class Places {
               + (fromCache ? " via=cache" : " via=stored"));
       return;
     }
-    if (!hasNetwork(a)) {
-      PlaceLog.record(a, p, "PENDING", PlaceLog.coords(p.lat, p.lon));
-    }
+    PlaceLog.record(
+        a,
+        p,
+        "PENDING",
+        PlaceLog.coords(p.lat, p.lon) + (hasNetwork(a) ? " net=on" : " net=off"));
     GeocodeWorker.schedule(a);
   }
 
@@ -633,7 +635,7 @@ public final class Places {
   }
 
   private static ExifInterface exifFromUri(Context c, String uri) {
-    try (InputStream in = c.getContentResolver().openInputStream(Uri.parse(uri))) {
+    try (InputStream in = MediaAccess.openInputStream(c, Uri.parse(uri))) {
       if (in == null) return null;
       return new ExifInterface(in);
     } catch (Exception e) {

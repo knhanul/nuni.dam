@@ -288,7 +288,7 @@ public final class PublicArchive {
             "앱을 다시 설치한 뒤에도 사진을 되살리려면, 기기의 사진/누니담 폴더를 읽을 권한이 필요합니다. 다른 사진은 사용하지 않습니다.")
         .setPositiveButton(
             "허용",
-            (d, w) -> a.requestPermissions(readPermissions(), REQ_READ))
+            (d, w) -> a.requestPermissions(MediaAccess.withLocation(readPermissions()), REQ_READ))
         .setNegativeButton("취소", null)
         .show();
   }
@@ -377,7 +377,7 @@ public final class PublicArchive {
   static Photo restoreOne(NuniApp a, Found f, JSONObject photoMeta) throws Exception {
     File tmp = File.createTempFile("restore-", ".jpg", a.getCacheDir());
     try {
-      try (InputStream in = a.getContentResolver().openInputStream(f.uri);
+      try (InputStream in = MediaAccess.openInputStream(a, f.uri);
           OutputStream out = new FileOutputStream(tmp)) {
         if (in == null) return null;
         Core.copy(in, out, Core.MAX_INPUT);
@@ -427,6 +427,13 @@ public final class PublicArchive {
     android.graphics.BitmapFactory.decodeFile(dest.getPath(), o);
     if (o.outWidth > 0) p.width = o.outWidth;
     if (o.outHeight > 0) p.height = o.outHeight;
+    try {
+      androidx.exifinterface.media.ExifInterface ex =
+          new androidx.exifinterface.media.ExifInterface(dest);
+      Places.applyExif(p, ex);
+      if (p.capturedAt == 0) p.capturedAt = ExifCopy.capturedAt(ex);
+    } catch (Exception ignored) {
+    }
     if (existing == null) a.db.photos().insert(p);
     else a.db.photos().update(p);
     Places.afterImport(a, p);
@@ -519,7 +526,11 @@ public final class PublicArchive {
               .put("faces", p.faces)
               .put("width", p.width)
               .put("height", p.height)
-              .put("placeName", p.placeName));
+              .put("placeName", p.placeName)
+              .put("hasGps", p.hasGps)
+              .put("lat", p.lat)
+              .put("lon", p.lon)
+              .put("geocodedAt", p.geocodedAt));
     }
     root.put("photos", photos);
 
@@ -598,7 +609,22 @@ public final class PublicArchive {
       if (meta.has("placeName") && (p.placeName == null || p.placeName.isEmpty())) {
         p.placeName = meta.optString("placeName", "");
       }
+      boolean gotGps = false;
+      if (!p.hasGps && meta.optBoolean("hasGps", false)) {
+        double lat = meta.optDouble("lat", Double.NaN);
+        double lon = meta.optDouble("lon", Double.NaN);
+        if (Places.valid(lat, lon)) {
+          p.hasGps = true;
+          p.lat = lat;
+          p.lon = lon;
+          gotGps = true;
+        }
+      }
+      if (meta.has("geocodedAt") && p.geocodedAt == 0) {
+        p.geocodedAt = meta.optLong("geocodedAt");
+      }
       a.db.photos().update(p);
+      if (gotGps) Places.afterImport(a, p);
     } catch (Exception ignored) {
     }
   }

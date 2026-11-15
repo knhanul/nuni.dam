@@ -70,12 +70,23 @@ public final class AlbumsActivity extends Activity implements PhotoStore.Listene
 
   private void launchPhotoPickerForAlbum(String albumId) {
     pendingImportAlbumId = albumId == null ? "" : albumId;
+    MediaAccess.runWithLocationAccess(this, this::openAlbumPhotoPicker);
+  }
+
+  private void openAlbumPhotoPicker() {
     Intent i =
         new Intent(Intent.ACTION_OPEN_DOCUMENT)
             .setType("image/*")
             .addCategory(Intent.CATEGORY_OPENABLE)
             .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
     startActivityForResult(i, REQ_PICK_ALBUM_PHOTOS);
+  }
+
+  @Override
+  public void onRequestPermissionsResult(
+      int requestCode, String[] permissions, int[] grantResults) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    MediaAccess.consumeLocationResult(requestCode);
   }
 
   @Override
