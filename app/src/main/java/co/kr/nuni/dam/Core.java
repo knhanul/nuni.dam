@@ -211,15 +211,112 @@ public final class Core {
     return new ArrayList<>(selected);
   }
 
+  /** Burn-in shift range is -4s..+4s; board clip needs this much spare room. */
+  public static final float MAX_SHIFT_S = 4f;
+  /** Inner padding so shift + a 12s accent bar stay inside a clipped board box. */
+  public static final float BOARD_INSET_S = 20f;
+
+  public static final class BoardInner {
+    public final float x, y, width, contentBottom, footerY;
+
+    public BoardInner(float x, float y, float width, float contentBottom, float footerY) {
+      this.x = x;
+      this.y = y;
+      this.width = width;
+      this.contentBottom = contentBottom;
+      this.footerY = footerY;
+    }
+  }
+
+  /**
+   * Text origin and width inside a clipped board box. {@code sh} is the burn-in shift
+   * (-4s..+4s). Left/right inset is 20s so an accent at left-12s and the shifted text
+   * stay inside the clip; width shrinks or grows with the shift so the right edge stays
+   * at {@code right - inset}.
+   */
+  public static BoardInner boardInner(
+      float left, float top, float right, float bottom, float s, float sh) {
+    float inset = BOARD_INSET_S * s;
+    float x = left + inset + sh;
+    float y = top + inset + sh;
+    float innerRight = right - inset;
+    float innerBottom = bottom - inset;
+    float width = Math.max(1f, innerRight - x);
+    return new BoardInner(x, y, width, innerBottom, innerBottom);
+  }
+
+  /** Left edge that keeps a 12s accent bar on-screen given a burn-in shift. */
+  public static float overlaySafeLeft(float baseLeft, float s, float sh) {
+    return Math.max(BOARD_INSET_S * s, baseLeft + sh);
+  }
+
+  public static int quoteStep(String cycle, int photoStep, long nowMillis, int dayOfYear) {
+    if ("PHOTO".equals(cycle)) return Math.max(0, photoStep);
+    if ("MINUTES_15".equals(cycle)) return (int) (Math.max(0L, nowMillis) / 900_000L);
+    if ("HOUR".equals(cycle)) return (int) (Math.max(0L, nowMillis) / 3_600_000L);
+    return Math.max(0, dayOfYear);
+  }
+
   public static int pickQuoteIndex(
       int size, String cycle, int photoStep, long nowMillis, int dayOfYear) {
     if (size <= 0) return -1;
-    int step;
-    if ("PHOTO".equals(cycle)) step = Math.max(0, photoStep);
-    else if ("MINUTES_15".equals(cycle)) step = (int) (Math.max(0L, nowMillis) / 900_000L);
-    else if ("HOUR".equals(cycle)) step = (int) (Math.max(0L, nowMillis) / 3_600_000L);
-    else step = Math.max(0, dayOfYear);
-    return Math.floorMod(step, size);
+    return shuffledQuoteIndex(size, quoteStep(cycle, photoStep, nowMillis, dayOfYear));
+  }
+
+  /**
+   * Deterministic permutation per round so every index appears once before any repeat.
+   * Seeded from the round number, list size, and a stable salt so the same cycle step
+   * always maps to the same quote. When size &gt; 1, the first quote of a round is never
+   * the last quote of the previous round.
+   */
+  public static int shuffledQuoteIndex(int size, int step) {
+    if (size <= 0) return -1;
+    if (size == 1) return 0;
+    int round = Math.floorDiv(step, size);
+    int pos = Math.floorMod(step, size);
+    int[] perm = quotePermutation(size, round);
+    return perm[pos];
+  }
+
+  static int[] quotePermutation(int size, int round) {
+    if (size <= 1) return shuffledRange(Math.max(0, size), quoteRoundSeed(round, size));
+    // Size 2: the only permutation sequences without a boundary repeat are a repeating
+    // pair (0,1,0,1,...) or its reverse. Alternating the two perms always repeats
+    // the last item of one round as the first of the next.
+    if (size == 2) {
+      return shuffledRange(2, quoteRoundSeed(0, 2));
+    }
+    int[] perm = shuffledRange(size, quoteRoundSeed(round, size));
+    if (round > 0) {
+      int[] prev = shuffledRange(size, quoteRoundSeed(round - 1, size));
+      // For size>2 a swap of the first two leaves the last index unchanged.
+      if (perm[0] == prev[size - 1]) {
+        int tmp = perm[0];
+        perm[0] = perm[1];
+        perm[1] = tmp;
+      }
+    }
+    return perm;
+  }
+
+  static long quoteRoundSeed(int round, int size) {
+    long x = (round + 1L) * 0x9E3779B97F4A7C15L;
+    x ^= (long) size * 0xBF58476D1CE4E5B9L;
+    x ^= 0xA0761D6478BD642FL;
+    return x;
+  }
+
+  static int[] shuffledRange(int size, long seed) {
+    int[] a = new int[size];
+    for (int i = 0; i < size; i++) a[i] = i;
+    Random r = new Random(seed);
+    for (int i = size - 1; i > 0; i--) {
+      int j = r.nextInt(i + 1);
+      int tmp = a[i];
+      a[i] = a[j];
+      a[j] = tmp;
+    }
+    return a;
   }
 
   // --- Studio Schedule & Poem Pagination Pure Logic ---

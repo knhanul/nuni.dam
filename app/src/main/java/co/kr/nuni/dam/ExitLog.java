@@ -258,6 +258,11 @@ public final class ExitLog {
     if (Build.VERSION.SDK_INT < 30) {
       sb.append("\n(시스템 종료 이유는 Android 11 이상에서만 확인할 수 있습니다.)\n");
     }
+    String places = PlaceLog.read(context);
+    if (!places.isEmpty()) {
+      sb.append("\n--------------------\n\n[지명 찾기 기록]\n").append(places);
+      if (!endsWithNewline(places)) sb.append('\n');
+    }
     return sb.toString();
   }
 
@@ -278,6 +283,7 @@ public final class ExitLog {
         }
       }
     }
+    PlaceLog.resetMemory();
     try {
       prefs(context).edit().putBoolean(PREF_NOTICE, false).commit();
     } catch (Exception ignored) {

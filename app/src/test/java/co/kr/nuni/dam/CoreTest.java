@@ -226,10 +226,79 @@ public class CoreTest {
   @Test
   public void quoteCycleSelection() {
     assertEquals(-1, Core.pickQuoteIndex(0, "PHOTO", 3, 1000L, 10));
-    assertEquals(3, Core.pickQuoteIndex(10, "PHOTO", 13, 1000L, 10));
-    assertEquals(2, Core.pickQuoteIndex(5, "MINUTES_15", 0, 900_000L * 7, 10));
-    assertEquals(1, Core.pickQuoteIndex(5, "HOUR", 0, 3_600_000L * 6, 10));
-    assertEquals(4, Core.pickQuoteIndex(5, "DAY", 0, 1000L, 9));
+    assertEquals(0, Core.pickQuoteIndex(1, "PHOTO", 99, 1000L, 10));
+    // Same step is stable across calls, and all four cycle modes share the shuffle.
+    int photo = Core.pickQuoteIndex(10, "PHOTO", 13, 1000L, 10);
+    assertEquals(photo, Core.pickQuoteIndex(10, "PHOTO", 13, 99999L, 99));
+    assertEquals(photo, Core.shuffledQuoteIndex(10, 13));
+    assertEquals(
+        Core.shuffledQuoteIndex(5, 7),
+        Core.pickQuoteIndex(5, "MINUTES_15", 0, 900_000L * 7, 10));
+    assertEquals(
+        Core.shuffledQuoteIndex(5, 6),
+        Core.pickQuoteIndex(5, "HOUR", 0, 3_600_000L * 6, 10));
+    assertEquals(Core.shuffledQuoteIndex(5, 9), Core.pickQuoteIndex(5, "DAY", 0, 1000L, 9));
+    // PHOTO / MINUTES_15 / HOUR / DAY with a matching raw step agree.
+    assertEquals(
+        Core.pickQuoteIndex(8, "PHOTO", 11, 0L, 0),
+        Core.shuffledQuoteIndex(8, Core.quoteStep("PHOTO", 11, 0L, 0)));
+  }
+
+  @Test
+  public void shuffledQuotesCoverEachIndexOncePerRound() {
+    for (int size : new int[] {2, 5, 7, 10, 13}) {
+      for (int round = 0; round < 6; round++) {
+        boolean[] seen = new boolean[size];
+        java.util.List<Integer> order = new java.util.ArrayList<>();
+        for (int i = 0; i < size; i++) {
+          int idx = Core.shuffledQuoteIndex(size, round * size + i);
+          assertTrue("index out of range " + idx, idx >= 0 && idx < size);
+          assertFalse("repeat in round size=" + size + " round=" + round, seen[idx]);
+          seen[idx] = true;
+          order.add(idx);
+        }
+        for (int i = 0; i < size; i++) assertTrue(seen[i]);
+        if (size >= 5) {
+          boolean sequential = true;
+          for (int i = 0; i < size; i++) {
+            if (order.get(i) != i) {
+              sequential = false;
+              break;
+            }
+          }
+          assertFalse("round stayed in stored order size=" + size + " round=" + round, sequential);
+        }
+      }
+    }
+  }
+
+  @Test
+  public void shuffledQuotesDoNotRepeatAtRoundBoundary() {
+    for (int size : new int[] {2, 3, 5, 10, 16}) {
+      for (int round = 1; round < 8; round++) {
+        int last = Core.shuffledQuoteIndex(size, round * size - 1);
+        int first = Core.shuffledQuoteIndex(size, round * size);
+        assertNotEquals("boundary size=" + size + " round=" + round, last, first);
+      }
+    }
+  }
+
+  @Test
+  public void boardInnerKeepsShiftAndAccentInsideClip() {
+    float s = 1.25f;
+    float left = 200f, top = 40f, right = 800f, bottom = 500f;
+    float accent = 12f * s;
+    for (float sh = -Core.MAX_SHIFT_S * s; sh <= Core.MAX_SHIFT_S * s + 0.01f; sh += 2f * s) {
+      Core.BoardInner inner = Core.boardInner(left, top, right, bottom, s, sh);
+      assertTrue("text left clipped sh=" + sh, inner.x >= left);
+      assertTrue("accent clipped sh=" + sh, inner.x - accent >= left);
+      assertTrue("text right clipped sh=" + sh, inner.x + inner.width <= right + 0.01f);
+      assertTrue("text top clipped sh=" + sh, inner.y >= top);
+      assertTrue("footer clipped sh=" + sh, inner.footerY <= bottom + 0.01f);
+    }
+    // Overlay left with a 12s accent bar stays on-screen even at the most negative shift.
+    float overlay = Core.overlaySafeLeft(100f, s, -Core.MAX_SHIFT_S * s);
+    assertTrue(overlay - 12f * s >= 0);
   }
 
   @Test

@@ -1179,7 +1179,7 @@ public final class SettingsActivity extends Activity {
       card.addView(
           Ui.text(
               host,
-              "앱이 갑자기 꺼졌을 때의 시각과 원인을 남깁니다. 오류로 죽은 경우와, Android 11 이상에서 시스템이 프로세스를 종료한 이유를 확인할 수 있습니다.",
+              "앱이 갑자기 꺼졌을 때의 시각과 원인을 남깁니다. 오류로 죽은 경우와, Android 11 이상에서 시스템이 프로세스를 종료한 이유를 확인할 수 있습니다. 지명 찾기 기록도 ‘자세히 보기’에 함께 들어 있습니다.",
               14,
               Ui.MUTED));
       Ui.gap(card, 10);
@@ -1217,7 +1217,7 @@ public final class SettingsActivity extends Activity {
           () ->
               new AlertDialog.Builder(host)
                   .setTitle("기록을 지울까요?")
-                  .setMessage("저장된 종료·오류 기록이 모두 삭제됩니다.")
+                  .setMessage("저장된 종료·오류 기록과 지명 찾기 기록이 모두 삭제됩니다.")
                   .setPositiveButton(
                       "지우기",
                       (d, w) -> {

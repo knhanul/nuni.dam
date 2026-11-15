@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import org.json.JSONObject;
 
 /** 사진 EXIF에서 좌표를 읽고, 지명을 찾아 캐시와 Photo 행에 저장한다. 재생은 기다리지 않는다. */
@@ -36,33 +35,64 @@ public final class Places {
       fillFromCache(a);
     } catch (Exception ignored) {
     }
+    if (!hasNetwork(a)) logPendingAll(a);
     if (hasPending(a)) GeocodeWorker.schedule(a);
   }
 
   public static void afterImport(NuniApp a, Photo p) {
     if (p == null) return;
     if (!p.hasGps) tryFillGps(a, p);
-    if (!p.hasGps) return;
-    applyCachedName(a, p);
-    try {
-      a.db.photos().update(p);
-    } catch (Exception ignored) {
-    }
-    if (p.placeName.isEmpty()) GeocodeWorker.schedule(a);
+    else followUpPlace(a, p);
   }
 
   public static void tryFillGps(NuniApp a, Photo p) {
     if (p == null || p.hasGps) return;
-    ExifInterface exif = openExif(a, p);
-    if (exif == null) return;
-    applyExif(p, exif);
-    if (!p.hasGps) return;
-    applyCachedName(a, p);
+    GpsProbe probe = probeGps(a, p);
+    if (!probe.found || probe.exif == null) {
+      PlaceLog.record(a, p, "NO_GPS", probe.sourcesNote());
+      return;
+    }
+    applyExif(p, probe.exif);
+    if (!p.hasGps) {
+      PlaceLog.record(a, p, "NO_GPS", probe.sourcesNote());
+      return;
+    }
+    followUpPlace(a, p);
+  }
+
+  private static void followUpPlace(NuniApp a, Photo p) {
+    if (p == null || !p.hasGps) return;
+    boolean fromCache = applyCachedName(a, p);
     try {
       a.db.photos().update(p);
     } catch (Exception ignored) {
     }
-    if (p.placeName.isEmpty()) GeocodeWorker.schedule(a);
+    if (!p.placeName.isEmpty()) {
+      PlaceLog.record(
+          a,
+          p,
+          "FOUND",
+          PlaceLog.coords(p.lat, p.lon)
+              + " "
+              + p.placeName
+              + (fromCache ? " via=cache" : " via=stored"));
+      return;
+    }
+    if (!hasNetwork(a)) {
+      PlaceLog.record(a, p, "PENDING", PlaceLog.coords(p.lat, p.lon));
+    }
+    GeocodeWorker.schedule(a);
+  }
+
+  private static void logPendingAll(NuniApp a) {
+    try {
+      for (Photo p : a.db.photos().needingPlaceName()) {
+        if (p != null && p.hasGps && p.placeName.isEmpty()) {
+          PlaceLog.record(a, p, "PENDING", PlaceLog.coords(p.lat, p.lon));
+        }
+      }
+    } catch (Exception ignored) {
+    }
   }
 
   public static void applyExif(Photo p, ExifInterface exif) {
@@ -108,14 +138,19 @@ public final class Places {
     }
     for (Photo p : all) {
       if (p == null || p.hasGps) continue;
-      ExifInterface exif = openExif(a, p);
-      if (exif == null) continue;
-      applyExif(p, exif);
+      GpsProbe probe = probeGps(a, p);
+      if (!probe.found || probe.exif == null) {
+        PlaceLog.record(a, p, "NO_GPS", probe.sourcesNote());
+        continue;
+      }
+      applyExif(p, probe.exif);
       if (p.hasGps) {
         try {
           a.db.photos().update(p);
         } catch (Exception ignored) {
         }
+      } else {
+        PlaceLog.record(a, p, "NO_GPS", probe.sourcesNote());
       }
     }
     a.prefs.flag("gpsExifMigrated", true);
@@ -134,6 +169,8 @@ public final class Places {
           a.db.photos().update(p);
         } catch (Exception ignored) {
         }
+        PlaceLog.record(
+            a, p, "FOUND", PlaceLog.coords(p.lat, p.lon) + " " + p.placeName + " via=cache");
       }
     }
   }
@@ -176,26 +213,78 @@ public final class Places {
         a.db.photos().update(p);
       } catch (Exception ignored) {
       }
+      PlaceLog.record(
+          a, p, "FOUND", PlaceLog.coords(p.lat, p.lon) + " " + p.placeName + " via=cache");
       return true;
     }
-    String name = lookup(a, p.lat, p.lon);
+    if (!hasNetwork(a)) {
+      PlaceLog.record(a, p, "PENDING", PlaceLog.coords(p.lat, p.lon));
+      return false;
+    }
+    Lookup geo = lookupGeocoder(a, p.lat, p.lon);
+    if (geo.ok()) {
+      p.placeName = geo.name;
+      p.geocodedAt = System.currentTimeMillis();
+      remember(a, p.lat, p.lon, geo.name);
+      try {
+        a.db.photos().update(p);
+      } catch (Exception ignored) {
+      }
+      PlaceLog.record(
+          a, p, "FOUND", PlaceLog.coords(p.lat, p.lon) + " " + geo.name + " via=geocoder");
+      return true;
+    }
+    PlaceLog.record(
+        a, p, geo.kind, PlaceLog.coords(p.lat, p.lon) + (geo.detail.isEmpty() ? "" : " " + geo.detail));
+    Lookup nom = lookupNominatim(a, p.lat, p.lon);
     p.geocodedAt = System.currentTimeMillis();
-    if (name != null && !name.isEmpty()) {
-      p.placeName = name;
-      remember(a, p.lat, p.lon, name);
+    if (nom.ok()) {
+      p.placeName = nom.name;
+      remember(a, p.lat, p.lon, nom.name);
     }
     try {
       a.db.photos().update(p);
     } catch (Exception ignored) {
     }
-    return name != null && !name.isEmpty();
+    if (nom.ok()) {
+      PlaceLog.record(
+          a, p, "FOUND", PlaceLog.coords(p.lat, p.lon) + " " + nom.name + " via=nominatim");
+      return true;
+    }
+    PlaceLog.record(
+        a, p, nom.kind, PlaceLog.coords(p.lat, p.lon) + (nom.detail.isEmpty() ? "" : " " + nom.detail));
+    return false;
   }
 
   public static String lookup(Context c, double lat, double lon) {
     if (!valid(lat, lon)) return "";
-    String geocoderName = lookupGeocoder(c, lat, lon);
-    if (geocoderName != null && !geocoderName.isEmpty()) return geocoderName;
-    return lookupNominatim(c, lat, lon);
+    Lookup geo = lookupGeocoder(c, lat, lon);
+    if (geo.ok()) return geo.name;
+    return lookupNominatim(c, lat, lon).name;
+  }
+
+  static final class Lookup {
+    final String name;
+    final String kind;
+    final String detail;
+
+    Lookup(String name, String kind, String detail) {
+      this.name = name == null ? "" : name;
+      this.kind = kind == null ? "" : kind;
+      this.detail = detail == null ? "" : detail;
+    }
+
+    boolean ok() {
+      return !name.isEmpty();
+    }
+
+    static Lookup found(String name, String provider) {
+      return new Lookup(name, "FOUND", "via=" + provider);
+    }
+
+    static Lookup empty(String kind, String detail) {
+      return new Lookup("", kind, detail);
+    }
   }
 
   public static boolean hasNetwork(Context c) {
@@ -263,27 +352,39 @@ public final class Places {
     return p;
   }
 
-  private static String lookupGeocoder(Context c, double lat, double lon) {
+  private static Lookup lookupGeocoder(Context c, double lat, double lon) {
     try {
-      if (!Geocoder.isPresent()) return "";
+      if (!Geocoder.isPresent()) return Lookup.empty("GEOCODER_EMPTY", "absent");
       Geocoder geocoder = new Geocoder(c, Locale.KOREAN);
       List<Address> list;
       if (Build.VERSION.SDK_INT >= 33) {
-        list = geocodeAsync(geocoder, lat, lon);
+        AsyncGeo attempt = geocodeAsync(geocoder, lat, lon);
+        if ((attempt.list == null || attempt.list.isEmpty()) && attempt.error != null) {
+          return Lookup.empty("GEOCODER_ERROR", attempt.error);
+        }
+        if (attempt.list == null) return Lookup.empty("GEOCODER_ERROR", "timeout");
+        list = attempt.list;
       } else {
         list = geocoder.getFromLocation(lat, lon, 1);
       }
-      if (list == null || list.isEmpty()) return "";
-      return PlaceNames.format(fromAddress(list.get(0)));
+      if (list == null || list.isEmpty()) return Lookup.empty("GEOCODER_EMPTY", "");
+      String name = PlaceNames.format(fromAddress(list.get(0)));
+      if (name.isEmpty()) return Lookup.empty("GEOCODER_EMPTY", "unformatted");
+      return Lookup.found(name, "geocoder");
     } catch (Exception e) {
-      return "";
+      return Lookup.empty("GEOCODER_ERROR", errMsg(e));
     }
   }
 
-  private static List<Address> geocodeAsync(Geocoder geocoder, double lat, double lon)
+  private static final class AsyncGeo {
+    List<Address> list;
+    String error;
+  }
+
+  private static AsyncGeo geocodeAsync(Geocoder geocoder, double lat, double lon)
       throws InterruptedException {
     CountDownLatch latch = new CountDownLatch(1);
-    AtomicReference<List<Address>> ref = new AtomicReference<>();
+    AsyncGeo out = new AsyncGeo();
     geocoder.getFromLocation(
         lat,
         lon,
@@ -291,20 +392,21 @@ public final class Places {
         new Geocoder.GeocodeListener() {
           @Override
           public void onGeocode(@androidx.annotation.NonNull List<Address> addresses) {
-            ref.set(addresses);
+            out.list = addresses;
             latch.countDown();
           }
 
           @Override
           public void onError(String errorMessage) {
+            out.error = errorMessage == null || errorMessage.isEmpty() ? "error" : errorMessage;
             latch.countDown();
           }
         });
-    latch.await(10, TimeUnit.SECONDS);
-    return ref.get();
+    if (!latch.await(10, TimeUnit.SECONDS) && out.error == null) out.error = "timeout";
+    return out;
   }
 
-  private static String lookupNominatim(Context c, double lat, double lon) {
+  private static Lookup lookupNominatim(Context c, double lat, double lon) {
     synchronized (NOMINATIM_LOCK) {
       long wait = 1000 - (System.currentTimeMillis() - lastNominatimAt);
       if (wait > 0) {
@@ -312,7 +414,7 @@ public final class Places {
           Thread.sleep(wait);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
-          return "";
+          return Lookup.empty("NOMINATIM_ERROR", "interrupted");
         }
       }
       lastNominatimAt = System.currentTimeMillis();
@@ -334,12 +436,25 @@ public final class Places {
         conn.setInstanceFollowRedirects(true);
         int code = conn.getResponseCode();
         InputStream in = code >= 200 && code < 300 ? conn.getInputStream() : conn.getErrorStream();
-        if (in == null || code < 200 || code >= 300) return "";
+        if (in == null || code < 200 || code >= 300) {
+          String msg = "";
+          if (in != null) {
+            try {
+              msg = PlaceLog.sanitize(new String(readLimited(in, 512), StandardCharsets.UTF_8));
+              if (msg.length() > 80) msg = msg.substring(0, 80);
+            } catch (Exception ignored) {
+            }
+          }
+          return Lookup.empty(
+              "NOMINATIM_ERROR", "http=" + code + (msg.isEmpty() ? "" : " " + msg));
+        }
         byte[] raw = readLimited(in, 256 * 1024);
         JSONObject json = new JSONObject(new String(raw, StandardCharsets.UTF_8));
-        return PlaceNames.format(fromNominatim(json));
+        String name = PlaceNames.format(fromNominatim(json));
+        if (name.isEmpty()) return Lookup.empty("NOMINATIM_ERROR", "empty");
+        return Lookup.found(name, "nominatim");
       } catch (Exception e) {
-        return "";
+        return Lookup.empty("NOMINATIM_ERROR", errMsg(e));
       } finally {
         if (conn != null) conn.disconnect();
       }
@@ -368,30 +483,73 @@ public final class Places {
     return out.toByteArray();
   }
 
-  private static ExifInterface openExif(NuniApp a, Photo p) {
+  static final class GpsProbe {
+    ExifInterface exif;
+    boolean found;
+    final StringBuilder sources = new StringBuilder();
+
+    void note(String label) {
+      if (sources.length() > 0) sources.append(',');
+      sources.append(label);
+    }
+
+    String sourcesNote() {
+      return "sources=" + (sources.length() == 0 ? "none" : sources.toString());
+    }
+
+    void consider(String name, ExifInterface ex, String missingLabel) {
+      if (found) {
+        note(name + "(checked)");
+        return;
+      }
+      if (ex == null) {
+        note(name + "(" + missingLabel + ")");
+        return;
+      }
+      if (Places.readGps(ex) != null) {
+        exif = ex;
+        found = true;
+        note(name + "(gps)");
+      } else {
+        note(name + "(no_gps)");
+      }
+    }
+  }
+
+  static GpsProbe probeGps(NuniApp a, Photo p) {
+    GpsProbe r = new GpsProbe();
     try {
       File orig = a.store.originalFile(p.id);
-      if (orig.isFile()) return new ExifInterface(orig);
-    } catch (Exception ignored) {
+      if (orig.isFile()) r.consider("original", new ExifInterface(orig), "ok");
+      else r.note("original(missing)");
+    } catch (Exception e) {
+      r.note("original(error)");
     }
+    ExifInterface pub = null;
+    String pubState = "missing";
     if (p.publicUri != null && !p.publicUri.isEmpty()) {
-      ExifInterface fromUri = exifFromUri(a, p.publicUri);
-      if (fromUri != null) return fromUri;
+      pub = exifFromUri(a, p.publicUri);
+      pubState = pub == null ? "unreadable" : "ok";
     }
-    try {
-      Uri existing = PublicArchive.findExisting(a, p.id);
-      if (existing != null) {
-        ExifInterface fromUri = exifFromUri(a, existing.toString());
-        if (fromUri != null) return fromUri;
+    if (pub == null) {
+      try {
+        Uri existing = PublicArchive.findExisting(a, p.id);
+        if (existing != null) {
+          pub = exifFromUri(a, existing.toString());
+          pubState = pub == null ? "unreadable" : "ok";
+        }
+      } catch (Exception ignored) {
       }
-    } catch (Exception ignored) {
     }
+    r.consider("public", pub, pubState);
     try {
       File f = a.store.file(p.id);
-      if (f.isFile()) return new ExifInterface(f);
-    } catch (Exception ignored) {
+      if (f.isFile()) r.consider("internal", new ExifInterface(f), "ok");
+      else r.note("internal(missing)");
+    } catch (Exception e) {
+      r.note("internal(error)");
     }
-    return null;
+    return r;
   }
 
   private static ExifInterface exifFromUri(Context c, String uri) {
@@ -424,5 +582,12 @@ public final class Places {
       if (v != null && !v.trim().isEmpty()) return v.trim();
     }
     return "";
+  }
+
+  static String errMsg(Throwable e) {
+    if (e == null) return "";
+    String m = e.getMessage();
+    if (m == null || m.isEmpty()) m = e.getClass().getSimpleName();
+    return PlaceLog.sanitize(m);
   }
 }

@@ -298,33 +298,34 @@ public final class FrameView extends View {
         p.setShader(null);
       }
       float sh = previewMode ? 0 : shift(s);
+      float left = Core.overlaySafeLeft(w * .055f, s, sh);
       if (w > h && !entry.body.isEmpty() && cfg.showClock) {
-        text(c, time(), w * .055f + sh, h * .88f + sh, 48 * s * fs, Color.WHITE, false);
+        text(c, time(), left, h * .88f + sh, 48 * s * fs, Color.WHITE, false);
         if (showsCaption(cfg))
-          text(c, captionText(cfg), w * .055f + sh, h * .935f + sh, 14 * s * fs, 0xd8ffffff, false);
+          text(c, captionText(cfg), left, h * .935f + sh, 14 * s * fs, 0xd8ffffff, false);
         drawLiteraryOverlay(
-            c, entry, w * .34f + sh, w * .945f, h * .935f + sh, s * fs, 0xffffffff, 0xd8e8ede5);
+            c,
+            entry,
+            Core.overlaySafeLeft(w * .34f, s, sh),
+            w * .945f,
+            h * .935f + sh,
+            s * fs,
+            0xffffffff,
+            0xd8e8ede5);
       } else {
         float bottomY = h * .93f + sh;
         if (showsCaption(cfg)) {
-          text(c, captionText(cfg), w * .055f + sh, bottomY, 13.5f * s * fs, 0xd0ffffff, false);
+          text(c, captionText(cfg), left, bottomY, 13.5f * s * fs, 0xd0ffffff, false);
           bottomY -= 22 * s * fs;
         }
         if (!entry.body.isEmpty()) {
           bottomY =
               drawLiteraryOverlay(
-                      c,
-                      entry,
-                      w * .055f + sh,
-                      w * .92f,
-                      bottomY,
-                      s * fs,
-                      0xffffffff,
-                      0xd8e8ede5)
+                      c, entry, left, w * .92f, bottomY, s * fs, 0xffffffff, 0xd8e8ede5)
                   - 16 * s * fs;
         }
         if (cfg.showClock)
-          text(c, time(), w * .055f + sh, bottomY, 46 * s * fs, Color.WHITE, false);
+          text(c, time(), left, bottomY, 46 * s * fs, Color.WHITE, false);
       }
     } else {
       boolean landscape = w > h;
@@ -466,7 +467,8 @@ public final class FrameView extends View {
     c.save();
     c.clipRect(b);
     float sh = previewMode ? 0 : shift(s);
-    float x = b.left + sh, y = b.top + sh, width = b.width() - 8 * s;
+    Core.BoardInner inner = Core.boardInner(b.left, b.top, b.right, b.bottom, s, sh);
+    float x = inner.x, y = inner.y, width = inner.width;
     String rawText =
         !photo.note.isEmpty() ? photo.note : ("NONE".equals(cfg.quoteKind) ? "" : phrase);
     Core.QuoteEntry entry = Core.parseQuote(rawText);
@@ -477,7 +479,7 @@ public final class FrameView extends View {
       float calY =
           calendar(c, x + col + 18 * s, y + 18 * s, width - col - 18 * s, ink, muted, s * .85f);
       float topY = Math.max(cy, calY) + 12 * s;
-      drawBoardQuote(c, entry, x, topY, width, b.bottom - 28 * s, s * fs, ink, muted);
+      drawBoardQuote(c, entry, x, topY, width, inner.contentBottom - 8 * s, s * fs, ink, muted);
     } else {
       if (cfg.showClock) {
         y = clock(c, x, y, width, ink, muted, s, fs);
@@ -486,14 +488,14 @@ public final class FrameView extends View {
         y += 20 * s;
       }
       if (calendar && !compact) y = calendar(c, x, y, width, ink, muted, s) + 18 * s;
-      drawBoardQuote(c, entry, x, y, width, b.bottom - 28 * s, s * fs, ink, muted);
+      drawBoardQuote(c, entry, x, y, width, inner.contentBottom - 8 * s, s * fs, ink, muted);
     }
     if (showsCaption(cfg) || calendar || paused) {
       String foot =
           captionText(cfg)
               + (calendar ? (captionText(cfg).isEmpty() ? "" : "  ·  ") + "이번 달 달력" : "")
               + (paused ? ((captionText(cfg).isEmpty() && !calendar) ? "" : "  ·  ") + "일시 정지" : "");
-      text(c, foot, x, b.bottom - 8 * s, 12.5f * s, muted, false);
+      text(c, foot, x, inner.footerY, 12.5f * s, muted, false);
     }
     c.restore();
   }
@@ -501,8 +503,9 @@ public final class FrameView extends View {
   private void drawDedicatedTextScreen(
       Canvas c, float w, float h, float s, float fs, int ink, int muted, Config cfg) {
     float sh = previewMode ? 0 : shift(s);
-    float marginX = w * .11f + sh;
-    float boxW = w * .78f;
+    float inset = Core.BOARD_INSET_S * s;
+    float marginX = Math.max(w * .055f + inset, w * .11f + sh);
+    float boxW = Math.max(1f, Math.min(w * .78f, (w * .945f - inset) - marginX));
     // Subtle decorative frame
     p.setStyle(Paint.Style.STROKE);
     p.setStrokeWidth(Math.max(1f, 1.5f * s));
