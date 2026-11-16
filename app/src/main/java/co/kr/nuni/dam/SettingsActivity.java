@@ -332,6 +332,13 @@ public final class SettingsActivity extends Activity {
 
     // Section 3.1: 설정 → 원격 관리 (누니담 스튜디오 내장 웹서버 제어·QR·인증·세션 관리)
     private void buildRemoteSection(LinearLayout pane) {
+      // Re-render this pane in place so the pairing code/QR appears immediately
+      // inside the bottom-sheet dialog as well, then refresh the group list summary.
+      Runnable refreshPane =
+          () -> {
+            renderGroupDetail(pane, "REMOTE");
+            rebuild();
+          };
       LinearLayout card = Ui.card(pane);
       Ui.section(card, R.drawable.ic_phone, "원격 관리 (NuniDam Studio)");
       card.addView(
@@ -362,7 +369,7 @@ public final class SettingsActivity extends Activity {
               a.stopStudioServer();
               Ui.toast(host, "원격 관리 연결을 종료했습니다. 액자 재생은 유지됩니다.");
             }
-            rebuild();
+            refreshPane.run();
           });
       card.addView(remoteSw);
       Ui.gap(card, 10);
@@ -434,7 +441,7 @@ public final class SettingsActivity extends Activity {
             R.drawable.ic_refresh,
             () -> {
               srv.rotatePairingCode();
-              rebuild();
+              refreshPane.run();
               Ui.toast(host, "새 페어링 코드를 발급했습니다.");
             });
       }
@@ -469,7 +476,7 @@ public final class SettingsActivity extends Activity {
                     (d, w) -> {
                       a.prefs.setAdminPin(pinIn.getText().toString());
                       Ui.toast(host, "관리자 인증 설정을 저장했습니다.");
-                      rebuild();
+                      refreshPane.run();
                     })
                 .setNegativeButton("취소", null)
                 .show();
@@ -513,7 +520,7 @@ public final class SettingsActivity extends Activity {
                                     a.main.post(
                                         () -> {
                                           Ui.toast(host, "해당 세션 연결을 해제했습니다.");
-                                          rebuild();
+                                          refreshPane.run();
                                         });
                                   }));
                     }
@@ -529,7 +536,7 @@ public final class SettingsActivity extends Activity {
                                   a.main.post(
                                       () -> {
                                         Ui.toast(host, "모든 세션을 해제했습니다.");
-                                        rebuild();
+                                        refreshPane.run();
                                       });
                                 }));
                   }

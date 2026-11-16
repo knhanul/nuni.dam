@@ -10,7 +10,14 @@ android {
   versionName '0.1.0'
   javaCompileOptions { annotationProcessorOptions { arguments += ['room.schemaLocation': "$projectDir/schemas".toString()] } }
  }
- buildTypes { release { minifyEnabled false } }
+ buildTypes {
+  debug {
+   ndk {
+    abiFilters 'armeabi-v7a'
+   }
+  }
+  release { minifyEnabled false }
+ }
  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
  lint { abortOnError true }
 }
