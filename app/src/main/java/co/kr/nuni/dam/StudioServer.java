@@ -478,36 +478,21 @@ public final class StudioServer extends NanoHTTPD {
       JSONObject b = readJsonBody(s, 65536);
       long now = System.currentTimeMillis();
       String id = b.optString("id", "").trim();
-      Album existing = id.isEmpty() ? null : sdao.album(id);
-      Album al = existing != null ? existing : new Album();
-      if (al.id.isEmpty()) al.id = "album_" + now + "_" + new SecureRandom().nextInt(1000);
+      String placeScope =
+          b.has("placeScope")
+              ? PlaceNames.Scope.normalizeAlbum(b.optString("placeScope", "FOLLOW"))
+              : null;
+      Album al =
+          a.studio.saveAlbumMetadata(
+              id,
+              b.optString("name", "새 앨범"),
+              b.optString("description", ""),
+              b.has("coverPhotoId") ? b.optString("coverPhotoId") : null,
+              b.optString("sortOrder", "CUSTOM"),
+              b.optInt("seconds", 30),
+              b.optBoolean("shuffle", true),
+              placeScope);
       boolean allPhotos = Album.isAllPhotos(al.id);
-      al.name =
-          allPhotos
-              ? Album.ALL_PHOTOS_NAME
-              : b.optString("name", "새 앨범").trim();
-      if (al.name.isEmpty()) al.name = "새 앨범";
-      if (!allPhotos && Album.ALL_PHOTOS_NAME.equals(al.name)) {
-        return error(
-            Response.Status.BAD_REQUEST,
-            "‘모든 사진’은 이름이 고정된 기본 보기입니다. 다른 이름으로 앨범을 만들어 주세요.");
-      }
-      al.description = b.optString("description", "").trim();
-      if (allPhotos) {
-        al.description = "누니담에 보관된 모든 사진을 자동으로 모아 보여줍니다.";
-        al.isDefault = true;
-      }
-      al.coverPhotoId = b.optString("coverPhotoId", al.coverPhotoId);
-      al.sortOrder = b.optString("sortOrder", "CUSTOM");
-      al.seconds = Math.max(5, Math.min(3600, b.optInt("seconds", 30)));
-      al.shuffle = b.optBoolean("shuffle", true);
-      if (b.has("placeScope") || existing == null) {
-        al.placeScope = PlaceNames.Scope.normalizeAlbum(b.optString("placeScope", "FOLLOW"));
-      }
-      if (existing == null) al.createdAt = now;
-      al.updatedAt = now;
-      sdao.saveAlbum(al);
-      a.prefs.bumpPlaceScopeRev();
 
       if (b.has("photoIds") && !allPhotos) {
         JSONArray pids = b.getJSONArray("photoIds");
