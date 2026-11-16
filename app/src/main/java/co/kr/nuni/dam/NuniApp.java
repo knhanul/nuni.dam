@@ -25,7 +25,7 @@ public final class NuniApp extends Application {
     prefs = new Prefs(this);
     db =
         Room.databaseBuilder(this, NuniDb.class, "nunidam.db")
-            .addMigrations(NuniDb.MIGRATION_1_2, NuniDb.MIGRATION_2_3, NuniDb.MIGRATION_3_4)
+            .addMigrations(NuniDb.MIGRATION_1_2, NuniDb.MIGRATION_2_3, NuniDb.MIGRATION_3_4, NuniDb.MIGRATION_4_5)
             .build();
     store = new PhotoStore(this, db, prefs);
     studio = new StudioRepository(this, db, store, prefs);

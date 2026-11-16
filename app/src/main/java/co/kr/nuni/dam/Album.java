@@ -9,7 +9,8 @@ public class Album {
   public static final String ALL_PHOTOS_NAME = "모든 사진";
 
   @PrimaryKey @NonNull public String id = "";
-  @NonNull public String name = "새 앨범", description = "", coverPhotoId = "", sortOrder = "CUSTOM";
+  @NonNull public String name = "새 앨범", description = "", coverPhotoId = "", sortOrder = "CUSTOM",
+      placeScope = "FOLLOW";
   public int seconds = 30;
   public boolean shuffle = true, isDefault = false;
   public long createdAt, updatedAt;

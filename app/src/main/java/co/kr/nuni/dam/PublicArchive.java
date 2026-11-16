@@ -527,6 +527,7 @@ public final class PublicArchive {
               .put("width", p.width)
               .put("height", p.height)
               .put("placeName", p.placeName)
+              .put("placeParts", p.placeParts)
               .put("hasGps", p.hasGps)
               .put("lat", p.lat)
               .put("lon", p.lon)
@@ -608,6 +609,9 @@ public final class PublicArchive {
       if (meta.has("capturedAt") && p.capturedAt == 0) p.capturedAt = meta.optLong("capturedAt");
       if (meta.has("placeName") && (p.placeName == null || p.placeName.isEmpty())) {
         p.placeName = meta.optString("placeName", "");
+      }
+      if (meta.has("placeParts") && (p.placeParts == null || p.placeParts.isEmpty())) {
+        p.placeParts = meta.optString("placeParts", "");
       }
       boolean gotGps = false;
       if (!p.hasGps && meta.optBoolean("hasGps", false)) {
@@ -972,6 +976,7 @@ public final class PublicArchive {
               .put("sortOrder", al.sortOrder)
               .put("seconds", al.seconds)
               .put("shuffle", al.shuffle)
+              .put("placeScope", PlaceNames.Scope.normalizeAlbum(al.placeScope))
               .put("isDefault", al.isDefault)
               .put("createdAt", al.createdAt)
               .put("updatedAt", al.updatedAt));
@@ -1124,6 +1129,7 @@ public final class PublicArchive {
       al.sortOrder = o.optString("sortOrder", al.sortOrder);
       al.seconds = o.optInt("seconds", al.seconds);
       al.shuffle = o.optBoolean("shuffle", al.shuffle);
+      al.placeScope = PlaceNames.Scope.normalizeAlbum(o.optString("placeScope", al.placeScope));
       al.isDefault = o.optBoolean("isDefault", al.isDefault);
       al.createdAt = o.optLong("createdAt");
       al.updatedAt = o.optLong("updatedAt");

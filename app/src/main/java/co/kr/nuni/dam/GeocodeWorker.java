@@ -41,10 +41,11 @@ public final class GeocodeWorker extends Worker {
       boolean failed = false;
       for (Photo p : pending) {
         if (isStopped()) return Result.retry();
-        if (p == null || !p.hasGps) continue;
-        if (!p.placeName.isEmpty()) continue;
+        if (p == null || !Places.needsGeocode(p)) continue;
+        boolean missingParts = p.placeParts == null || p.placeParts.isEmpty();
         if (p.geocodedAt > 0
-            && System.currentTimeMillis() - p.geocodedAt < 6L * 60 * 60 * 1000) {
+            && System.currentTimeMillis() - p.geocodedAt < 6L * 60 * 60 * 1000
+            && !missingParts) {
           continue;
         }
         if (!Places.hasNetwork(a)) return Result.retry();

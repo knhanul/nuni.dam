@@ -791,6 +791,17 @@ public final class AlbumsActivity extends Activity implements PhotoStore.Listene
             false,
             R.drawable.ic_plus,
             () -> cloneCurrentAlbum(album, onSavedOrClosed));
+        Ui.gap(card, 12);
+        Spinner scopeSpin = addPlaceScopeSpinner(card, album.placeScope);
+        Ui.gap(card, 12);
+        card.addView(
+            Ui.button(
+                host,
+                "앨범 설정 저장",
+                true,
+                R.drawable.ic_check,
+                () -> saveAlbumPlaceScope(album, selectedPlaceScope(scopeSpin), onSavedOrClosed)),
+            new LinearLayout.LayoutParams(-1, Ui.dp(host, 50)));
         return;
       }
 
@@ -831,6 +842,9 @@ public final class AlbumsActivity extends Activity implements PhotoStore.Listene
       shuffleSw.setChecked(album.shuffle);
       card.addView(shuffleSw);
 
+      Ui.gap(card, 8);
+      Spinner scopeSpin = addPlaceScopeSpinner(card, album.placeScope);
+
       Ui.gap(card, 12);
       Button saveBtn =
           Ui.button(
@@ -853,7 +867,14 @@ public final class AlbumsActivity extends Activity implements PhotoStore.Listene
                     () -> {
                       try {
                         a.studio.saveAlbumMetadata(
-                            album.id, n, d, album.coverPhotoId, sort, finalSec, shuf);
+                            album.id,
+                            n,
+                            d,
+                            album.coverPhotoId,
+                            sort,
+                            finalSec,
+                            shuf,
+                            selectedPlaceScope(scopeSpin));
                         a.main.post(
                             () -> {
                               Ui.toast(host, "앨범 설정을 저장했습니다.");
@@ -909,6 +930,63 @@ public final class AlbumsActivity extends Activity implements PhotoStore.Listene
                       .show());
       subActions.addView(delBtn, new LinearLayout.LayoutParams(0, Ui.dp(host, 46), 1));
       card.addView(subActions);
+    }
+
+    private static final String[] PLACE_SCOPE_LABELS = {
+      "전체 설정 따르기 (기본)", "시/도", "시·군·구", "동·읍·면"
+    };
+    private static final String[] PLACE_SCOPE_VALUES = {"FOLLOW", "SIDO", "SIGUNGU", "DONG"};
+
+    private Spinner addPlaceScopeSpinner(LinearLayout card, String current) {
+      card.addView(Ui.text(host, "지역 표시 범위", 13.5f, Ui.MUTED));
+      Spinner spin = new Spinner(host);
+      spin.setAdapter(
+          new ArrayAdapter<>(host, android.R.layout.simple_spinner_dropdown_item, PLACE_SCOPE_LABELS));
+      String cur = PlaceNames.Scope.normalizeAlbum(current);
+      int idx = 0;
+      for (int i = 0; i < PLACE_SCOPE_VALUES.length; i++) {
+        if (PLACE_SCOPE_VALUES[i].equals(cur)) idx = i;
+      }
+      spin.setSelection(idx);
+      card.addView(spin, new LinearLayout.LayoutParams(-1, Ui.dp(host, 48)));
+      card.addView(
+          Ui.text(
+              host,
+              "액자에 장소 이름을 어느 범위까지 보여 줄지 이 앨범만 따로 정할 수 있어요. 도로명과 번지는 보여 주지 않습니다.",
+              13,
+              Ui.MUTED));
+      return spin;
+    }
+
+    private String selectedPlaceScope(Spinner spin) {
+      int pos = spin == null ? 0 : Math.max(0, spin.getSelectedItemPosition());
+      if (pos >= PLACE_SCOPE_VALUES.length) pos = 0;
+      return PLACE_SCOPE_VALUES[pos];
+    }
+
+    private void saveAlbumPlaceScope(Album album, String placeScope, Runnable onSavedOrClosed) {
+      a.io.execute(
+          () -> {
+            try {
+              a.studio.saveAlbumMetadata(
+                  album.id,
+                  album.name,
+                  album.description,
+                  album.coverPhotoId,
+                  album.sortOrder,
+                  album.seconds,
+                  album.shuffle,
+                  placeScope);
+              a.main.post(
+                  () -> {
+                    Ui.toast(host, "앨범 설정을 저장했습니다.");
+                    if (onSavedOrClosed != null) onSavedOrClosed.run();
+                    refresh();
+                  });
+            } catch (Exception e) {
+              a.main.post(() -> Ui.error(host, e));
+            }
+          });
     }
 
     private void showAlbumSettingsDialog() {

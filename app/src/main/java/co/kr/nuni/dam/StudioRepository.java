@@ -566,6 +566,50 @@ public final class StudioRepository {
     return result;
   }
 
+  /**
+   * 장면(또는 전체 사진)에서 각 사진이 따를 앨범의 지역 표시 범위. 여러 앨범에 있으면 장면에 먼저 연결된 앨범을 쓴다.
+   */
+  public java.util.Map<String, String> photoPlaceScopes(String sceneId, java.util.List<Photo> photos) {
+    ensureSeeded();
+    StudioDao sdao = dao();
+    java.util.Map<String, String> out = new java.util.HashMap<>();
+    if (photos == null) return out;
+    Album all = sdao.album(Album.ALL_PHOTOS_ID);
+    String fallback = all == null ? "FOLLOW" : PlaceNames.Scope.normalizeAlbum(all.placeScope);
+    boolean useFallback = true;
+    java.util.List<Album> ordered = new java.util.ArrayList<>();
+    if (sceneId != null && !sceneId.isEmpty()) {
+      java.util.List<SceneAlbum> links = sdao.sceneAlbums(sceneId);
+      boolean named = false;
+      for (SceneAlbum sa : links) {
+        if (sa != null && !Album.isAllPhotos(sa.albumId)) named = true;
+      }
+      if (named) {
+        useFallback = false;
+        for (SceneAlbum sa : links) {
+          if (sa == null || Album.isAllPhotos(sa.albumId)) continue;
+          Album alb = sdao.album(sa.albumId);
+          if (alb != null) ordered.add(alb);
+        }
+      }
+    }
+    java.util.Map<String, String> firstAlbumScope = new java.util.HashMap<>();
+    if (!useFallback) {
+      for (Album alb : ordered) {
+        String scope = PlaceNames.Scope.normalizeAlbum(alb.placeScope);
+        for (Photo p : sdao.albumPhotos(alb.id)) {
+          if (p != null && !firstAlbumScope.containsKey(p.id)) firstAlbumScope.put(p.id, scope);
+        }
+      }
+    }
+    for (Photo p : photos) {
+      if (p == null || p.id == null) continue;
+      String scope = useFallback ? fallback : firstAlbumScope.get(p.id);
+      out.put(p.id, scope == null ? fallback : scope);
+    }
+    return out;
+  }
+
   /** Resolves the list of TextItems for a Scene. */
   public List<TextItem> resolveTextsForScene(String sceneId) {
     ensureSeeded();
@@ -649,6 +693,7 @@ public final class StudioRepository {
               .put("sortOrder", a.sortOrder)
               .put("seconds", a.seconds)
               .put("shuffle", a.shuffle)
+              .put("placeScope", PlaceNames.Scope.normalizeAlbum(a.placeScope))
               .put("isDefault", a.isDefault)
               .put("createdAt", a.createdAt)
               .put("updatedAt", a.updatedAt);
@@ -883,6 +928,7 @@ public final class StudioRepository {
               .put("focusX", p.focusX)
               .put("focusY", p.focusY)
               .put("placeName", p.placeName)
+              .put("placeParts", p.placeParts)
               .put("hasGps", p.hasGps)
               .put("lat", p.lat)
               .put("lon", p.lon)
@@ -1088,6 +1134,9 @@ public final class StudioRepository {
               p.focusX = (float) pm.optDouble("focusX", -1);
               p.focusY = (float) pm.optDouble("focusY", -1);
               p.placeName = pm.optString("placeName", p.placeName);
+              if (pm.has("placeParts") && (p.placeParts == null || p.placeParts.isEmpty())) {
+                p.placeParts = pm.optString("placeParts", "");
+              }
               p.hasGps = pm.optBoolean("hasGps", p.hasGps);
               p.lat = pm.optDouble("lat", p.lat);
               p.lon = pm.optDouble("lon", p.lon);
@@ -1129,6 +1178,7 @@ public final class StudioRepository {
                     al.sortOrder = o.optString("sortOrder", "CUSTOM");
                     al.seconds = o.optInt("seconds", 30);
                     al.shuffle = o.optBoolean("shuffle", true);
+                    al.placeScope = PlaceNames.Scope.normalizeAlbum(o.optString("placeScope", "FOLLOW"));
                     al.isDefault = o.optBoolean("isDefault", false);
                     al.createdAt = o.optLong("createdAt", System.currentTimeMillis());
                     al.updatedAt = o.optLong("updatedAt", System.currentTimeMillis());
@@ -1320,6 +1370,19 @@ public final class StudioRepository {
       int seconds,
       boolean shuffle)
       throws Exception {
+    return saveAlbumMetadata(id, name, description, coverPhotoId, sortOrder, seconds, shuffle, null);
+  }
+
+  public Album saveAlbumMetadata(
+      String id,
+      String name,
+      String description,
+      String coverPhotoId,
+      String sortOrder,
+      int seconds,
+      boolean shuffle,
+      String placeScope)
+      throws Exception {
     synchronized (lock) {
       ensureSeeded();
       StudioDao sdao = dao();
@@ -1331,6 +1394,11 @@ public final class StudioRepository {
         al.id = "album_" + now + "_" + new java.security.SecureRandom().nextInt(10000);
       }
       boolean allPhotos = Album.isAllPhotos(al.id);
+      if (placeScope != null) {
+        al.placeScope = PlaceNames.Scope.normalizeAlbum(placeScope);
+      } else if (existing == null && (al.placeScope == null || al.placeScope.isEmpty())) {
+        al.placeScope = PlaceNames.Scope.ALBUM_DEFAULT.name();
+      }
       if (allPhotos) {
         al.name = Album.ALL_PHOTOS_NAME;
         al.description = "누니담에 보관된 모든 사진을 자동으로 모아 보여줍니다.";
@@ -1354,6 +1422,7 @@ public final class StudioRepository {
       if (existing == null) al.createdAt = now;
       al.updatedAt = now;
       sdao.saveAlbum(al);
+      prefs.bumpPlaceScopeRev();
       publishToTablet("앱에서 앨범 설정 저장");
       return al;
     }
@@ -1379,6 +1448,7 @@ public final class StudioRepository {
       copy.sortOrder = src.sortOrder;
       copy.seconds = src.seconds;
       copy.shuffle = src.shuffle;
+      copy.placeScope = PlaceNames.Scope.normalizeAlbum(src.placeScope);
       copy.isDefault = false;
       copy.createdAt = now;
       copy.updatedAt = now;

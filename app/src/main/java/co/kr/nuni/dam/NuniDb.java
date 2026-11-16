@@ -22,7 +22,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
       AdminSession.class,
       GeoCache.class
     },
-    version = 4,
+    version = 5,
     exportSchema = true)
 public abstract class NuniDb extends RoomDatabase {
   public abstract PhotoDao photos();
@@ -145,6 +145,18 @@ public abstract class NuniDb extends RoomDatabase {
           db.execSQL(
               "CREATE TABLE IF NOT EXISTS `geo_cache` (`key` TEXT NOT NULL, `placeName` TEXT"
                   + " NOT NULL, `geocodedAt` INTEGER NOT NULL, PRIMARY KEY(`key`))");
+        }
+      };
+
+  public static final Migration MIGRATION_4_5 =
+      new Migration(4, 5) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+          db.execSQL("ALTER TABLE `photos` ADD COLUMN `placeParts` TEXT NOT NULL DEFAULT ''");
+          db.execSQL(
+              "ALTER TABLE `geo_cache` ADD COLUMN `partsJson` TEXT NOT NULL DEFAULT ''");
+          db.execSQL(
+              "ALTER TABLE `albums` ADD COLUMN `placeScope` TEXT NOT NULL DEFAULT 'FOLLOW'");
         }
       };
 }

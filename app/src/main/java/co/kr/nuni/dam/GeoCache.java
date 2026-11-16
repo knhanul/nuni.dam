@@ -7,6 +7,6 @@ import androidx.room.PrimaryKey;
 @Entity(tableName = "geo_cache")
 public class GeoCache {
   @PrimaryKey @NonNull public String key = "";
-  @NonNull public String placeName = "";
+  @NonNull public String placeName = "", partsJson = "";
   public long geocodedAt;
 }

@@ -68,7 +68,7 @@ public final class Places {
       a.db.photos().update(p);
     } catch (Exception ignored) {
     }
-    if (!p.placeName.isEmpty()) {
+    if (!needsGeocode(p)) {
       PlaceLog.record(
           a,
           p,
@@ -90,7 +90,7 @@ public final class Places {
   private static void logPendingAll(NuniApp a) {
     try {
       for (Photo p : a.db.photos().needingPlaceName()) {
-        if (p != null && p.hasGps && p.placeName.isEmpty()) {
+        if (needsGeocode(p)) {
           PlaceLog.record(a, p, "PENDING", PlaceLog.coords(p.lat, p.lon));
         }
       }
@@ -257,29 +257,68 @@ public final class Places {
     }
   }
 
+  public static boolean needsGeocode(Photo p) {
+    if (p == null || !p.hasGps) return false;
+    return isBlank(p.placeName) || isBlank(p.placeParts);
+  }
+
   public static boolean applyCachedName(NuniApp a, Photo p) {
-    if (p == null || !p.hasGps || !p.placeName.isEmpty()) return false;
-    String name = cachedName(a, p.lat, p.lon);
-    if (name == null || name.isEmpty()) return false;
-    p.placeName = name;
-    p.geocodedAt = System.currentTimeMillis();
-    return true;
+    if (p == null || !p.hasGps) return false;
+    GeoCache row = cachedRow(a, p.lat, p.lon);
+    if (row == null) return false;
+    boolean changed = false;
+    if (isBlank(p.placeParts) && !isBlank(row.partsJson)) {
+      p.placeParts = row.partsJson;
+      changed = true;
+    }
+    if (isBlank(p.placeName)) {
+      String name = nameFromCache(row);
+      if (!isBlank(name)) {
+        p.placeName = name;
+        changed = true;
+      }
+    }
+    if (changed) p.geocodedAt = System.currentTimeMillis();
+    return changed && !isBlank(p.placeName);
   }
 
   public static String cachedName(NuniApp a, double lat, double lon) {
+    return nameFromCache(cachedRow(a, lat, lon));
+  }
+
+  private static GeoCache cachedRow(NuniApp a, double lat, double lon) {
     try {
-      GeoCache row = a.db.geoCache().get(PlaceNames.cacheKey(lat, lon));
-      if (row != null && row.placeName != null && !row.placeName.isEmpty()) return row.placeName;
-    } catch (Exception ignored) {
+      return a.db.geoCache().get(PlaceNames.cacheKey(lat, lon));
+    } catch (Exception e) {
+      return null;
     }
+  }
+
+  private static String nameFromCache(GeoCache row) {
+    if (row == null) return null;
+    PlaceNames.Parts parts = PlaceNames.Parts.fromJson(row.partsJson);
+    String formatted = PlaceNames.format(parts, PlaceNames.Scope.DONG);
+    if (!isBlank(formatted)) return formatted;
+    if (row.placeName != null && !row.placeName.isEmpty()) return row.placeName;
     return null;
   }
 
   public static void remember(NuniApp a, double lat, double lon, String name) {
-    if (name == null || name.isEmpty()) return;
-    GeoCache row = new GeoCache();
-    row.key = PlaceNames.cacheKey(lat, lon);
-    row.placeName = name;
+    remember(a, lat, lon, name, null);
+  }
+
+  public static void remember(
+      NuniApp a, double lat, double lon, String name, PlaceNames.Parts parts) {
+    String formatted = PlaceNames.format(parts, PlaceNames.Scope.DONG);
+    if (isBlank(formatted)) formatted = name;
+    if (isBlank(formatted) && (parts == null || parts.isEmpty())) return;
+    GeoCache row = cachedRow(a, lat, lon);
+    if (row == null) {
+      row = new GeoCache();
+      row.key = PlaceNames.cacheKey(lat, lon);
+    }
+    if (!isBlank(formatted)) row.placeName = formatted;
+    if (parts != null && !parts.isEmpty()) row.partsJson = parts.toJson();
     row.geocodedAt = System.currentTimeMillis();
     try {
       a.db.geoCache().upsert(row);
@@ -287,10 +326,17 @@ public final class Places {
     }
   }
 
+  private static void applyLookup(Photo p, Lookup look) {
+    if (p == null || look == null || !look.ok()) return;
+    if (look.parts != null && !look.parts.isEmpty()) p.placeParts = look.parts.toJson();
+    if (!isBlank(look.name)) p.placeName = look.name;
+    p.geocodedAt = System.currentTimeMillis();
+  }
+
   /** 네트워크로 지명을 찾아 Photo와 캐시에 저장한다. 실패하면 false. */
   public static boolean lookupAndStore(NuniApp a, Photo p) {
     if (p == null || !p.hasGps) return true;
-    if (applyCachedName(a, p)) {
+    if (applyCachedName(a, p) && !needsGeocode(p)) {
       try {
         a.db.photos().update(p);
       } catch (Exception ignored) {
@@ -305,9 +351,8 @@ public final class Places {
     }
     Lookup geo = lookupGeocoder(a, p.lat, p.lon);
     if (geo.ok()) {
-      p.placeName = geo.name;
-      p.geocodedAt = System.currentTimeMillis();
-      remember(a, p.lat, p.lon, geo.name);
+      applyLookup(p, geo);
+      remember(a, p.lat, p.lon, geo.name, geo.parts);
       try {
         a.db.photos().update(p);
       } catch (Exception ignored) {
@@ -321,8 +366,8 @@ public final class Places {
     Lookup nom = lookupNominatim(a, p.lat, p.lon);
     p.geocodedAt = System.currentTimeMillis();
     if (nom.ok()) {
-      p.placeName = nom.name;
-      remember(a, p.lat, p.lon, nom.name);
+      applyLookup(p, nom);
+      remember(a, p.lat, p.lon, nom.name, nom.parts);
     }
     try {
       a.db.photos().update(p);
@@ -347,25 +392,35 @@ public final class Places {
 
   static final class Lookup {
     final String name;
+    final PlaceNames.Parts parts;
     final String kind;
     final String detail;
 
-    Lookup(String name, String kind, String detail) {
+    Lookup(String name, PlaceNames.Parts parts, String kind, String detail) {
       this.name = name == null ? "" : name;
+      this.parts = parts;
       this.kind = kind == null ? "" : kind;
       this.detail = detail == null ? "" : detail;
     }
 
     boolean ok() {
-      return !name.isEmpty();
+      return !name.isEmpty() || (parts != null && !parts.isEmpty());
     }
 
     static Lookup found(String name, String provider) {
-      return new Lookup(name, "FOUND", "via=" + provider);
+      return found(name, null, provider);
+    }
+
+    static Lookup found(PlaceNames.Parts parts, String provider) {
+      return found(PlaceNames.format(parts, PlaceNames.Scope.DONG), parts, provider);
+    }
+
+    static Lookup found(String name, PlaceNames.Parts parts, String provider) {
+      return new Lookup(name, parts, "FOUND", "via=" + provider);
     }
 
     static Lookup empty(String kind, String detail) {
-      return new Lookup("", kind, detail);
+      return new Lookup("", null, kind, detail);
     }
   }
 
@@ -396,7 +451,9 @@ public final class Places {
         a.getAdminArea(),
         a.getSubAdminArea(),
         a.getLocality(),
-        a.getSubLocality());
+        a.getSubLocality(),
+        a.getThoroughfare(),
+        a.getFeatureName());
   }
 
   static PlaceNames.Parts fromNominatim(JSONObject root) {
@@ -413,8 +470,16 @@ public final class Places {
         firstNonEmpty(
             addr.optString("city_district", ""),
             addr.optString("borough", ""),
-            addr.optString("suburb", ""),
             addr.optString("district", ""));
+    String neighbourhood =
+        firstNonEmpty(
+            addr.optString("suburb", ""),
+            addr.optString("neighbourhood", ""),
+            addr.optString("quarter", ""),
+            addr.optString("village", ""),
+            addr.optString("hamlet", ""),
+            addr.optString("town", ""));
+    if (neighbourhood.equals(locality) || neighbourhood.equals(sub)) neighbourhood = "";
     PlaceNames.Parts p =
         new PlaceNames.Parts(
             addr.optString("country_code", ""),
@@ -422,8 +487,10 @@ public final class Places {
             firstNonEmpty(addr.optString("state", ""), addr.optString("region", ""), addr.optString("province", "")),
             addr.optString("county", ""),
             locality,
-            sub);
-    if (PlaceNames.format(p).isEmpty()) {
+            sub,
+            addr.optString("road", ""),
+            neighbourhood);
+    if (PlaceNames.format(p, PlaceNames.Scope.DONG).isEmpty()) {
       String display = root.optString("display_name", "").trim();
       if (!display.isEmpty()) {
         PlaceNames.Parts fallback = new PlaceNames.Parts();
@@ -450,9 +517,10 @@ public final class Places {
         list = geocoder.getFromLocation(lat, lon, 1);
       }
       if (list == null || list.isEmpty()) return Lookup.empty("GEOCODER_EMPTY", "");
-      String name = PlaceNames.format(fromAddress(list.get(0)));
+      PlaceNames.Parts parts = fromAddress(list.get(0));
+      String name = PlaceNames.format(parts, PlaceNames.Scope.DONG);
       if (name.isEmpty()) return Lookup.empty("GEOCODER_EMPTY", "unformatted");
-      return Lookup.found(name, "geocoder");
+      return Lookup.found(name, parts, "geocoder");
     } catch (Exception e) {
       return Lookup.empty("GEOCODER_ERROR", errMsg(e));
     }
@@ -532,9 +600,10 @@ public final class Places {
         }
         byte[] raw = readLimited(in, 256 * 1024);
         JSONObject json = new JSONObject(new String(raw, StandardCharsets.UTF_8));
-        String name = PlaceNames.format(fromNominatim(json));
+        PlaceNames.Parts parts = fromNominatim(json);
+        String name = PlaceNames.format(parts, PlaceNames.Scope.DONG);
         if (name.isEmpty()) return Lookup.empty("NOMINATIM_ERROR", "empty");
-        return Lookup.found(name, "nominatim");
+        return Lookup.found(name, parts, "nominatim");
       } catch (Exception e) {
         return Lookup.empty("NOMINATIM_ERROR", errMsg(e));
       } finally {
@@ -646,11 +715,10 @@ public final class Places {
   private static boolean hasPending(NuniApp a) {
     try {
       for (Photo p : a.db.photos().needingPlaceName()) {
-        if (p != null
-            && p.hasGps
-            && p.placeName.isEmpty()
+        if (needsGeocode(p)
             && (p.geocodedAt <= 0
-                || System.currentTimeMillis() - p.geocodedAt >= RETRY_GRACE_MS)) {
+                || System.currentTimeMillis() - p.geocodedAt >= RETRY_GRACE_MS
+                || isBlank(p.placeParts))) {
           return true;
         }
       }
@@ -664,6 +732,10 @@ public final class Places {
       if (v != null && !v.trim().isEmpty()) return v.trim();
     }
     return "";
+  }
+
+  static boolean isBlank(String s) {
+    return s == null || s.trim().isEmpty();
   }
 
   static String errMsg(Throwable e) {

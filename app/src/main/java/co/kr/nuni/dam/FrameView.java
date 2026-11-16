@@ -1,6 +1,7 @@
 package co.kr.nuni.dam;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.*;
 import android.os.SystemClock;
 import android.text.*;
@@ -106,6 +107,16 @@ public final class FrameView extends View {
   private Config overrideConfig;
   private boolean previewMode;
   private boolean samplePreview;
+  private String albumPlaceScope = "FOLLOW";
+  private final SharedPreferences.OnSharedPreferenceChangeListener placePrefListener =
+      (sp, key) -> {
+        if ("placeScope".equals(key)
+            || "placeScopeRev".equals(key)
+            || "showPlace".equals(key)
+            || "showCaptureDate".equals(key)) {
+          post(this::invalidate);
+        }
+      };
   private boolean dimmedOverlay;
   private String dimmedStatus = "";
   private Photo photo;
@@ -138,6 +149,32 @@ public final class FrameView extends View {
     invalidate();
   }
 
+  public void setAlbumPlaceScope(String scope) {
+    String next = scope == null || scope.isEmpty() ? "FOLLOW" : scope;
+    if (!next.equals(albumPlaceScope)) {
+      albumPlaceScope = next;
+      invalidate();
+    }
+  }
+
+  @Override
+  protected void onAttachedToWindow() {
+    super.onAttachedToWindow();
+    try {
+      prefs.raw.registerOnSharedPreferenceChangeListener(placePrefListener);
+    } catch (Exception ignored) {
+    }
+  }
+
+  @Override
+  protected void onDetachedFromWindow() {
+    try {
+      prefs.raw.unregisterOnSharedPreferenceChangeListener(placePrefListener);
+    } catch (Exception ignored) {
+    }
+    super.onDetachedFromWindow();
+  }
+
   public void setDimmedOverlay(boolean dimmed, String statusText) {
     if (dimmedOverlay != dimmed || !Objects.equals(dimmedStatus, statusText)) {
       dimmedOverlay = dimmed;
@@ -152,9 +189,14 @@ public final class FrameView extends View {
 
   private String captionText(Config cfg) {
     if (samplePreview && (captureText != null && !captureText.isEmpty())) return captureText;
+    String place =
+        PlaceNames.display(
+            photo == null ? "" : photo.placeParts,
+            photo == null ? "" : photo.placeName,
+            PlaceNames.Scope.resolve(albumPlaceScope, prefs.placeScope()));
     return PlaceNames.caption(
         photo == null ? 0L : photo.capturedAt,
-        photo == null ? "" : photo.placeName,
+        place,
         cfg.showCaptureDate,
         cfg.showPlace);
   }

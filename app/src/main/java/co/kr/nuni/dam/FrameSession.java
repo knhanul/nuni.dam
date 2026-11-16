@@ -24,6 +24,8 @@ public final class FrameSession implements PhotoStore.Listener {
   private boolean active, loading, paused, powerPaused;
   private long next, lastScheduleCheckMs;
   private boolean receiverRegistered;
+  private java.util.Map<String, String> photoPlaceScopes = new java.util.HashMap<>();
+  private int lastScopeRev = -1;
   private Bitmap preloaded;
   private String preloadedId;
   private final MemoryGuard.Listener trimListener = this::onTrimMemory;
@@ -46,6 +48,7 @@ public final class FrameSession implements PhotoStore.Listener {
             lastScheduleCheckMs = nowElapsed;
             checkScheduleTransition(false);
           }
+          refreshPlaceScopesIfNeeded();
           view.tick(phrase());
           if (!paused && !powerPaused && !loading && nowElapsed >= next) next();
           h.postDelayed(this, 1000);
@@ -221,6 +224,10 @@ public final class FrameSession implements PhotoStore.Listener {
           Scene finalScene = resolvedScene;
           List<Photo> finalList = list;
           List<TextItem> finalTexts = tItems;
+          final java.util.Map<String, String> finalScopes =
+              a.studio != null
+                  ? a.studio.photoPlaceScopes(finalScene != null ? finalScene.id : "", finalList)
+                  : new java.util.HashMap<>();
           h.post(
               () -> {
                 if (!active || request != generation) return;
@@ -244,6 +251,8 @@ public final class FrameSession implements PhotoStore.Listener {
                     index = i;
                     break;
                   }
+                photoPlaceScopes = finalScopes;
+                lastScopeRev = a.prefs.placeScopeRev();
                 loading = false;
                 if (deck.isEmpty()) {
                   view.clear();
@@ -282,6 +291,7 @@ public final class FrameSession implements PhotoStore.Listener {
                   view.error();
                   return;
                 }
+                applyPlaceScopeFor(p);
                 view.show(p, loaded, phrase());
                 next = SystemClock.elapsedRealtime() + currentDurationSec() * 1000L;
                 a.prefs.text("lastPhoto", p.id);
@@ -299,9 +309,38 @@ public final class FrameSession implements PhotoStore.Listener {
       p.lat = fresh.lat;
       p.lon = fresh.lon;
       p.placeName = fresh.placeName;
+      p.placeParts = fresh.placeParts;
       p.geocodedAt = fresh.geocodedAt;
     } catch (Exception ignored) {
     }
+  }
+
+  private void applyPlaceScopeFor(Photo p) {
+    String scope = "FOLLOW";
+    if (p != null && p.id != null && photoPlaceScopes.containsKey(p.id)) {
+      scope = photoPlaceScopes.get(p.id);
+    }
+    view.setAlbumPlaceScope(scope);
+  }
+
+  private void refreshPlaceScopesIfNeeded() {
+    if (a.prefs.placeScopeRev() == lastScopeRev) return;
+    lastScopeRev = a.prefs.placeScopeRev();
+    final List<Photo> snap = new ArrayList<>(deck);
+    final String sceneId = currentSceneId;
+    a.io.execute(
+        () -> {
+          java.util.Map<String, String> scopes =
+              a.studio == null
+                  ? new java.util.HashMap<>()
+                  : a.studio.photoPlaceScopes(sceneId, snap);
+          h.post(
+              () -> {
+                photoPlaceScopes = scopes;
+                if (index >= 0 && index < deck.size()) applyPlaceScopeFor(deck.get(index));
+                else view.invalidate();
+              });
+        });
   }
 
   private int decodeTarget() {

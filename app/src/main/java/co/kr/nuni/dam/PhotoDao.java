@@ -67,7 +67,7 @@ public interface PhotoDao {
   @Query("DELETE FROM quotes WHERE id=:id")
   void deleteQuote(int id);
 
-  @Query("SELECT * FROM photos WHERE hasGps=1 AND placeName='' ")
+  @Query("SELECT * FROM photos WHERE hasGps=1 AND (placeName='' OR placeParts='')")
   List<Photo> needingPlaceName();
 
   @Query("SELECT * FROM photos WHERE owned=1")

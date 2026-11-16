@@ -83,6 +83,18 @@ public final class Prefs {
     return raw.getBoolean("showPlace", true);
   }
 
+  public String placeScope() {
+    return PlaceNames.Scope.normalizeGlobal(raw.getString("placeScope", "DONG"));
+  }
+
+  public int placeScopeRev() {
+    return raw.getInt("placeScopeRev", 0);
+  }
+
+  public void bumpPlaceScopeRev() {
+    raw.edit().putInt("placeScopeRev", placeScopeRev() + 1).apply();
+  }
+
   public int fontScale() {
     return raw.getInt("fontScale", 100);
   }
@@ -285,6 +297,7 @@ public final class Prefs {
         .put("showClock", showClock())
         .put("showCaptureDate", showCaptureDate())
         .put("showPlace", showPlace())
+        .put("placeScope", placeScope())
         .put("fontScale", fontScale())
         .put("motionEnabled", motionEnabled())
         .put("idleMinutes", idleMinutes())
@@ -328,6 +341,7 @@ public final class Prefs {
         sp = o.optBoolean("showPlace", true),
         me = o.optBoolean("motionEnabled", false),
         nr = o.optBoolean("nightReact", false);
+    String placeScope = PlaceNames.Scope.normalizeGlobal(o.optString("placeScope", "DONG"));
     // Note: Device-specific verification flags (such as screenOffWakeVerified or camera permissions)
     // are intentionally NOT trusted or copied from JSON backup per Section 9.
     raw.edit()
@@ -355,6 +369,7 @@ public final class Prefs {
         .putBoolean("showClock", sc)
         .putBoolean("showCaptureDate", sd)
         .putBoolean("showPlace", sp)
+        .putString("placeScope", placeScope)
         .putBoolean("motionEnabled", me)
         .putBoolean("nightReact", nr)
         .apply();

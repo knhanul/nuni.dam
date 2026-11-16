@@ -501,9 +501,13 @@ public final class StudioServer extends NanoHTTPD {
       al.sortOrder = b.optString("sortOrder", "CUSTOM");
       al.seconds = Math.max(5, Math.min(3600, b.optInt("seconds", 30)));
       al.shuffle = b.optBoolean("shuffle", true);
+      if (b.has("placeScope") || existing == null) {
+        al.placeScope = PlaceNames.Scope.normalizeAlbum(b.optString("placeScope", "FOLLOW"));
+      }
       if (existing == null) al.createdAt = now;
       al.updatedAt = now;
       sdao.saveAlbum(al);
+      a.prefs.bumpPlaceScopeRev();
 
       if (b.has("photoIds") && !allPhotos) {
         JSONArray pids = b.getJSONArray("photoIds");
@@ -537,6 +541,7 @@ public final class StudioServer extends NanoHTTPD {
       copy.sortOrder = src.sortOrder;
       copy.seconds = src.seconds;
       copy.shuffle = src.shuffle;
+      copy.placeScope = PlaceNames.Scope.normalizeAlbum(src.placeScope);
       copy.isDefault = false;
       copy.createdAt = now;
       copy.updatedAt = now;

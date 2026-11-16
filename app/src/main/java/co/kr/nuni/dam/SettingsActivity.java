@@ -545,10 +545,17 @@ public final class SettingsActivity extends Activity {
       Ui.section(captionCard, R.drawable.ic_clock, "위치·날짜 표시");
       toggle(captionCard, "촬영 날짜 표시", "showCaptureDate", true);
       toggle(captionCard, "위치 표시", "showPlace", true);
+      choiceText(
+          captionCard,
+          "지역 표시 범위",
+          new String[] {"시/도", "시·군·구", "동·읍·면 (기본)"},
+          new String[] {"SIDO", "SIGUNGU", "DONG"},
+          "placeScope",
+          a.prefs.placeScope());
       captionCard.addView(
           Ui.text(
               host,
-              "액자 화면에 ‘2024년 5월 3일 · 제주 서귀포시’처럼 촬영일과 장소 이름을 보여 줍니다. GPS가 없는 사진은 날짜만 표시합니다. 위치 이름은 사진에 담긴 좌표로 찾으며, 좌표는 이 기기에만 저장됩니다. 이름을 찾을 때만 기기의 지오코딩 서비스 또는 OpenStreetMap에 좌표가 전달됩니다.",
+              "액자 화면에 ‘2024년 5월 3일 · 경기도 수원시 영통구 매탄동’처럼 촬영일과 장소 이름을 보여 줍니다. 기본은 동·읍·면까지이며, 앨범마다 따로 정할 수도 있습니다. 도로명과 번지는 보여 주지 않습니다. GPS가 없는 사진은 날짜만 표시합니다. 위치 이름은 사진에 담긴 좌표로 찾으며, 좌표는 이 기기에만 저장됩니다. 이름을 찾을 때만 기기의 지오코딩 서비스 또는 OpenStreetMap에 좌표가 전달됩니다.",
               13,
               Ui.MUTED));
 
@@ -1314,6 +1321,30 @@ public final class SettingsActivity extends Activity {
       v.setChecked(a.prefs.raw.getBoolean(key, fallback));
       v.setOnCheckedChangeListener((b, on) -> a.prefs.flag(key, on));
       p.addView(v);
+    }
+
+    private void choiceText(
+        LinearLayout p, String label, String[] names, String[] vals, String key, String current) {
+      Ui.gap(p, 8);
+      p.addView(Ui.text(host, label, 14, Ui.MUTED));
+      Spinner s = new Spinner(host);
+      s.setAdapter(
+          new ArrayAdapter<>(host, android.R.layout.simple_spinner_dropdown_item, names));
+      int initial = 0;
+      String cur = current == null ? "" : current;
+      for (int i = 0; i < vals.length; i++) if (vals[i].equalsIgnoreCase(cur)) initial = i;
+      s.setSelection(initial);
+      s.setOnItemSelectedListener(
+          new AdapterView.OnItemSelectedListener() {
+            public void onNothingSelected(AdapterView<?> parent) {}
+
+            public void onItemSelected(AdapterView<?> parent, View v, int pos, long id) {
+              if (vals[pos].equals(a.prefs.raw.getString(key, current))) return;
+              a.prefs.text(key, vals[pos]);
+              a.prefs.bumpPlaceScopeRev();
+            }
+          });
+      p.addView(s, new LinearLayout.LayoutParams(-1, Ui.dp(host, 48)));
     }
 
     private void choiceInt(
