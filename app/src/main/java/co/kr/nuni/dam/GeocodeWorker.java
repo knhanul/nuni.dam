@@ -38,6 +38,7 @@ public final class GeocodeWorker extends Worker {
       Places.scanExistingGps(a);
       Places.fillFromCache(a);
       List<Photo> pending = a.db.photos().needingPlaceName();
+      if (!pending.isEmpty()) ExitLog.logJob(a, "지명 찾기 시작: " + pending.size() + "장");
       boolean failed = false;
       for (Photo p : pending) {
         if (isStopped()) return Result.retry();

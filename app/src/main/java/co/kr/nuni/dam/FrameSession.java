@@ -28,6 +28,8 @@ public final class FrameSession implements PhotoStore.Listener {
   private int lastScopeRev = -1;
   private Bitmap preloaded;
   private String preloadedId;
+  private String shownId;
+  private final Runnable reloadSoon = this::reload;
   private final MemoryGuard.Listener trimListener = this::onTrimMemory;
 
   private final BroadcastReceiver timeReceiver =
@@ -89,6 +91,7 @@ public final class FrameSession implements PhotoStore.Listener {
     dropPreload();
     images.shutdownNow();
     view.clear();
+    shownId = null;
   }
 
   private void registerTimeReceiver() {
@@ -177,7 +180,9 @@ public final class FrameSession implements PhotoStore.Listener {
   }
 
   public void changed() {
-    h.post(this::reload);
+    // Coalesce bursts (imports, sync, edits) into one list reload.
+    h.removeCallbacks(reloadSoon);
+    h.postDelayed(reloadSoon, 2000);
   }
 
   private void reload() {
@@ -256,8 +261,12 @@ public final class FrameSession implements PhotoStore.Listener {
                 loading = false;
                 if (deck.isEmpty()) {
                   view.clear();
+                  shownId = null;
                   view.tick(phrase());
                   next = SystemClock.elapsedRealtime() + currentDurationSec() * 1000L;
+                } else if (index >= 0 && current.equals(shownId)) {
+                  // The photo on screen is still in the list: keep it instead of decoding it again.
+                  applyPlaceScopeFor(deck.get(index));
                 } else {
                   if (index < 0) index = 0;
                   show();
@@ -293,6 +302,7 @@ public final class FrameSession implements PhotoStore.Listener {
                 }
                 applyPlaceScopeFor(p);
                 view.show(p, loaded, phrase());
+                shownId = p.id;
                 next = SystemClock.elapsedRealtime() + currentDurationSec() * 1000L;
                 a.prefs.text("lastPhoto", p.id);
                 preloadNext(target);
@@ -369,6 +379,8 @@ public final class FrameSession implements PhotoStore.Listener {
 
   private void preloadNext(int target) {
     if (!active || deck.size() < 2 || images.isShutdown()) return;
+    // Under memory pressure hold only the photo on screen, not the next one too.
+    if (MemoryGuard.underPressure()) return;
     final Photo nextPhoto = deck.get((index + 1) % deck.size());
     images.execute(
         () -> {

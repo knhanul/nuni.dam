@@ -54,6 +54,7 @@ public final class NuniApp extends Application {
   @Override
   public void onTrimMemory(int level) {
     super.onTrimMemory(level);
+    MemoryGuard.note(level);
     ExitLog.logTrimMemory(this, level);
     if (Core.shouldReleaseCaches(level)) MemoryGuard.dispatch(level);
   }
@@ -61,6 +62,7 @@ public final class NuniApp extends Application {
   @Override
   public void onLowMemory() {
     super.onLowMemory();
+    MemoryGuard.note(15);
     ExitLog.logLowMemory(this);
     MemoryGuard.dispatch(15); // TRIM_MEMORY_RUNNING_CRITICAL
   }

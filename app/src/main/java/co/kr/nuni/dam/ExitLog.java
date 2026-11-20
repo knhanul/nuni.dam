@@ -200,18 +200,60 @@ public final class ExitLog {
   }
 
   public static void logTrimMemory(Context context, int level) {
-    appendMemoryLine(context, formatTime(System.currentTimeMillis()) + "  메모리 정리 요청 (" + trimLabel(level) + ")");
+    appendMemoryLine(
+        context,
+        formatTime(System.currentTimeMillis())
+            + "  메모리 정리 요청 ("
+            + trimLabel(level)
+            + ")"
+            + memorySnapshot(context));
     saveLastTrim(context, trimLabel(level));
   }
 
   public static void logLowMemory(Context context) {
-    appendMemoryLine(context, formatTime(System.currentTimeMillis()) + "  메모리 부족 (onLowMemory)");
+    appendMemoryLine(
+        context,
+        formatTime(System.currentTimeMillis()) + "  메모리 부족 (onLowMemory)" + memorySnapshot(context));
     saveLastTrim(context, "onLowMemory");
   }
 
   public static void logLine(Context context, String message) {
     if (message == null || message.isEmpty()) return;
     appendMemoryLine(context, formatTime(System.currentTimeMillis()) + "  " + message);
+  }
+
+  /** Logs a background job step together with a memory snapshot. Never include coordinates in detail. */
+  public static void logJob(Context context, String message) {
+    if (message == null || message.isEmpty()) return;
+    logLine(context, message + memorySnapshot(context));
+  }
+
+  /**
+   * Short memory snapshot for the memory log: app Java heap, native heap, and device free memory. Shows whether
+   * the app itself grew or the whole device ran short.
+   */
+  static String memorySnapshot(Context context) {
+    StringBuilder sb = new StringBuilder(" · 앱 ");
+    try {
+      Runtime r = Runtime.getRuntime();
+      sb.append(mb(r.totalMemory() - r.freeMemory())).append('/').append(mb(r.maxMemory()));
+      sb.append(" · 네이티브 ").append(mb(android.os.Debug.getNativeHeapAllocatedSize()));
+    } catch (Throwable ignored) {
+    }
+    try {
+      ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+      if (am != null) {
+        ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+        am.getMemoryInfo(mi);
+        sb.append(" · 기기 여유 ")
+            .append(mb(mi.availMem))
+            .append('/')
+            .append(mb(mi.totalMem))
+            .append(mi.lowMemory ? " (부족)" : "");
+      }
+    } catch (Throwable ignored) {
+    }
+    return sb.toString();
   }
 
   public static void markNotice(Context context) {

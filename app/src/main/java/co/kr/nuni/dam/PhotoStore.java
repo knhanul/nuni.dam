@@ -43,7 +43,37 @@ public final class PhotoStore {
     listeners.remove(l);
   }
 
+  private final java.util.concurrent.atomic.AtomicInteger batch =
+      new java.util.concurrent.atomic.AtomicInteger();
+  private volatile boolean batchedChange;
+
+  /**
+   * Starts a bulk job (for example folder sync). Change notifications are held and sent once in {@link
+   * #endBatch()}, so open screens and the frame reload the photo list once instead of once per photo.
+   */
+  public void beginBatch() {
+    batch.incrementAndGet();
+  }
+
+  public void endBatch() {
+    if (batch.decrementAndGet() <= 0) {
+      batch.set(0);
+      if (batchedChange) {
+        batchedChange = false;
+        notifyListeners();
+      }
+    }
+  }
+
   public void changed() {
+    if (batch.get() > 0) {
+      batchedChange = true;
+      return;
+    }
+    notifyListeners();
+  }
+
+  private void notifyListeners() {
     for (Listener l : listeners) l.changed();
   }
 
@@ -206,6 +236,11 @@ public final class PhotoStore {
           m.isIdentity()
               ? bitmap
               : Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), m, true);
+      if (rotated != bitmap) {
+        // Free the unrotated copy right away so two full-size bitmaps are not held at once.
+        bitmap.recycle();
+        bitmap = null;
+      }
       try (FileOutputStream out = new FileOutputStream(part)) {
         if (!rotated.compress(Bitmap.CompressFormat.JPEG, 90, out)) throw new IOException("저장 실패");
         out.getFD().sync();

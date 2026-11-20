@@ -67,6 +67,32 @@ public final class Core {
     return trimLevel >= 10;
   }
 
+  /**
+   * True while a recent trim level means the device is short of memory: RUNNING_LOW, RUNNING_CRITICAL, or
+   * BACKGROUND and above, reported within the last 3 minutes. UI_HIDDEN and RUNNING_MODERATE do not count.
+   */
+  public static boolean memoryPressure(int level, long ageMs) {
+    if (ageMs < 0 || ageMs > 3 * 60_000L) return false;
+    return level == 10 || level == 15 || level >= 40;
+  }
+
+  /**
+   * Whether a folder file that was already imported can be skipped. Uses whatever size and modified time the
+   * folder provider reports. When the provider reports neither, an existing import is kept instead of
+   * downloading the whole file again on every sync.
+   */
+  public static boolean sourceUnchanged(
+      boolean linked, boolean fileExists, long oldModified, long oldSize, long modified, long size) {
+    if (!linked || !fileExists) return false;
+    if (modified > 0 && size > 0) return oldModified == modified && oldSize == size;
+    if (size > 0) return oldSize == size;
+    if (modified > 0) return oldModified == modified;
+    return true;
+  }
+
+  /** Folder sync imports at most this many new or changed photos per run, then continues later. */
+  public static final int FOLDER_IMPORTS_PER_RUN = 30;
+
   public static String abnormalExitMessage(
       boolean frameDesired, boolean recentCrash, String lastTrimLabel) {
     if (!frameDesired || recentCrash) return null;

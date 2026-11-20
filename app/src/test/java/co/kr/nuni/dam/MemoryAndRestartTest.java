@@ -67,4 +67,31 @@ public class MemoryAndRestartTest {
         "비정상 종료 추정: 기록 없음, 마지막 메모리 상태 없음",
         Core.abnormalExitMessage(true, false, null));
   }
+
+  @Test
+  public void memoryPressureOnlyForRecentLowOrWorse() {
+    assertTrue(Core.memoryPressure(10, 0));
+    assertTrue(Core.memoryPressure(15, 60_000));
+    assertTrue(Core.memoryPressure(80, 1_000));
+    assertFalse(Core.memoryPressure(5, 0)); // RUNNING_MODERATE
+    assertFalse(Core.memoryPressure(20, 0)); // UI_HIDDEN
+    assertFalse(Core.memoryPressure(15, 4 * 60_000)); // too old
+    assertFalse(Core.memoryPressure(15, -1));
+  }
+
+  @Test
+  public void folderSourceUnchanged() {
+    assertFalse(Core.sourceUnchanged(false, true, 1, 1, 1, 1));
+    assertFalse(Core.sourceUnchanged(true, false, 1, 1, 1, 1));
+    assertTrue(Core.sourceUnchanged(true, true, 100, 2000, 100, 2000));
+    assertFalse(Core.sourceUnchanged(true, true, 100, 2000, 101, 2000));
+    assertFalse(Core.sourceUnchanged(true, true, 100, 2000, 100, 2001));
+    // Provider without modified time: compare size only
+    assertTrue(Core.sourceUnchanged(true, true, 0, 2000, 0, 2000));
+    assertFalse(Core.sourceUnchanged(true, true, 0, 2000, 0, 3000));
+    // Provider without size: compare modified only
+    assertTrue(Core.sourceUnchanged(true, true, 100, 0, 100, 0));
+    // Provider reports neither: keep the existing import, do not download again
+    assertTrue(Core.sourceUnchanged(true, true, 0, 0, 0, 0));
+  }
 }

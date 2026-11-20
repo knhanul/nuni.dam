@@ -61,6 +61,7 @@ public final class PublicCopyWorker extends Worker {
         if (PublicArchive.sourceFile(a.store, p.id) != null) total++;
       }
       a.prefs.number(PublicArchive.PREF_MIG_TOTAL, total);
+      ExitLog.logJob(a, "사진 보관 폴더 복사 시작: " + total + "장");
       int done = 0;
       for (Photo p : owned) {
         if (isStopped()) return Result.retry();
@@ -70,6 +71,7 @@ public final class PublicCopyWorker extends Worker {
         a.prefs.number(PublicArchive.PREF_MIG_DONE, done);
       }
       a.prefs.raw.edit().putBoolean(PublicArchive.PREF_MIGRATED, true).apply();
+      ExitLog.logJob(a, "사진 보관 폴더 복사 끝: " + done + "장");
       PublicArchive.writeBackup(a);
       return Result.success();
     } catch (Exception e) {
