@@ -635,10 +635,8 @@ public final class StudioRepository {
             stc.collectionId.startsWith("cat:")
                 ? stc.collectionId.substring(4).trim()
                 : stc.collectionId.trim();
-        for (TextItem item : allEnabled) {
-          if (catName.equals(item.category)) {
-            matched.put(item.id, item);
-          }
+        for (TextItem item : Core.textsInCategories(allEnabled, Collections.singleton(catName))) {
+          matched.put(item.id, item);
         }
         continue;
       }
@@ -651,7 +649,7 @@ public final class StudioRepository {
       Set<String> cats = new HashSet<>();
       if (!col.categoryFilter.trim().isEmpty()) {
         for (String c : col.categoryFilter.split(",")) {
-          if (!c.trim().isEmpty()) cats.add(c.trim());
+          if (!c.trim().isEmpty()) cats.add(Core.textCategory(c));
         }
       }
       for (TextItem item : allEnabled) {
@@ -663,15 +661,23 @@ public final class StudioRepository {
             "ALL".equals(col.kindFilter)
                 || col.kindFilter.isEmpty()
                 || col.kindFilter.equals(item.kind);
-        boolean catOk = cats.isEmpty() || cats.contains(item.category);
+        boolean catOk = cats.isEmpty() || cats.contains(Core.textCategory(item.category));
         if (explicitIds.isEmpty() && kindOk && catOk) {
           matched.put(item.id, item);
         }
       }
     }
-    List<TextItem> out = new ArrayList<>(matched.values());
-    if (out.isEmpty()) out = allEnabled;
-    return out;
+    // Categories were chosen: play only those. If they hold no enabled text, play no text rather
+    // than falling back to every category.
+    return new ArrayList<>(matched.values());
+  }
+
+  /** True when the scene limits its texts to chosen categories (no choice means all texts). */
+  public boolean sceneRestrictsTexts(String sceneId) {
+    if (sceneId == null || sceneId.isEmpty()) return false;
+    Scene sc = dao().scene(sceneId);
+    if (sc != null && "NONE".equals(sc.textDisplayMode)) return true;
+    return !dao().sceneTextCollections(sceneId).isEmpty();
   }
 
   /** Exports the full Studio state as a JSONObject. */
