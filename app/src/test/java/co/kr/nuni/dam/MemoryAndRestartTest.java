@@ -94,4 +94,18 @@ public class MemoryAndRestartTest {
     // Provider reports neither: keep the existing import, do not download again
     assertTrue(Core.sourceUnchanged(true, true, 0, 0, 0, 0));
   }
+
+  @Test
+  public void windowValueOnlyRewrittenWhenChanged() {
+    assertTrue(Core.windowValueChanged(Float.NaN, 0.5f));
+    assertFalse(Core.windowValueChanged(0.5f, 0.5f));
+    assertTrue(Core.windowValueChanged(0.5f, 0.01f));
+  }
+
+  @Test
+  public void uptimeLabel() {
+    assertEquals("0시간 00분", Core.uptimeLabel(-5));
+    assertEquals("1시간 05분", Core.uptimeLabel(65 * 60_000L));
+    assertEquals("23시간 48분", Core.uptimeLabel((23 * 60 + 48) * 60_000L + 59_000L));
+  }
 }

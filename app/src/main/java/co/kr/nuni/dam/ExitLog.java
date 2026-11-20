@@ -34,7 +34,7 @@ public final class ExitLog {
   static final int MAX_CRASH_FILES = 5;
   static final int MAX_EXIT_FILES = 10;
   static final int MAX_REPORT_BYTES = 64 * 1024;
-  static final int MAX_MEMORY_LOG_BYTES = 32 * 1024;
+  static final int MAX_MEMORY_LOG_BYTES = 64 * 1024;
   static final String PREF_LAST_EXIT = "lastRecordedExitAt";
   static final String PREF_NOTICE = "pendingExitNotice";
   static final String PREF_INIT = "exitLogInitialized";
@@ -251,6 +251,26 @@ public final class ExitLog {
             .append(mb(mi.totalMem))
             .append(mi.lowMemory ? " (부족)" : "");
       }
+    } catch (Throwable ignored) {
+    }
+    return sb.toString();
+  }
+
+  /** Extra detail for the hourly check: whole-process PSS (Java + native + graphics) and thread count. */
+  static String detailedSnapshot(Context context) {
+    StringBuilder sb = new StringBuilder();
+    try {
+      android.os.Debug.MemoryInfo mi = new android.os.Debug.MemoryInfo();
+      android.os.Debug.getMemoryInfo(mi);
+      sb.append(" · PSS ").append(mi.getTotalPss() / 1024).append("MB");
+      if (Build.VERSION.SDK_INT >= 23) {
+        String gfx = mi.getMemoryStat("summary.graphics");
+        if (gfx != null) sb.append(" · 그래픽 ").append(Long.parseLong(gfx.trim()) / 1024).append("MB");
+      }
+    } catch (Throwable ignored) {
+    }
+    try {
+      sb.append(" · 스레드 ").append(Thread.activeCount()).append("개");
     } catch (Throwable ignored) {
     }
     return sb.toString();

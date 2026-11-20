@@ -10,6 +10,14 @@ import java.util.*;
 import java.util.concurrent.*;
 
 public final class FrameSession implements PhotoStore.Listener {
+  private static final java.util.concurrent.atomic.AtomicLong SHOWN =
+      new java.util.concurrent.atomic.AtomicLong();
+
+  /** Photos shown since the process started, for the hourly memory check. */
+  public static long shownCount() {
+    return SHOWN.get();
+  }
+
   private final NuniApp a;
   private final Context ctx;
   private final FrameView view;
@@ -303,6 +311,7 @@ public final class FrameSession implements PhotoStore.Listener {
                 applyPlaceScopeFor(p);
                 view.show(p, loaded, phrase());
                 shownId = p.id;
+                SHOWN.incrementAndGet();
                 next = SystemClock.elapsedRealtime() + currentDurationSec() * 1000L;
                 a.prefs.text("lastPhoto", p.id);
                 preloadNext(target);

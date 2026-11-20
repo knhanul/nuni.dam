@@ -269,7 +269,7 @@ public final class PowerSaving {
     private CameraDevice camera;
     private CameraCaptureSession session;
     private ImageReader reader;
-    private Listener listener;
+    private volatile Listener listener;
     private volatile Core.SourceHealth health = Core.SourceHealth.UNKNOWN;
     private byte[] prevLuma;
     private int consecutiveHits;
@@ -315,13 +315,16 @@ public final class PowerSaving {
     public synchronized void stop() {
       listener = null;
       diag.setCameraInUse(false);
-      if (handler != null) {
+      if (handler != null && thread != null) {
+        final HandlerThread t = thread;
         handler.post(this::closeCameraInternal);
-      }
-      if (thread != null) {
+        // Keep the thread alive briefly so a camera that finishes opening after stop() still gets its
+        // callback and is closed, instead of staying open in the camera service.
+        handler.postDelayed(t::quitSafely, 3000);
+      } else if (thread != null) {
         thread.quitSafely();
-        thread = null;
       }
+      thread = null;
       handler = null;
       prevLuma = null;
       consecutiveHits = 0;
@@ -338,6 +341,15 @@ public final class PowerSaving {
             new CameraDevice.StateCallback() {
               @Override
               public void onOpened(CameraDevice cd) {
+                if (listener == null) {
+                  // stop() already ran while the camera was opening: close it instead of keeping it.
+                  try {
+                    cd.close();
+                  } catch (Exception ignored) {
+                  }
+                  closeCameraInternal();
+                  return;
+                }
                 camera = cd;
                 diag.setCameraInUse(true);
                 createSession();
@@ -386,7 +398,13 @@ public final class PowerSaving {
             new CameraCaptureSession.StateCallback() {
               @Override
               public void onConfigured(CameraCaptureSession cs) {
-                if (camera == null) return;
+                if (camera == null || listener == null) {
+                  try {
+                    cs.close();
+                  } catch (Exception ignored) {
+                  }
+                  return;
+                }
                 session = cs;
                 try {
                   session.setRepeatingRequest(req.build(), null, handler);
@@ -532,31 +550,47 @@ public final class PowerSaving {
     private final FrameView frameView;
     private final Prefs prefs;
 
+    private float appliedBrightness = Float.NaN;
+    private int appliedKeepOn = -1;
+
     public DisplayPowerController(Window w, FrameView fv, Prefs p) {
       window = w;
       frameView = fv;
       prefs = p;
     }
 
+    /**
+     * Called every 2 seconds. Window attributes are only touched when they actually change: each
+     * setAttributes/addFlags call makes the window relayout through the system, which used to happen
+     * tens of thousands of times a day.
+     */
     public void apply(Core.PowerState state, DeviceCapabilities caps) {
       if (window == null) return;
-      WindowManager.LayoutParams lp = window.getAttributes();
       boolean dimmed =
           state == Core.PowerState.DIMMED
               || state == Core.PowerState.SCREEN_OFF
               || prefs.night();
-      lp.screenBrightness = dimmed ? 0.01f : prefs.brightness() / 100f;
-      window.setAttributes(lp);
+      float brightness = dimmed ? 0.01f : prefs.brightness() / 100f;
       // Only release FLAG_KEEP_SCREEN_ON if real screen-off & wake is verified AND requested
       boolean allowSystemOff =
           state == Core.PowerState.DIMMED
               && "SCREEN_OFF".equals(prefs.idleAction())
               && caps != null
               && caps.screenOffWakeVerified;
-      if (allowSystemOff) {
-        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-      } else {
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+      if (Core.windowValueChanged(appliedBrightness, brightness)) {
+        WindowManager.LayoutParams lp = window.getAttributes();
+        lp.screenBrightness = brightness;
+        window.setAttributes(lp);
+        appliedBrightness = brightness;
+      }
+      int keepOn = allowSystemOff ? 0 : 1;
+      if (keepOn != appliedKeepOn) {
+        if (allowSystemOff) {
+          window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        } else {
+          window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
+        appliedKeepOn = keepOn;
       }
       if (frameView != null) {
         String msg = "";

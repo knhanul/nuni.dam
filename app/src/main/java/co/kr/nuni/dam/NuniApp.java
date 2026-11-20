@@ -19,6 +19,25 @@ public final class NuniApp extends Application {
   private StudioServer studioServer;
   private String lastServerError = "";
   public final PowerSaving.Diagnostics powerDiagnostics = new PowerSaving.Diagnostics();
+  static final long MEMORY_CHECK_MS = 60 * 60 * 1000L;
+  private final long startedAt = android.os.SystemClock.elapsedRealtime();
+  private final Runnable memoryCheck =
+      new Runnable() {
+        public void run() {
+          final long up = android.os.SystemClock.elapsedRealtime() - startedAt;
+          io.execute(
+              () ->
+                  ExitLog.logJob(
+                      NuniApp.this,
+                      "메모리 점검 (켜진 지 "
+                          + Core.uptimeLabel(up)
+                          + " · 사진 "
+                          + FrameSession.shownCount()
+                          + "장 표시)"
+                          + ExitLog.detailedSnapshot(NuniApp.this)));
+          main.postDelayed(this, MEMORY_CHECK_MS);
+        }
+      };
 
   public void onCreate() {
     super.onCreate();
@@ -34,7 +53,10 @@ public final class NuniApp extends Application {
           .createNotificationChannel(
               new NotificationChannel("frame", "액자 시작 안내", NotificationManager.IMPORTANCE_LOW));
     ExitLog.install(this);
+    ExitLog.logJob(this, "앱 시작");
     FrameWatchdog.onProcessStart(this);
+    // Hourly memory line in 앱 종료 기록, so slow growth over a day becomes visible.
+    main.postDelayed(memoryCheck, MEMORY_CHECK_MS);
     io.execute(
         () -> {
           store.cleanup();

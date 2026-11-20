@@ -93,6 +93,18 @@ public final class Core {
   /** Folder sync imports at most this many new or changed photos per run, then continues later. */
   public static final int FOLDER_IMPORTS_PER_RUN = 30;
 
+  /** True when a window value must be written again (first time, or it really changed). */
+  public static boolean windowValueChanged(float applied, float next) {
+    return Float.isNaN(applied) || Math.abs(applied - next) > 0.0005f;
+  }
+
+  /** "3시간 05분" style uptime for the hourly memory check. */
+  public static String uptimeLabel(long ms) {
+    if (ms < 0) ms = 0;
+    long totalMin = ms / 60_000L;
+    return (totalMin / 60) + "시간 " + String.format(java.util.Locale.ROOT, "%02d", totalMin % 60) + "분";
+  }
+
   public static String abnormalExitMessage(
       boolean frameDesired, boolean recentCrash, String lastTrimLabel) {
     if (!frameDesired || recentCrash) return null;
