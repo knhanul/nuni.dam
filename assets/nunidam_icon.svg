@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="238 233 1040 952" width="1040" height="952" role="img" aria-label="누니담 앱 로고 blue">
+  <title>nuniDam — blue</title>
+  <defs>
+    <radialGradient id="nuniGlow" cx="50%" cy="50%" fx="50%" fy="50%" r="50%"><stop offset="0%" stop-color="#FFFFFF"/>
+<stop offset="16%" stop-color="#F3FBFF"/>
+<stop offset="38%" stop-color="#7AD2FF"/>
+<stop offset="68%" stop-color="#1E9CFF"/>
+<stop offset="100%" stop-color="#0273F5"/></radialGradient>
+  </defs>
+  <!-- Original nuni brand geometry, unchanged -->
+  <path fill="none" stroke="#0273F5" stroke-width="252" stroke-linecap="round" stroke-linejoin="round" d="M364 1013 V686.5 A172.5 172.5 0 0 1 709 686.5 V853.5 A159.5 159.5 0 0 0 1028 853.5 V572"/>
+  <circle cx="1028" cy="359" r="126" fill="url(#nuniGlow)"/>
+  <!-- Large photo / digital frame symbol, replacing location pin -->
+  <g stroke-linecap="round" stroke-linejoin="round" transform="translate(-220 -186) scale(1.2)">
+    <rect x="818" y="768" width="418" height="324" rx="55" ry="55" fill="#0273F5" stroke="#FFFFFF" stroke-width="34"/>
+    <circle cx="1127" cy="855" r="39" fill="#FFFFFF"/>
+    <path d="M851 1034 L949 928 Q960 916 972 928 L1033 993 L1079 951 Q1091 940 1103 954 L1203 1060 L851 1060 Z" fill="#FFFFFF"/>
+  </g>
+</svg>
