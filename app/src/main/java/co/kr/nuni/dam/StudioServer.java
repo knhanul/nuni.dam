@@ -146,10 +146,10 @@ public final class StudioServer extends NanoHTTPD {
       return secureHeaders(r, false);
     }
 
-    // Serve static Nuni brand logo assets (/favicon.ico, /assets/nuni*)
-    if (method == Method.GET && (uri.equals("/favicon.ico") || uri.startsWith("/assets/nuni"))) {
-      String assetName = uri.equals("/favicon.ico") ? "nuni_icon.ico" : uri.substring("/assets/".length());
-      if (assetName.matches("nuni[a-z_]*\\.(svg|png|ico)")) {
+    // Serve static Nuni brand logo assets (/favicon.ico, /assets/nuni*, /assets/nunidam*)
+    if (method == Method.GET && (uri.equals("/favicon.ico") || uri.startsWith("/assets/nuni") || uri.startsWith("/assets/nunidam"))) {
+      String assetName = uri.equals("/favicon.ico") ? "nunidam_icon.ico" : uri.substring("/assets/".length());
+      if (assetName.matches("(nuni|nunidam)[a-z_]*\\.(svg|png|ico)")) {
         try (InputStream in = a.getAssets().open(assetName)) {
           byte[] bytes = Core.read(in, 256 * 1024);
           String mime =

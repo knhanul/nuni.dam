@@ -1,16 +1,18 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="1150"
-    android:viewportHeight="1150">
+    android:viewportWidth="1200"
+    android:viewportHeight="1200">
   <!-- Soft rounded white/sky background so it works both as launcher icon and in-app badge -->
   <path
       android:fillColor="#F4F9FF"
-      android:pathData="M220,40 L930,40 A180,180 0 0,1 1110,220 L1110,930 A180,180 0 0,1 930,1110 L220,1110 A180,180 0 0,1 40,930 L40,220 A180,180 0 0,1 220,40 Z" />
-  <!-- Official nuni_icon.svg wave path (centered from viewBox 238 233 916 906, compatible with API 21+) -->
+      android:pathData="M240,40 L960,40 A180,180 0 0,1 1140,220 L1140,980 A180,180 0 0,1 960,1160 L240,1160 A180,180 0 0,1 60,980 L60,220 A180,180 0 0,1 240,40 Z" />
+  <!-- Official nunidam_icon.svg wave & photo frame geometry (compatible with API 21+) -->
   <group
-      android:translateX="-121"
-      android:translateY="-111">
+      android:scaleX="0.82"
+      android:scaleY="0.82"
+      android:translateX="-24"
+      android:translateY="35">
     <path
         android:fillColor="#00000000"
         android:pathData="M364,1013 V686.5 A172.5,172.5 0 0,1 709,686.5 V853.5 A159.5,159.5 0 0,0 1028,853.5 V572"
@@ -30,5 +32,29 @@
     <path
         android:fillColor="#F3FBFF"
         android:pathData="M1028,359 m-22,0 a22,22 0 1,0 44,0 a22,22 0 1,0 -44,0" />
+    <!-- Large photo / digital frame symbol (scale 1.2, translate -220, -186 from nunidam_icon.svg) -->
+    <group
+        android:scaleX="1.2"
+        android:scaleY="1.2"
+        android:translateX="-220"
+        android:translateY="-186">
+      <path
+          android:fillColor="#0273F5"
+          android:strokeColor="#FFFFFF"
+          android:strokeWidth="34"
+          android:strokeLineCap="round"
+          android:strokeLineJoin="round"
+          android:pathData="M873,768 h308 a55,55 0 0,1 55,55 v214 a55,55 0 0,1 -55,55 h-308 a55,55 0 0,1 -55,-55 v-214 a55,55 0 0,1 55,-55 Z" />
+      <path
+          android:fillColor="#FFFFFF"
+          android:pathData="M1127,855 m-39,0 a39,39 0 1,0 78,0 a39,39 0 1,0 -78,0" />
+      <path
+          android:fillColor="#FFFFFF"
+          android:strokeColor="#FFFFFF"
+          android:strokeWidth="4"
+          android:strokeLineCap="round"
+          android:strokeLineJoin="round"
+          android:pathData="M851,1034 L949,928 Q960,916 972,928 L1033,993 L1079,951 Q1091,940 1103,954 L1203,1060 L851,1060 Z" />
+    </group>
   </group>
 </vector>

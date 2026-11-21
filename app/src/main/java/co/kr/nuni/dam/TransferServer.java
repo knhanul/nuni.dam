@@ -85,9 +85,9 @@ public final class TransferServer extends NanoHTTPD {
     String path = s.getUri();
     if (path.equals("/") && s.getMethod() == Method.GET)
       return secure(newFixedLengthResponse(Response.Status.OK, "text/html; charset=utf-8", html));
-    if (s.getMethod() == Method.GET && (path.equals("/favicon.ico") || path.startsWith("/assets/nuni"))) {
-      String assetName = path.equals("/favicon.ico") ? "nuni_icon.ico" : path.substring("/assets/".length());
-      if (assetName.matches("nuni[a-z_]*\\.(svg|png|ico)")) {
+    if (s.getMethod() == Method.GET && (path.equals("/favicon.ico") || path.startsWith("/assets/nuni") || path.startsWith("/assets/nunidam"))) {
+      String assetName = path.equals("/favicon.ico") ? "nunidam_icon.ico" : path.substring("/assets/".length());
+      if (assetName.matches("(nuni|nunidam)[a-z_]*\\.(svg|png|ico)")) {
         try (InputStream in = a.getAssets().open(assetName)) {
           byte[] bytes = Core.read(in, 256 * 1024);
           String mime =
