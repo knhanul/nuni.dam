@@ -391,14 +391,11 @@ public final class ScenesActivity extends Activity implements PhotoStore.Listene
             String samplePhrase = "";
             if (!"NONE".equals(textMode)) {
               List<TextItem> enabledTexts = sdao.enabledTextItems();
-              TextItem chosen = null;
-              for (TextItem ti : enabledTexts) {
-                if (reqCats.isEmpty() || reqCats.contains(ti.category)) {
-                  chosen = ti;
-                  break;
-                }
-              }
-              if (chosen == null && !enabledTexts.isEmpty()) chosen = enabledTexts.get(0);
+              // Same rule as the frame: no category chosen means all texts; chosen categories
+              // without texts show no text.
+              List<TextItem> pool =
+                  reqCats.isEmpty() ? enabledTexts : Core.textsInCategories(enabledTexts, reqCats);
+              TextItem chosen = pool.isEmpty() ? null : pool.get(0);
               if (chosen != null) {
                 String authorStr = chosen.author;
                 if (!chosen.title.isEmpty() && !chosen.author.contains(chosen.title)) {
@@ -412,7 +409,7 @@ public final class ScenesActivity extends Activity implements PhotoStore.Listene
                         ? "POEM"
                         : "QUOTE";
                 samplePhrase = new Core.QuoteEntry(k, chosen.body, authorStr).encode();
-              } else {
+              } else if (reqCats.isEmpty()) {
                 samplePhrase = "눈이 머무는 곳에 마음도 잠시 쉬어갑니다.|누니담";
               }
             }

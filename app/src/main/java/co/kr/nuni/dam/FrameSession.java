@@ -26,6 +26,8 @@ public final class FrameSession implements PhotoStore.Listener {
   private List<Photo> deck = new ArrayList<>();
   private List<Quote> quotes = new ArrayList<>();
   private List<TextItem> sceneTexts = new ArrayList<>();
+  /** True when the playing scene chose text categories: never fall back to other texts. */
+  private boolean textsRestricted;
   private Scene activeScene;
   private String currentSceneId = "";
   private int index = -1, generation, quoteStep;
@@ -202,22 +204,29 @@ public final class FrameSession implements PhotoStore.Listener {
           Scene resolvedScene = null;
           List<Photo> list;
           List<TextItem> tItems = new ArrayList<>();
+          boolean restricted = false;
           if (a.studio != null) {
             a.studio.ensureSeeded();
             if (a.prefs.studioScheduleEnabled()) {
               Core.ScheduleEvaluation eval =
                   a.studio.evaluateCurrentSchedule(System.currentTimeMillis());
               resolvedScene = a.studio.dao().scene(eval.activeSceneId);
-              if (resolvedScene != null) {
-                list = a.studio.resolvePhotosForScene(resolvedScene.id);
-                tItems = a.studio.resolveTextsForScene(resolvedScene.id);
-              } else {
-                list = a.db.photos().active();
-                tItems = a.studio.dao().enabledTextItems();
-              }
+            }
+            if (resolvedScene != null) {
+              list = a.studio.resolvePhotosForScene(resolvedScene.id);
+              tItems = a.studio.resolveTextsForScene(resolvedScene.id);
+              restricted = a.studio.sceneRestrictsTexts(resolvedScene.id);
             } else {
               list = a.db.photos().active();
-              tItems = a.studio.dao().enabledTextItems();
+              // No timetable scene: the default scene's text categories still apply.
+              Scene def = a.studio.dao().defaultScene();
+              if (def == null) def = a.studio.dao().scene("scene_default");
+              if (def != null && !"NONE".equals(def.textDisplayMode)) {
+                tItems = a.studio.resolveTextsForScene(def.id);
+                restricted = a.studio.sceneRestrictsTexts(def.id);
+              } else {
+                tItems = a.studio.dao().enabledTextItems();
+              }
             }
           } else {
             list = a.db.photos().active();
@@ -237,6 +246,7 @@ public final class FrameSession implements PhotoStore.Listener {
           Scene finalScene = resolvedScene;
           List<Photo> finalList = list;
           List<TextItem> finalTexts = tItems;
+          final boolean finalRestricted = restricted;
           final java.util.Map<String, String> finalScopes =
               a.studio != null
                   ? a.studio.photoPlaceScopes(finalScene != null ? finalScene.id : "", finalList)
@@ -247,6 +257,7 @@ public final class FrameSession implements PhotoStore.Listener {
                 activeScene = finalScene;
                 currentSceneId = finalScene != null ? finalScene.id : "";
                 sceneTexts = finalTexts;
+                textsRestricted = finalRestricted;
                 if (finalScene != null) {
                   view.setOverrideConfig(FrameView.Config.fromScene(finalScene, a.prefs));
                 } else {
@@ -468,6 +479,9 @@ public final class FrameSession implements PhotoStore.Listener {
     String kind = a.prefs.quoteKind();
     if ("NONE".equals(kind)) return "";
     if (!a.prefs.phrase().isEmpty()) return a.prefs.phrase();
+    // Chosen categories with nothing to show (or nothing of the chosen kind): show no text instead of
+    // falling back to the built-in quote list, which ignores categories.
+    if (textsRestricted && (activeScene != null || sceneTexts.isEmpty())) return "";
     if (!sceneTexts.isEmpty()) {
       List<TextItem> filteredTexts = new ArrayList<>();
       for (TextItem ti : sceneTexts) {
@@ -492,6 +506,7 @@ public final class FrameSession implements PhotoStore.Listener {
           return new Core.QuoteEntry(k, ti.body, authorStr).encode();
         }
       }
+      if (textsRestricted) return "";
     }
     List<Quote> filtered = new ArrayList<>();
     for (Quote q : quotes)

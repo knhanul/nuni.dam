@@ -105,6 +105,24 @@ public final class Core {
     return (totalMin / 60) + "시간 " + String.format(java.util.Locale.ROOT, "%02d", totalMin % 60) + "분";
   }
 
+  /** Category name as shown in the app: trimmed, and blank means "기타". */
+  public static String textCategory(String category) {
+    String c = category == null ? "" : category.trim();
+    if (c.startsWith("cat:")) c = c.substring(4).trim();
+    return c.isEmpty() ? "기타" : c;
+  }
+
+  /** Texts whose category is one of the chosen ones. An empty choice returns an empty list. */
+  public static java.util.List<TextItem> textsInCategories(
+      java.util.List<TextItem> items, java.util.Collection<String> categories) {
+    java.util.List<TextItem> out = new java.util.ArrayList<>();
+    if (items == null || categories == null || categories.isEmpty()) return out;
+    java.util.Set<String> wanted = new java.util.HashSet<>();
+    for (String c : categories) wanted.add(textCategory(c));
+    for (TextItem t : items) if (t != null && wanted.contains(textCategory(t.category))) out.add(t);
+    return out;
+  }
+
   public static String abnormalExitMessage(
       boolean frameDesired, boolean recentCrash, String lastTrimLabel) {
     if (!frameDesired || recentCrash) return null;
